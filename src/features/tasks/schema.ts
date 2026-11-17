@@ -24,15 +24,19 @@ export const taskPatchSchema = z
     due: dueDate,
     tags: z.array(z.string().trim().min(1).max(40)).max(10),
     done: z.boolean(),
+    plannedFor: z.iso.date().nullable(),
   })
   .partial();
 
 export type TaskInput = z.infer<typeof taskInputSchema>;
 export type TaskPatch = z.infer<typeof taskPatchSchema>;
 
-export interface Task extends TaskInput {
-  id: string;
-  done: boolean;
-  createdAt: string;
-  completedAt: string | null;
-}
+export const taskSchema = taskInputSchema.extend({
+  id: z.string(),
+  done: z.boolean(),
+  createdAt: z.iso.datetime(),
+  completedAt: z.iso.datetime().nullable(),
+  plannedFor: z.iso.date().nullable().default(null),
+});
+
+export type Task = z.infer<typeof taskSchema>;

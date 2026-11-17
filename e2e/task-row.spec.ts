@@ -9,7 +9,7 @@ test.describe("TaskRow", () => {
     const task = row(page, "Prepare the demo");
 
     await expect(task.getByText("Use the staging data.")).toBeVisible();
-    await expect(task.getByText("Today")).toBeVisible();
+    await expect(task.getByText("Today", { exact: true })).toBeVisible();
     await expect(task.getByRole("button", { name: "Priority: High" })).toHaveText("High");
     await expect(task.getByRole("button", { name: "#demo" })).toBeVisible();
     await expect(task.getByRole("button", { name: "#q4" })).toBeVisible();
@@ -148,3 +148,78 @@ test.describe("TaskRow", () => {
     expect((await listTasks(request))[0]).toMatchObject({ title: "Unlucky", done: false });
   });
 });
+
+for (const language of [
+  { code: "EN", today: "Today", all: "All tasks", add: "Add to today", remove: "Remove from today", error: "Something went wrong. Try again." },
+  { code: "PT", today: "Hoje", all: "Todas as tarefas", add: "Adicionar ao dia de hoje", remove: "Remover do dia de hoje", error: "Algo deu errado. Tente novamente." },
+]) {
+  test(`adds and removes a persisted daily selection in ${language.code}`, async ({ page, request }) => {
+    await seed(request, [{ title: "Daily pick" }]);
+    await openApp(page);
+    await page.getByRole("button", { name: language.code, exact: true }).click();
+    await row(page, "Daily pick").getByRole("button", { name: language.add, exact: true }).click();
+    await expect.poll(async () => (await listTasks(request))[0].plannedFor).toBe(TODAY);
+    expect((await listTasks(request))[0].due).toBeNull();
+    await page.reload();
+    await expect(row(page, "Daily pick").getByRole("button", { name: language.remove })).toHaveAttribute("aria-pressed", "true");
+    const navigation = page.getByRole("complementary");
+    await navigation.getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
+    await row(page, "Daily pick").getByRole("button", { name: language.remove }).click();
+    await expect(row(page, "Daily pick")).toHaveCount(0);
+    await expect(navigation.getByRole("button", { name: new RegExp(`^${language.today}`) })).toHaveText(`${language.today}0`);
+    await expect.poll(async () => (await listTasks(request))[0].plannedFor).toBeNull();
+    await navigation.getByRole("button", { name: new RegExp(`^${language.all}`) }).click();
+    await expect(row(page, "Daily pick").getByRole("button", { name: language.add })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test(`keeps due and overdue tasks after removing their selection in ${language.code}`, async ({ page, request }) => {
+    await seed(request, [
+      { title: "Deadline pick", due: TODAY, plannedFor: TODAY },
+      { title: "Late pick", due: YESTERDAY, plannedFor: TODAY },
+    ]);
+    await openApp(page);
+    await page.getByRole("button", { name: language.code, exact: true }).click();
+    const todayButton = page.getByRole("complementary").getByRole("button", { name: new RegExp(`^${language.today}`) });
+    await todayButton.click();
+    for (const title of ["Deadline pick", "Late pick"]) {
+      await row(page, title).getByRole("button", { name: language.remove }).click();
+      await expect(row(page, title).getByRole("button", { name: language.add })).toBeVisible();
+    }
+    await expect(todayButton).toHaveText(`${language.today}2`);
+    await expect.poll(async () => (await listTasks(request)).map((task) => task.plannedFor)).toEqual([null, null]);
+    expect((await listTasks(request)).map((task) => task.due)).toEqual([TODAY, YESTERDAY]);
+    await row(page, "Deadline pick").getByRole("checkbox").click();
+    await expect(todayButton).toHaveText(`${language.today}1`);
+    await expect.poll(async () => (await listTasks(request))[0].done).toBe(true);
+    await doneSection(page).locator("summary").click();
+    await row(doneSection(page), "Deadline pick").getByRole("checkbox").click();
+    await expect(todayButton).toHaveText(`${language.today}2`);
+    await expect.poll(async () => (await listTasks(request))[0].done).toBe(false);
+  });
+
+  test(`recovers from failed selection and removal in ${language.code}`, async ({ page, request }) => {
+    await seed(request, [{ title: "Retry pick" }]);
+    await openApp(page);
+    await page.getByRole("button", { name: language.code, exact: true }).click();
+    const todayButton = page.getByRole("complementary").getByRole("button", { name: new RegExp(`^${language.today}`) });
+    await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
+    await row(page, "Retry pick").getByRole("button", { name: language.add }).click();
+    await expect(page.getByRole("status")).toHaveText(language.error);
+    await expect(row(page, "Retry pick").getByRole("button", { name: language.add })).toBeVisible();
+    await expect(todayButton).toHaveText(`${language.today}0`);
+    expect((await listTasks(request))[0].plannedFor).toBeNull();
+    await page.unroute("**/api/tasks/*");
+    await row(page, "Retry pick").getByRole("button", { name: language.add }).click();
+    await expect.poll(async () => (await listTasks(request))[0].plannedFor).toBe(TODAY);
+    await todayButton.click();
+    await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
+    await row(page, "Retry pick").getByRole("button", { name: language.remove }).click();
+    await expect(row(page, "Retry pick").getByRole("button", { name: language.remove })).toBeVisible();
+    await expect(todayButton).toHaveText(`${language.today}1`);
+    expect((await listTasks(request))[0].plannedFor).toBe(TODAY);
+    await page.unroute("**/api/tasks/*");
+    await row(page, "Retry pick").getByRole("button", { name: language.remove }).click();
+    await expect(row(page, "Retry pick")).toHaveCount(0);
+    await expect.poll(async () => (await listTasks(request))[0].plannedFor).toBeNull();
+  });
+}

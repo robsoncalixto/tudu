@@ -72,7 +72,14 @@ tasks stay in the language you wrote them in.
 | Rename a task | Click the title |
 | Change priority | Click the priority label to cycle low → medium → high |
 | Set a due date | Click the date label |
+| Plan today | Click **Add to today** on a task, then **Today** in the sidebar |
+| Remove a daily selection | Click **Remove from today**; tasks due today or overdue remain visible |
 | Filter by tag | Click a `#tag` |
+
+**Today** includes tasks picked for the current local calendar day, plus tasks
+due today or overdue. Its badge counts open tasks. Selections are saved with the
+task and expire when the day changes; they never change the due date. Completed
+tasks stay in the collapsed **Done** section when they match the selected view.
 
 ## Project layout
 

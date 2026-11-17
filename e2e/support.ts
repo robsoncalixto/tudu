@@ -11,6 +11,7 @@ export interface SeedTask {
   priority?: "low" | "medium" | "high";
   due?: string | null;
   tags?: string[];
+  plannedFor?: string | null;
 }
 
 export interface StoredTask extends Required<SeedTask> {
@@ -24,9 +25,18 @@ export async function listTasks(request: APIRequestContext): Promise<StoredTask[
 }
 
 export async function seed(request: APIRequestContext, tasks: SeedTask[]): Promise<StoredTask[]> {
-  const response = await request.post("/api/tasks", { data: tasks });
+  const response = await request.post("/api/tasks", {
+    data: tasks.map(({ plannedFor: _plannedFor, ...input }) => input),
+  });
   expect(response.status()).toBe(201);
-  return (await response.json()).tasks;
+  const created: StoredTask[] = (await response.json()).tasks;
+  return Promise.all(created.map(async (task, index) => {
+    const plannedFor = tasks[index].plannedFor;
+    if (plannedFor === undefined) return task;
+    const patched = await request.patch(`/api/tasks/${task.id}`, { data: { plannedFor } });
+    expect(patched.ok()).toBe(true);
+    return (await patched.json()).task as StoredTask;
+  }));
 }
 
 async function reset(request: APIRequestContext) {

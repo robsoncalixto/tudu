@@ -74,15 +74,24 @@ export function TaskRow({ task, fresh, today, locale, t, onPatch, onDelete, onTa
 
         {task.notes && <p className="task-notes">{task.notes}</p>}
 
-        {task.tags.length > 0 && (
-          <div className="task-tags">
-            {task.tags.map((tag) => (
-              <button type="button" key={tag} className="chip chip-tag" onClick={() => onTag(tag)}>
-                #{tag}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="task-tags">
+          {!task.done && (
+            <button
+              type="button"
+              className="chip chip-tag plan-today"
+              aria-pressed={task.plannedFor === today}
+              disabled={!today}
+              onClick={() => onPatch(task.id, { plannedFor: task.plannedFor === today ? null : today })}
+            >
+              {task.plannedFor === today ? t.removeFromToday : t.addToToday}
+            </button>
+          )}
+          {task.tags.map((tag) => (
+            <button type="button" key={tag} className="chip chip-tag" onClick={() => onTag(tag)}>
+              #{tag}
+            </button>
+          ))}
+        </div>
       </div>
 
       <label className={`chip due${overdue ? " is-overdue" : ""}${task.due ? "" : " is-empty"}`}>

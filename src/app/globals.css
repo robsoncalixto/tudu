@@ -558,6 +558,17 @@ label.chip:hover {
   margin-top: 6px;
 }
 
+.plan-today:hover,
+.plan-today[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+.plan-today {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+
 .due,
 .priority {
   justify-self: start;
@@ -717,7 +728,8 @@ label.chip:hover {
     grid-template-columns: 22px minmax(0, 1fr) 28px;
     grid-template-areas:
       "check body remove"
-      ". meta meta";
+      ". due due"
+      ". priority priority";
     row-gap: 8px;
     padding: 14px 16px;
     align-items: start;
@@ -735,18 +747,12 @@ label.chip:hover {
     grid-area: remove;
   }
 
-  .due,
-  .priority {
-    grid-row: 2;
-  }
-
   .due {
-    grid-column: 2;
+    grid-area: due;
   }
 
   .priority {
-    grid-column: 2;
-    margin-left: 150px;
+    grid-area: priority;
   }
 
   .composer-bar {

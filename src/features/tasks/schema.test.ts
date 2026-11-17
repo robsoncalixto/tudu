@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { taskInputSchema, taskPatchSchema } from "./schema";
+import { taskInputSchema, taskPatchSchema, taskSchema } from "./schema";
 
 describe("taskInputSchema", () => {
   it("fills defaults for a title-only task", () => {
@@ -37,5 +37,27 @@ describe("taskPatchSchema", () => {
 
   it("rejects an empty title", () => {
     expect(taskPatchSchema.safeParse({ title: "" }).success).toBe(false);
+  });
+
+  it("accepts a daily selection and allows clearing it without adding other fields", () => {
+    expect(taskPatchSchema.parse({ plannedFor: "2026-11-17" })).toEqual({ plannedFor: "2026-11-17" });
+    expect(taskPatchSchema.parse({ plannedFor: null })).toEqual({ plannedFor: null });
+  });
+
+  it("rejects malformed or impossible selection dates", () => {
+    for (const plannedFor of ["today", "17/11/2026", "2026-02-30", true]) {
+      expect(taskPatchSchema.safeParse({ plannedFor }).success).toBe(false);
+    }
+  });
+});
+
+describe("taskSchema", () => {
+  it("normalizes tasks saved before daily selections existed", () => {
+    const task = taskSchema.parse({
+      title: "Existing task", id: "old", done: false,
+      createdAt: "2026-11-01T12:00:00.000Z", completedAt: null,
+    });
+    expect(task.plannedFor).toBeNull();
+    expect(task.due).toBeNull();
   });
 });
