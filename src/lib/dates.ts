@@ -8,6 +8,15 @@ export function weekdayName(day: number, locale: Locale): string {
     .format(new Date(Date.UTC(2026, 10, 15 + day, 12)));
 }
 
+export function dateInTimeZone(instant: string, timeZone: string): string | null {
+  const date = new Date(instant);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(date);
+  return ["year", "month", "day"].map((name) => parts.find((part) => part.type === name)?.value).join("-");
+}
+
 export function toISODate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");

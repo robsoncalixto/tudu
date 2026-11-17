@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { dictionaries } from "@/i18n";
-import { dayDiff, dueLabel, longDate, toISODate, weekdayName } from "./dates";
+import { dateInTimeZone, dayDiff, dueLabel, longDate, toISODate, weekdayName } from "./dates";
+
+it("finds a timestamp's calendar date in the requested time zone", () => {
+  expect(dateInTimeZone("2026-11-17T02:59:59Z", "America/Sao_Paulo")).toBe("2026-11-16");
+  expect(dateInTimeZone("2026-11-17T03:00:00Z", "America/Sao_Paulo")).toBe("2026-11-17");
+  expect(dateInTimeZone("not a timestamp", "UTC")).toBeNull();
+});
 
 it("formats weekly day names with Intl in both languages", () => {
   expect(weekdayName(0, "en")).toBe("Sunday");

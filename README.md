@@ -116,6 +116,7 @@ action into steps, AI capture can keep those steps as a checklist on the task.
 | Filter by project | Click its name in the sidebar |
 | Change preferences | Open **Settings** from the sidebar, choose values, then **Save settings** |
 | Repeat a task | Open **Repeat** on a task, choose a schedule and due date, then **Save repeat rule** |
+| Report completed work | Open **Work log**, choose a day and grouping, then copy plain text or Markdown |
 
 **Today** includes tasks picked for the current local calendar day, plus tasks
 due today or overdue. Its badge counts open tasks. Selections are saved with the
@@ -133,6 +134,12 @@ Preferences are shared by browsers using this installation and saved on the
 server. They take effect when saved and when you return to the task board;
 browser-only language settings are no longer used.
 
+The default priority applies to title-only API requests and is supplied to AI
+capture. Explicit task priorities are preserved. The AI section shows whether
+capture is configured; provider configuration remains on the server.
+
+## Repeating tasks
+
 Repeating tasks support daily, weekdays (Monday–Friday), weekly on selected
 days, and monthly on a chosen day. Completion saves the next task together with
 the completed one. The next due date follows the scheduled date, even if you
@@ -147,9 +154,23 @@ are independent. Reopening and completing the same occurrence, retrying its
 request, or deleting its next task does not generate a second copy. Both storage
 backends persist the rule and next-task link; PostgreSQL upgrades automatically.
 
-The default priority applies to title-only API requests and is supplied to AI
-capture. Explicit task priorities are preserved. The AI section shows whether
-capture is configured; provider configuration remains on the server.
+## Work log
+
+The **Work log** lists tasks completed on a selected day (today by default),
+using the browser's time zone rather than the server's. Group by project, tag,
+or neither. Tasks with multiple tags appear in each matching tag group; the
+total counts each task once. Plain-text and Markdown exports include task
+titles, group headings, and an unambiguous ISO date. Markdown escapes the
+person's text so titles cannot introduce extra formatting.
+
+Copying also works on LAN HTTP through a native selection fallback. If the
+browser blocks both clipboard methods, the page offers the full text for manual
+copying. An optional AI summary uses the configured Anthropic key and model,
+includes only the saved completed task titles, projects and tags for that day,
+and never changes tasks. Review it before sharing; it is included in subsequent
+exports. A large work log stays available for copying even if it exceeds the AI
+input limit. Refresh reloads the latest tasks. This is a view of current task
+data: reopened or deleted tasks no longer appear as completed work.
 
 ## Project layout
 
@@ -158,6 +179,10 @@ src/
   app/                 Routes: page, layout, API endpoints
   features/tasks/      Task schema, storage, hooks and components
   features/capture/    Turning a note into tasks with AI
+  features/projects/   Project registry
+  features/settings/   Shared preferences
+  features/recurrence/ Repeat rule contract
+  features/work-log/   Completed-day selection, exports and AI summary
   i18n/                English and Portuguese strings
   lib/                 Shared helpers
 e2e/                   End-to-end tests

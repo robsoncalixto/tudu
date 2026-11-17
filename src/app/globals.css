@@ -781,6 +781,17 @@ label.chip:hover {
   align-items: start;
 }
 
+.checklist:not([open]),
+.repeat-editor:not([open]) {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+}
+
+.checklist:not([open]) {
+  margin-right: var(--s-md);
+}
+
 .repeat-editor {
   margin-top: var(--s-sm);
   font-size: 14px;
@@ -1035,6 +1046,68 @@ label.chip:hover {
 
 .settings-ai p {
   color: var(--text-muted);
+}
+
+.work-log-controls,
+.work-log-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--s-md);
+  margin-top: var(--s-md);
+}
+
+.work-log-controls label,
+.work-log-manual {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-sm);
+  font-family: var(--heading);
+}
+
+.work-log-controls input,
+.work-log-controls select,
+.work-log-manual textarea {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--s-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.work-log-manual textarea {
+  width: 100%;
+  font-family: var(--body);
+}
+
+.work-log-zone,
+.work-log-actions + .hint {
+  margin-top: var(--s-sm);
+}
+
+.work-log-group,
+.work-log-summary {
+  margin-top: var(--s-md);
+  overflow-wrap: anywhere;
+}
+
+.work-log-group h3 {
+  margin: 0 0 var(--s-sm);
+  font: 600 18px/24px var(--heading);
+}
+
+.work-log-group ul {
+  margin: 0;
+  padding-left: var(--s-md);
+}
+
+.work-log-summary .section-title {
+  margin-top: 0;
+}
+
+.work-log-summary .hint {
+  margin-top: var(--s-sm);
 }
 
 @media (max-width: 620px) {
