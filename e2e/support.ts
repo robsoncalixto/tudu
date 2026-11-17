@@ -109,7 +109,7 @@ export async function openApp(page: Page) {
   await expect(page.getByText("Loading…")).toHaveCount(0);
 }
 
-export const composer = (page: Page) => page.getByRole("textbox", { name: /Write a task/ });
+export const composer = (page: Page) => page.getByRole("textbox", { name: /Write a task|Escreva uma tarefa/ });
 export const sidebar = (page: Page) => page.getByRole("complementary");
 export const openSection = (page: Page) => page.locator("section[aria-labelledby='open-heading']");
 export const doneSection = (page: Page) => page.locator("details.done");

@@ -123,6 +123,29 @@ due today or overdue. Its badge counts open tasks. Selections are saved with the
 task and expire when the day changes; they never change the due date. Completed
 tasks stay in the collapsed **Done** section when they match the selected view.
 
+## Quick-add shortcuts
+
+When adding one task, use shortcuts as separate words:
+`Fix login #bug !high tomorrow` saves **Fix login**, tagged **bug**, with high
+priority and tomorrow's due date. Tags are lowercase and deduplicated.
+`!low`, `!medium` and `!high` work in either interface language. Without a
+priority token, the server applies the saved default priority at save time.
+
+Dates accept `today` / `hoje`, `tomorrow` / `amanhã` (also `amanha`), English
+weekday names, Portuguese weekdays (`segunda-feira`, `terça-feira`, …; short
+forms such as `segunda` and `terça` also work), and valid `YYYY-MM-DD` dates.
+Weekdays mean their next occurrence; use `today` or `hoje` for the current day.
+The last priority or date token wins. Dates use the browser's current day,
+independently of the server's time zone.
+
+Unknown tokens and punctuation stay in the title. To keep a recognized token
+literal, prefix it with a backslash: `Discuss \#bug \tomorrow` saves
+**Discuss #bug tomorrow** without a tag or date. Open **Quick-add shortcuts**
+in the composer for help. A shortcut-only task or a title/tag beyond the normal
+limits shows an error and keeps the original text. AI capture still receives
+the full note; explicit task fields sent to the JSON API are not parsed as
+shortcuts.
+
 ## Settings
 
 Choose English or Portuguese, the default priority for new tasks, the initial

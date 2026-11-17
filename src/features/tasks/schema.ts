@@ -49,6 +49,7 @@ export const taskPatchSchema = z
   .partial();
 
 export type TaskInput = z.infer<typeof taskInputSchema>;
+export type TaskDraft = z.input<typeof taskInputSchema>;
 export type TaskPatch = z.infer<typeof taskPatchSchema>;
 
 export function taskCreationSchema(defaultPriority: Priority) {

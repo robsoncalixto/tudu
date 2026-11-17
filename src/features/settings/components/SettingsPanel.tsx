@@ -10,8 +10,8 @@ export function SettingsPanel({ initial, aiEnabled }: { initial: Settings; aiEna
   const { saved, draft, change, save, busy, dirty, error, savedNotice } = useSettings(initial);
   const { t } = useLocale(saved.locale);
   return (
-    <main className="settings-page">
-      <header className="settings-header">
+    <main className="page-content">
+      <header className="page-header">
         <a className="brand-name" href="/">TUDU</a>
         <a className="btn btn-secondary" href="/">{t.backToTasks}</a>
       </header>

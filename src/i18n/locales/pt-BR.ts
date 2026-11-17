@@ -7,6 +7,8 @@ export const ptBR: Dictionary = {
   createWithAi: "Criar com IA",
   creating: "Criando…",
   composerHint: "Enter adiciona uma tarefa · {mod}+Enter transforma a anotação em várias",
+  shortSyntaxTitle: "Atalhos para adicionar tarefas",
+  shortSyntaxHint: "Use palavras separadas: #etiqueta, !low / !medium / !high, hoje, amanhã, um dia da semana ou YYYY-MM-DD. Coloque \\ antes de um atalho para mantê-lo no título. Por exemplo: Corrigir login #bug !high amanhã.",
   aiOff: "A captura com IA está desligada. Defina ANTHROPIC_API_KEY no .env para ativá-la.",
   open: "Abertas",
   allTasks: "Todas as tarefas",
@@ -113,6 +115,7 @@ export const ptBR: Dictionary = {
   countDone: (n) => (n === 1 ? "1 concluída" : `${n} concluídas`),
   added: (n) => (n === 1 ? "1 tarefa adicionada" : `${n} tarefas adicionadas`),
   errors: {
+    invalid_quick_task: "Adicione um título com até 300 caracteres e no máximo 10 etiquetas com até 40 caracteres cada. Seu texto continua aqui.",
     invalid_repeat: "Uma tarefa recorrente precisa de um prazo válido. Defina uma data ou remova a repetição.",
     copy_failed: "A cópia foi bloqueada. Selecione e copie o resumo diário abaixo.",
     work_log_ai_failed: "Não foi possível resumir este dia. Seu resumo diário continua disponível.",

@@ -40,7 +40,7 @@ export function Board({ settings }: { settings: Settings }) {
     setNotice(null);
     try {
       const created =
-        mode === "ai" ? await capture(text, today) : await add(text.replace(/\s+/g, " ").slice(0, 300));
+        mode === "ai" ? await capture(text, today) : await add(text, today);
       setFresh(new Set(created.map((task) => task.id)));
       setFilter({ kind: "all" });
       if (mode === "ai") setNotice({ kind: "ok", text: t.added(created.length) });

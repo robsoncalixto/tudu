@@ -74,6 +74,10 @@ src/
       server/repository.ts Server-side project registry (data/projects.json)
     recurrence/
       schema.ts           Shared daily, weekdays, weekly and monthly rule contract
+    quick-add/
+      schema.ts           Validated text/today input and optional-priority task draft
+      parser.ts           Pure EN/PT shortcut parsing from an explicit local date
+      api.ts              Parses one task and calls the task creation API
     settings/
       schema.ts, api.ts   Validated preferences and browser client
       use-settings.ts     Draft preferences, saving and error recovery
@@ -216,7 +220,7 @@ port 3000. First-time setup: `npx playwright install chromium`.
 - Errors are `{ "error": "<code>" }` with a matching HTTP status. The code is a
   stable machine string (`invalid_task`, `not_found`, `ai_disabled`, `ai_auth`,
   `ai_busy`, `ai_failed`, `no_tasks`, `invalid_note`, `invalid_project`,
-  `duplicate_project`, `invalid_settings`, `invalid_repeat`, `invalid_work_log`,
+  `duplicate_project`, `invalid_settings`, `invalid_repeat`, `invalid_quick_task`, `invalid_work_log`,
   `no_completed_tasks`, `work_log_too_large`, `work_log_ai_failed`, `copy_failed`), never a sentence.
 - User-facing error text lives in the `errors` section of the dictionaries,
   keyed by that code. A new code needs an entry in both languages; unknown codes
