@@ -1,4 +1,5 @@
 import { expect, test as base, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import type { Step } from "../src/features/tasks/schema";
 
 /** The day every test runs on: Tuesday, November 17, 2026 (local time). */
 export const TODAY = "2026-11-17";
@@ -12,6 +13,7 @@ export interface SeedTask {
   due?: string | null;
   tags?: string[];
   plannedFor?: string | null;
+  steps?: Step[];
 }
 
 export interface StoredTask extends Required<SeedTask> {

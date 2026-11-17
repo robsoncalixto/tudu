@@ -10,6 +10,7 @@ const task = (id: string, title: string): Task => ({
   priority: "medium",
   due: "2026-11-20",
   tags: ["work"],
+  steps: [],
   done: true,
   createdAt: "2026-11-10T09:30:00.000Z",
   completedAt: "2026-11-12T18:05:42.123Z",
@@ -28,14 +29,14 @@ describe("postgres store", () => {
   it("creates its schema on first use and records the version", async () => {
     await createPostgresStore(db).list();
     const { rows } = await db.query<{ version: number }>("SELECT version FROM tudu_migrations");
-    expect(rows).toEqual([{ version: 1 }]);
+    expect(rows).toEqual([{ version: 1 }, { version: 2 }]);
   });
 
   it("does not run migrations again for a later process", async () => {
     await createPostgresStore(db).insert([task("a", "kept")]);
     expect(await createPostgresStore(db).list()).toMatchObject([{ id: "a", title: "kept" }]);
     const { rows } = await db.query("SELECT version FROM tudu_migrations");
-    expect(rows).toHaveLength(1);
+    expect(rows).toHaveLength(2);
   });
 
   it("copies the seed tasks into a new database, keeping ids, dates and order", async () => {
@@ -59,5 +60,15 @@ describe("postgres store", () => {
     const store = createPostgresStore(db, { seed });
     await expect(store.list()).rejects.toThrow("file unreadable");
     expect(await store.list()).toMatchObject([{ id: "a" }]);
+  });
+
+  it("upgrades a version-one database without changing existing tasks", async () => {
+    const legacy = task("old", "Existing report");
+    await createPostgresStore(db).insert([legacy]);
+    await db.query("ALTER TABLE tasks DROP COLUMN steps");
+    await db.query("DELETE FROM tudu_migrations WHERE version = 2");
+    expect(await createPostgresStore(db).list()).toEqual([{ ...legacy, steps: [] }]);
+    expect((await db.query("SELECT version FROM tudu_migrations ORDER BY version")).rows)
+      .toEqual([{ version: 1 }, { version: 2 }]);
   });
 });

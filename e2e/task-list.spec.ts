@@ -5,7 +5,7 @@ test.describe("TaskList", () => {
     await seed(request, [{ title: "Open one" }, { title: "Done one" }]);
     await openApp(page);
     await row(page, "Done one").getByRole("checkbox").click();
-    await doneSection(page).locator("summary").click();
+    await doneSection(page).locator(":scope > summary").click();
 
     const head = openSection(page).locator(".list-head");
     await expect(head).toContainText("Task");
@@ -51,11 +51,11 @@ test.describe("TaskList", () => {
     await openApp(page);
 
     await row(page, "Finished first").getByRole("checkbox").click();
-    await expect(doneSection(page).locator("summary")).toHaveText("Done 1");
+    await expect(doneSection(page).locator(":scope > summary")).toHaveText("Done 1");
     await row(openSection(page), "Finished second").getByRole("checkbox").click();
-    await expect(doneSection(page).locator("summary")).toHaveText("Done 2");
+    await expect(doneSection(page).locator(":scope > summary")).toHaveText("Done 2");
 
-    await doneSection(page).locator("summary").click();
+    await doneSection(page).locator(":scope > summary").click();
     expect(await rowTitles(doneSection(page))).toEqual(["Finished second", "Finished first"]);
   });
 });

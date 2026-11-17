@@ -8,12 +8,25 @@ const dueDate = z
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .nullable();
 
+export const stepSchema = z.object({
+  id: z.string().min(1).max(100),
+  title: z.string().trim().min(1).max(300),
+  done: z.boolean().default(false),
+});
+
+const stepsSchema = z.array(stepSchema).max(100).refine(
+  (steps) => new Set(steps.map((step) => step.id)).size === steps.length,
+  { message: "Step ids must be unique" },
+);
+export type Step = z.infer<typeof stepSchema>;
+
 export const taskInputSchema = z.object({
   title: z.string().trim().min(1).max(300),
   notes: z.string().trim().max(2000).default(""),
   priority: z.enum(PRIORITIES).default("medium"),
   due: dueDate.default(null),
   tags: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
+  steps: stepsSchema.default([]),
 });
 
 export const taskPatchSchema = z
@@ -25,6 +38,7 @@ export const taskPatchSchema = z
     tags: z.array(z.string().trim().min(1).max(40)).max(10),
     done: z.boolean(),
     plannedFor: z.iso.date().nullable(),
+    steps: stepsSchema,
   })
   .partial();
 
