@@ -141,6 +141,7 @@ test.describe("TaskRow", () => {
 
     await row(page, "Remove me").hover();
     await row(page, "Remove me").getByRole("button", { name: "Delete task" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete task", exact: true }).click();
 
     await expect(row(page, "Remove me")).toHaveCount(0);
     await expect(row(page, "Keep me")).toBeVisible();
@@ -159,10 +160,40 @@ test.describe("TaskRow", () => {
 
     await row(page, "Unlucky").hover();
     await row(page, "Unlucky").getByRole("button", { name: "Delete task" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete task", exact: true }).click();
+    await expect(page.getByRole("dialog").getByRole("alert")).toHaveText("Something went wrong. Try again.");
     await expect(row(openSection(page), "Unlucky")).toBeVisible();
     expect((await listTasks(request))[0]).toMatchObject({ title: "Unlucky", done: false });
   });
 });
+
+for (const language of [
+  { code: "en", confirm: "Delete this task?", cancel: "Cancel", remove: "Delete task", error: "Something went wrong. Try again." },
+  { code: "pt-BR", confirm: "Excluir esta tarefa?", cancel: "Cancelar", remove: "Excluir tarefa", error: "Algo deu errado. Tente novamente." },
+]) {
+  test(`mouse deletion requires confirmation and recovers focus after failure in ${language.code}`, async ({ page, request }) => {
+    await seed(request, [{ title: "First task" }, { title: "Second task" }]);
+    await openApp(page); await setLanguage(page, language.code);
+    const first = row(page, "First task");
+    const remove = first.getByRole("button", { name: language.remove, exact: true });
+    await remove.click();
+    const dialog = page.getByRole("dialog", { name: language.confirm, exact: true });
+    await expect(dialog.getByRole("button", { name: language.cancel, exact: true })).toBeFocused();
+    expect(await listTasks(request)).toHaveLength(2);
+    await page.keyboard.press("Enter"); await expect(dialog).toBeHidden(); await expect(remove).toBeFocused();
+    await remove.click();
+    await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
+    await dialog.getByRole("button", { name: language.remove, exact: true }).click();
+    await expect(dialog.getByRole("alert")).toHaveText(language.error);
+    expect(await listTasks(request)).toHaveLength(2);
+    await dialog.getByRole("button", { name: language.cancel, exact: true }).click();
+    await expect(first).toBeFocused();
+    await page.unroute("**/api/tasks/*"); await remove.click();
+    await dialog.getByRole("button", { name: language.remove, exact: true }).click();
+    await expect(row(page, "Second task")).toBeFocused();
+    expect((await listTasks(request)).map((task) => task.title)).toEqual(["Second task"]);
+  });
+}
 
 for (const language of [
   { code: "EN", today: "Today", all: "All tasks", add: "Add to today", remove: "Remove from today", error: "Something went wrong. Try again." },

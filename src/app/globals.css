@@ -207,6 +207,10 @@ p {
   font-family: var(--heading);
 }
 
+.task-shortcuts kbd {
+  font: inherit;
+}
+
 .task-shortcuts dd {
   flex: 1 1 180px;
   margin: 0;

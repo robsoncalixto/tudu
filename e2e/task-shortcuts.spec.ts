@@ -6,6 +6,21 @@ const languages = [
 ];
 
 for (const l of languages) {
+  test(`Escape leaves the composer without losing a draft, including an empty view in ${l.code}`, async ({ page, request }) => {
+    await seed(request, [{ title: "First task" }, { title: "Second task" }]);
+    await openApp(page); await setLanguage(page, l.code);
+    await composer(page).fill("Keep this draft");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("listitem", { name: "First task", exact: true })).toBeFocused();
+    await page.keyboard.press("j");
+    await expect(page.getByRole("listitem", { name: "Second task", exact: true })).toBeFocused();
+    await page.keyboard.press("n"); await expect(composer(page)).toHaveValue("Keep this draft");
+    await sidebar(page).getByRole("button", { name: new RegExp(`^${l.today}`) }).click();
+    await composer(page).focus(); await page.keyboard.press("Escape");
+    await expect(sidebar(page).getByRole("button", { name: l.help, exact: true })).toBeFocused();
+    await expect(composer(page)).toHaveValue("Keep this draft");
+    expect((await listTasks(request)).every((task) => !task.done)).toBe(true);
+  });
   test(`focuses the composer and navigates visible tasks with the keyboard in ${l.code}`, async ({ page, request }) => {
     const tasks = await seed(request, [
       { title: "First task", due: TODAY }, { title: "Second task", due: "2026-11-18" },
@@ -104,6 +119,8 @@ for (const l of languages) {
     const heading = dialog.getByRole("heading", { name: l.help, exact: true });
     await expect(heading).toBeFocused();
     await expect(heading).toBeInViewport();
+    expect(await dialog.locator("kbd").first().evaluate((element) => getComputedStyle(element).fontFamily))
+      .toBe(await dialog.locator("dt").first().evaluate((element) => getComputedStyle(element).fontFamily));
     await page.keyboard.press("j"); await page.keyboard.press("x"); await page.keyboard.press("Delete");
     await page.keyboard.press("n"); await expect(heading).toBeFocused();
     await page.keyboard.press("Tab"); await expect(close).toBeFocused();

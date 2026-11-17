@@ -56,7 +56,7 @@ export function Board({ settings }: { settings: Settings }) {
 
   const date = today ? longDate(today, locale, settings.dateFormat) : null;
   const list = {
-    today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: patch, onDelete: remove,
+    today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: patch, onDelete: shortcuts.requestDelete,
     onTag: (tag: string) => setFilter({ kind: "tag", tag }),
   };
 
