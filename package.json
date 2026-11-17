@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .next test-results playwright-report tsconfig.tsbuildinfo",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

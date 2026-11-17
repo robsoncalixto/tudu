@@ -23,6 +23,7 @@ Prefer the simplest change that fits the structure below over new abstractions.
 | End-to-end tests | `npm run test:e2e` (`npm run test:e2e:ui` to debug) |
 | Type check | `npm run typecheck` |
 | Production build | `npm run build` |
+| Remove caches and test artifacts | `npm run clean` |
 
 The app serves on <http://localhost:3000>. `npm test`, `npm run test:e2e`,
 `npm run typecheck` and `npm run build` are the gates; there is no linter yet. After a UI change, open
@@ -221,6 +222,89 @@ variables at the top of `src/app/globals.css`.
 - Never commit `.env` or anything under `data/`.
 - Commit messages are short, imperative and describe the change. No tool or
   assistant attribution in commits, pull requests, comments or documents.
+
+## After a pull request is merged: clean up
+
+Once a pull request is merged — and only then — clean up what the work left
+behind. Do it for every pull request, so stale branches, worktrees and caches
+never pile up. While a pull request is still open, or was closed without
+merging, nothing is removed: report what exists and ask.
+
+Removal is permanent, so each step has a check that must pass first. If a check
+fails or its result is unclear, stop, leave the item in place and ask the owner.
+Never use a force flag (`--force`, `-D`, `-f`) to get past a failed check.
+
+**1. Confirm the merge.** The pull request state is `MERGED` and its checks
+passed:
+
+```bash
+gh pr view <number> --json state,mergedAt,statusCheckRollup
+```
+
+**2. Confirm nothing is unsaved.** In the branch's checkout:
+
+- `git status --short` prints nothing (no uncommitted or untracked work).
+- `git stash list` shows no entry made for this work.
+- `git log origin/<branch>..<branch>` prints nothing (no unpushed commits).
+
+Untracked files are not recoverable from Git. If any exist, list them and ask
+before going further.
+
+**3. Update the main branch.** `git switch master && git pull`. Then confirm the
+work is really there: `git branch --merged master` lists the branch. A
+squash-merged branch will not be listed; in that case rely on step 1 and check
+that `git diff master <branch>` shows no changes that are missing from `master`.
+
+**4. Remove the worktree**, if the work used one. Never remove the main
+checkout, the worktree you are currently standing in, or one another session is
+using:
+
+```bash
+git worktree list
+git worktree remove <path>
+git worktree prune
+```
+
+`git worktree remove` refuses when the worktree has changes. Treat that refusal
+as a failed check, not as something to override.
+
+**5. Delete the branch**, local then remote. Never delete `master` or a branch
+with an open pull request:
+
+```bash
+git branch -d <branch>
+git push origin --delete <branch>
+git fetch --prune
+```
+
+Use `-d`, which refuses to delete unmerged work. After a squash merge `-d` will
+refuse even though the work is safe; confirm steps 1 and 3 again and ask the
+owner before using anything stronger.
+
+**6. Remove caches and temporary files.** These are build output and test
+artifacts, all git-ignored and all regenerated on the next run:
+
+```bash
+npm run clean
+```
+
+It removes `.next`, `test-results`, `playwright-report` and
+`tsconfig.tsbuildinfo`. Before deleting anything else, confirm it is ignored and
+not tracked: `git check-ignore -v <path>` prints a rule and
+`git ls-files <path>` prints nothing. Also remove scratch files and temporary
+folders created during the work (for example leftover `tudu-test-*` and
+`tudu-e2e-*` folders in the system temp directory).
+
+**Never removed by a clean-up:**
+
+- `data/` — the user's tasks. It is git-ignored, so Git cannot restore it.
+- `.env` — local secrets and settings.
+- `node_modules` and Docker volumes, unless the owner asks; they are safe but
+  slow to rebuild.
+- Anything outside this repository, other than the temporary folders named above.
+
+**7. Report.** Say what was removed, what was kept and why, and anything that
+needed a decision.
 
 ## Before finishing a change
 
