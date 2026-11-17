@@ -5,7 +5,8 @@ free-form note and let the app turn it into separate tasks with priorities,
 due dates and tags.
 
 - **Next.js** (App Router, TypeScript)
-- **No database** — tasks live in a single JSON file (`data/tasks.json`)
+- **No database needed** — tasks live in a single JSON file (`data/tasks.json`),
+  or in PostgreSQL if you prefer
 - **AI native** — optional capture box that turns notes into structured tasks
 - **English and Portuguese** — English by default, switch with the EN / PT toggle
 - **Docker** for local development
@@ -33,6 +34,20 @@ npm install
 npm run dev
 ```
 
+## Store tasks in PostgreSQL
+
+Tasks are kept in `data/tasks.json` until you set `DATABASE_URL`. With Docker,
+uncomment `DATABASE_URL` in `.env` and start the bundled database too:
+
+```bash
+docker compose --profile postgres up --build
+```
+
+Without Docker, point `DATABASE_URL` at any PostgreSQL server. TUDU creates its
+table on first start, and a brand-new database begins with the tasks already in
+`data/tasks.json` (the file is left untouched). Remove `DATABASE_URL` to go back
+to the file.
+
 ## Tests
 
 Unit tests:
@@ -45,6 +60,17 @@ End-to-end tests, which drive the real app in a browser (run `npx playwright ins
 
 ```bash
 npm run test:e2e
+```
+
+To run both against the Docker Postgres (it uses a separate `tudu_test`
+database, never your tasks):
+
+```bash
+docker compose --profile postgres up -d db
+```
+
+```bash
+npm run test:postgres && npm run test:e2e:postgres
 ```
 
 Every new feature ships with both kinds of test; see [AGENTS.md](AGENTS.md).
