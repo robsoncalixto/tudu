@@ -12,8 +12,8 @@ export function WorkLogPanel({ settings }: { settings: Settings }) {
   const log = useWorkLog(t);
   const unavailable = log.loading || log.loadError || !log.completed.length;
   return (
-    <main className="settings-page work-log-page">
-      <header className="settings-header">
+    <main className="page-content work-log-page">
+      <header className="page-header">
         <a className="brand-name" href="/">TUDU</a>
         <a className="btn btn-secondary" href="/">{t.backToTasks}</a>
       </header>

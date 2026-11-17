@@ -59,6 +59,10 @@ export function Composer({ t, aiEnabled, onSubmit }: Props) {
           submit((event.metaKey || event.ctrlKey) && aiEnabled ? "ai" : "add");
         }}
       />
+      <details className="short-syntax-hint">
+        <summary>{t.shortSyntaxTitle}</summary>
+        <p className="hint">{t.shortSyntaxHint}</p>
+      </details>
       <div className="composer-bar">
         <p className="hint">{aiEnabled ? t.composerHint.replace("{mod}", mod) : t.aiOff}</p>
         <div className="composer-actions">

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { captureApi } from "@/features/capture/api";
+import { quickAddApi } from "@/features/quick-add/api";
 import { errorCode } from "@/lib/http";
 import { tasksApi } from "./api";
 import type { Task, TaskPatch } from "./schema";
@@ -35,7 +36,7 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
     return created;
   }, []);
 
-  const add = useCallback((title: string) => tasksApi.create(title).then(append), [append]);
+  const add = useCallback((text: string, today: string) => quickAddApi.create(text, today).then(append), [append]);
 
   const capture = useCallback(
     (text: string, today: string) => captureApi.capture(text, today).then(append),

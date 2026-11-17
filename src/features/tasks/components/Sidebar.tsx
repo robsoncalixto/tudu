@@ -34,7 +34,7 @@ export function Sidebar({ t, openCount, todayCount, tagCounts, projectCounts, fi
           label={t.today} count={todayCount} active={filter.kind === "today"}
           onClick={() => onFilter({ kind: "today" })}
         />
-        <a href="/work-log" className="nav-item settings-link">{t.workLog}</a>
+        <a href="/work-log" className="nav-item nav-link">{t.workLog}</a>
         {projectCounts.length > 0 && <p className="nav-label">{t.projects}</p>}
         {projectCounts.map(([project, count]) => (
           <NavItem key={project.id} label={project.name} count={count} ariaLabel={`${t.project}: ${project.name}, ${t.countOpen(count)}`}
@@ -50,7 +50,7 @@ export function Sidebar({ t, openCount, todayCount, tagCounts, projectCounts, fi
         ))}
       </nav>
 
-      <a href="/settings" className="nav-item settings-link">{t.settings}</a>
+      <a href="/settings" className="nav-item nav-link">{t.settings}</a>
     </aside>
   );
 }

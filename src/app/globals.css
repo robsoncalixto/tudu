@@ -281,6 +281,21 @@ label.chip:hover {
   margin-top: var(--s-md);
 }
 
+.short-syntax-hint {
+  margin-top: var(--s-sm);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.short-syntax-hint summary {
+  cursor: pointer;
+  font-family: var(--heading);
+}
+
+.short-syntax-hint .hint {
+  margin-top: var(--s-sm);
+}
+
 .hint {
   /* body-sm */
   font: 400 14px/20px var(--body);
@@ -672,7 +687,7 @@ label.chip:hover {
     min-width: 0;
   }
 
-  .settings-link {
+  .nav-link {
     margin-left: auto;
   }
 
@@ -980,18 +995,18 @@ label.chip:hover {
   text-overflow: ellipsis;
 }
 
-.settings-link {
+.nav-link {
   text-decoration: none;
   flex-shrink: 0;
 }
 
-.settings-page {
+.page-content {
   width: min(calc(100% - 2 * var(--s-md)), 860px);
   margin: 0 auto;
   padding: var(--s-lg) 0 var(--s-xl);
 }
 
-.settings-header {
+.page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -999,15 +1014,15 @@ label.chip:hover {
   gap: var(--s-md);
 }
 
-.settings-header a {
+.page-header a {
   text-decoration: none;
 }
 
-.settings-header .brand-name {
+.page-header .brand-name {
   color: var(--text);
 }
 
-.settings-page h1 {
+.page-content h1 {
   font: 650 36px/43px var(--heading);
   margin: var(--s-lg) 0;
 }
@@ -1111,6 +1126,15 @@ label.chip:hover {
 }
 
 @media (max-width: 620px) {
+  .project-manager:not([open]) {
+    padding: var(--s-sm) var(--s-md);
+  }
+
+  .composer-bar {
+    gap: var(--s-sm);
+    margin-top: var(--s-sm);
+  }
+
   .content {
     padding-top: var(--s-md);
   }
