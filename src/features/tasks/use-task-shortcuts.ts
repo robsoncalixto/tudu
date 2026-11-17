@@ -61,7 +61,9 @@ export function useTaskShortcuts(tasks: Task[] | null, patch: (id: string, patch
     function keydown(event: KeyboardEvent) {
       const typing = event.target instanceof HTMLTextAreaElement && root.current?.contains(event.target)
         && event.target.closest(".composer") ? "composer" : isTypingTarget(event.target);
-      const action = taskShortcut(event, typing, dialog !== null || Boolean(document.querySelector("dialog[open]")));
+      const blocking = dialog !== null || Boolean(document.querySelector("dialog[open]"))
+        || Boolean(root.current?.querySelector<HTMLElement>(".more-views[open]")?.getClientRects().length);
+      const action = taskShortcut(event, typing, blocking);
       if (!action) return;
       if (action === "leave-composer") {
         event.preventDefault();

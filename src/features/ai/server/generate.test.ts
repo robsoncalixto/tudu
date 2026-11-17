@@ -25,6 +25,12 @@ function response(provider: AiProvider, content: unknown = { answer: "Valid" }, 
 beforeEach(() => { vi.resetAllMocks(); vi.stubGlobal("fetch", fetchMock); });
 afterEach(() => vi.unstubAllGlobals());
 
+it("uses an explicitly configured server-side OpenAI endpoint", async () => {
+  fetchMock.mockResolvedValue(json(response("openai")));
+  await createGenerator({ aiProvider: "openai", aiModel: "test" }, { OPENAI_API_KEY: "test-key", OPENAI_BASE_URL: "http://127.0.0.1:3120/v1" })(request);
+  expect(String(fetchMock.mock.calls[0][0])).toBe("http://127.0.0.1:3120/v1/responses");
+});
+
 describe.each(AI_PROVIDERS)("%s structured provider", (provider) => {
   it("uses the official SDK, selected model and strict schema without exposing credentials in the request body", async () => {
     fetchMock.mockResolvedValue(json(response(provider)));
@@ -39,6 +45,7 @@ describe.each(AI_PROVIDERS)("%s structured provider", (provider) => {
     expect(JSON.stringify(body)).toContain('"additionalProperties":false');
     if (provider === "openrouter") expect(body.provider).toEqual({ require_parameters: true });
     if (provider === "openai") expect(body.store).toBe(false);
+    if (provider === "anthropic") expect(body.output_config.effort).toBe("low");
   });
   it("rejects invalid structured data, refusals and incomplete responses", async () => {
     for (const [content, mode, code] of [

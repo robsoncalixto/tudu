@@ -31,7 +31,12 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
+  webServer: [{
+    command: "node scripts/ai-test-server.mjs",
+    url: "http://127.0.0.1:3120/health",
+    env: { TUDU_AI_TEST_PORT: "3120" },
+    reuseExistingServer: false,
+  }, {
     command: `npm run build && npx next start --port ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
@@ -40,10 +45,11 @@ export default defineConfig({
       DATA_DIR: dataDir,
       // Always set, so a DATABASE_URL in .env never sends tests to real data.
       DATABASE_URL: databaseUrl,
-      // The real AI is never called; the capture endpoints are mocked per test.
+      // Provider HTTP is local; browser capture requests are mocked per test.
       ANTHROPIC_API_KEY: "",
       ANTHROPIC_AUTH_TOKEN: "",
-      OPENAI_API_KEY: "",
+      OPENAI_API_KEY: "tudu-e2e-openai-key",
+      OPENAI_BASE_URL: "http://127.0.0.1:3120/v1",
       OPENROUTER_API_KEY: "",
       TUDU_AI_MODEL: "",
       TUDU_OPENAI_MODEL: "",
@@ -51,5 +57,5 @@ export default defineConfig({
       TUDU_MCP_TOKEN: "tudu-e2e-token-not-a-production-secret",
       NEXT_TELEMETRY_DISABLED: "1",
     },
-  },
+  }],
 });

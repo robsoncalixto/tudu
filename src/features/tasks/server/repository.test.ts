@@ -66,6 +66,25 @@ describe.each(backends)("repository on $name", (backend) => {
 
   afterEach(() => close());
 
+  it("creates an approved id once, preserving an existing task on concurrent retries", async () => {
+    const id = "00000000-0000-4000-8000-000000000001";
+    const results = await Promise.all(Array.from({ length: 4 }, () => repo.addApprovedTask(id, input("Approved"), "2026-11-17")));
+    expect(await repo.listTasks()).toHaveLength(1);
+    expect(results.every((task) => task.id === id && task.plannedFor === "2026-11-17")).toBe(true);
+    await repo.updateTask(id, { title: "Human edit" });
+    expect((await repo.addApprovedTask(id, input("Do not overwrite"), null)).title).toBe("Human edit");
+  });
+  it("checks a proposal baseline inside the same transaction as its update", async () => {
+    const [task] = await repo.addTasks([input("Original")]);
+    const changes = await Promise.allSettled([
+      repo.updateTaskIfUnchanged(task.id, { priority: "high" }, task),
+      repo.updateTaskIfUnchanged(task.id, { title: "Stale edit" }, task),
+    ]);
+    expect(changes.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(changes.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect((await repo.listTasks())[0]).toMatchObject({ title: "Original", priority: "high" });
+  });
+
   it("returns an empty list before anything is saved", async () => {
     expect(await repo.listTasks()).toEqual([]);
   });

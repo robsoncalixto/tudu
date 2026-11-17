@@ -57,6 +57,9 @@ src/
     work-log/page.tsx     Read-only daily work log
     api/work-log/summary/ POST optional AI summary from saved completed tasks
     api/mcp/              Authenticated Streamable HTTP MCP endpoint
+    agent/page.tsx        Proposal review and decision history
+    api/agent/proposals/  GET review state, POST generate pending proposals
+    api/agent/proposals/[id]/ POST explicit accept/reject/recheck/dismiss decision
   features/
     tasks/
       schema.ts           Zod schemas and the Task types (shared by client and server)
@@ -103,6 +106,15 @@ src/
       schema.ts           Provider/model preferences, public status and generator contract
       server/configuration.ts Central provider defaults and credential availability
       server/generate.ts  Official SDK adapters with Zod output validation and safe errors
+    agent/
+      schema.ts           Proposal/action, decision and audit contracts
+      model-schema.ts     Structured suggestions accepted from a provider
+      selectors.ts        Pending/history grouping without mutating source data
+      api.ts, use-agent.ts Fetching, draft notes, decisions and failure recovery
+      components/         AgentPanel, ProposalCard, ProposalEditor, ProposalValues
+      server/propose.ts   Data-only prompt, validation and grouping per task
+      server/decide.ts    Explicit decision workflow through injected operations
+      server/repository.ts Atomic proposals.json journal and decision serialization
     mcp/
       schema.ts           Tool inputs derived from task schemas
       selectors.ts        Pure filtering and pagination
@@ -121,6 +133,7 @@ docker/postgres-init.sql  Creates the tudu_test database in the Postgres contain
 data/tasks.json           Runtime task data, git-ignored
 data/projects.json        Project registry in both storage modes, git-ignored
 data/settings.json        App preferences in both storage modes, git-ignored
+data/proposals.json       Pending proposals and immutable decision snapshots, git-ignored
 ```
 
 Imports use the `@/` alias, which points at `src/`.
@@ -229,8 +242,15 @@ port 3000. First-time setup: `npx playwright install chromium`.
 - Tests never call the real AI. Mock `/api/ai/capture` with `page.route()`, as
   `composer.spec.ts` does.
 - Provider unit tests intercept HTTP with a mocked fetch while exercising the
-  official SDK parsers. Browser tests clear all three providers' credentials.
+  official SDK parsers. Browser tests replace real credentials and point a
+  dummy OpenAI key at `scripts/ai-test-server.mjs` on loopback port 3120.
   No test may rely on real keys, paid model calls or implicit provider fallback.
+- Agent browser tests seed through the real proposal API using that synthetic
+  provider, then exercise the real approval endpoints. The fixture removes only
+  the proposal journal in its isolated `tudu-e2e-*` directory between cases.
+  An override for `TUDU_E2E_DATA_DIR` must keep that directory-name prefix.
+  Each agent component has its own spec: `agent-panel`, `proposal-card`,
+  `proposal-editor`, `proposal-values`.
 - `mcp.spec.ts` uses the official MCP client against the same isolated app and
   asserts saved state through the REST API. It covers protocol behavior rather
   than a UI; MCP descriptions are English and task content is never translated.
@@ -251,7 +271,8 @@ port 3000. First-time setup: `npx playwright install chromium`.
   `ai_busy`, `ai_failed`, `no_tasks`, `invalid_note`, `invalid_project`,
   `duplicate_project`, `invalid_settings`, `invalid_repeat`, `invalid_quick_task`, `invalid_work_log`,
   `no_completed_tasks`, `work_log_too_large`, `work_log_ai_failed`, `copy_failed`,
-  `mcp_disabled`, `mcp_unauthorized`), never a sentence.
+  `mcp_disabled`, `mcp_unauthorized`, `agent_invalid_proposal`, `agent_context_too_large`,
+  `agent_failed`, `agent_stale`, `agent_decided`, `agent_uncertain`), never a sentence.
 - User-facing error text lives in the `errors` section of the dictionaries,
   keyed by that code. A new code needs an entry in both languages; unknown codes
   fall back to `errors.generic`.
@@ -315,6 +336,29 @@ variables at the top of `src/app/globals.css`.
 - A work-log summary reads saved task data, never a client-supplied task list.
   It filters by the requested day and browser time zone and performs no writes.
   Changing the day or refreshing invalidates pending summaries in the browser.
+
+## Assistant proposals
+
+- Generation only writes pending records to `agent/server/repository.ts`'s
+  `proposals.json`. It never changes tasks/projects or gives the model tools.
+  The prompt treats notes and saved fields as data. Validate all output, reject
+  invented targets/invalid dates, and group related changes to a task before
+  presenting one atomic approval.
+- Accept requires an explicit decision with validated editable values. The
+  original kind, target id and changed-field set cannot be redirected. Native
+  form submission while editing is prevented; only activating Accept saves.
+- The app injects task/project operations, preserving project validation and
+  atomic baseline checks. `updateTaskIfUnchanged` checks the snapshot under the
+  store lock/transaction. Approved creation uses a server-generated id; both
+  stores preserve existing ids rather than overwriting on retries. Project
+  creation/rename follows the same identity and baseline rules.
+- Record approval before applying it and retain original, edited and resulting
+  snapshots. Known validation conflicts stay pending. Unknown write outcomes
+  stay `applying`; recheck only reads and never replays an operation. Dismissal
+  records `unconfirmed`, explicitly without claiming rollback or rejection.
+- Journal writes are serialized and atomic with mode 0600. Keep the journal in
+  `data/` for both task backends and include it in backups. Never silently drop
+  or overwrite invalid history. Context and output limits fail explicitly.
 
 ## Code conventions
 

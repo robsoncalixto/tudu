@@ -21,7 +21,7 @@ export function createGenerator(settings: Pick<Settings, "aiProvider" | "aiModel
           timeout: 60_000, maxRetries: 0,
         }).messages.parse({
           model, max_tokens: maxTokens, system, messages: [{ role: "user", content: input }],
-          output_config: { format: zodOutputFormat(schema) },
+          output_config: { effort: "low", format: zodOutputFormat(schema) },
         });
         if (response.stop_reason === "refusal") throw new AiError("ai_refused");
         if (response.stop_reason !== "end_turn") throw new AiError("ai_failed");
@@ -29,7 +29,7 @@ export function createGenerator(settings: Pick<Settings, "aiProvider" | "aiModel
       } else {
         const client = new OpenAI({
           apiKey: (provider === "openai" ? env.OPENAI_API_KEY : env.OPENROUTER_API_KEY)?.trim(),
-          baseURL: provider === "openrouter" ? "https://openrouter.ai/api/v1" : "https://api.openai.com/v1",
+          baseURL: provider === "openrouter" ? "https://openrouter.ai/api/v1" : env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1",
           timeout: 60_000, maxRetries: 0,
         });
         if (provider === "openai") {

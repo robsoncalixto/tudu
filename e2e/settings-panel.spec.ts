@@ -1,8 +1,8 @@
 import { expect, listSettings, listTasks, openApp, row, saveSettings, seed, sidebar, test, TODAY } from "./support";
 
 const languages = [
-  { locale: "en", settings: "Settings", priority: "Default priority", start: "Start view", format: "Date format", save: "Save settings", saved: "Settings saved.", back: "Back to tasks", today: "Today", high: "Priority: High", add: "Add", error: "Something went wrong. Try again.", ai: "AI capture" },
-  { locale: "pt-BR", settings: "Configurações", priority: "Prioridade padrão", start: "Visualização inicial", format: "Formato de data", save: "Salvar configurações", saved: "Configurações salvas.", back: "Voltar às tarefas", today: "Hoje", high: "Prioridade: Alta", add: "Adicionar", error: "Algo deu errado. Tente novamente.", ai: "Captura com IA" },
+  { locale: "en", settings: "Settings", priority: "Default priority", start: "Start view", format: "Date format", save: "Save settings", saved: "Settings saved.", back: "Back to tasks", today: "Today", high: "Priority: High", add: "Add", error: "Something went wrong. Try again.", ai: "AI" },
+  { locale: "pt-BR", settings: "Configurações", priority: "Prioridade padrão", start: "Visualização inicial", format: "Formato de data", save: "Salvar configurações", saved: "Configurações salvas.", back: "Voltar às tarefas", today: "Hoje", high: "Prioridade: Alta", add: "Adicionar", error: "Algo deu errado. Tente novamente.", ai: "IA" },
 ] as const;
 
 for (const language of languages) {

@@ -6,10 +6,13 @@ import { createJsonStore } from "./json-store";
 import { connectPostgres, createPostgresStore } from "./postgres-store";
 import type { TaskStore } from "./store";
 
+export class TaskChangedError extends Error {}
+
 /** The rules every backend shares: new tasks start open, completion is stamped. */
 export function createRepository(store: TaskStore) {
-  function updateTaskWithNext(id: string, patch: TaskPatch): Promise<TaskUpdate | null> {
+  function updateTaskWithNext(id: string, patch: TaskPatch, expected?: Task): Promise<TaskUpdate | null> {
     return store.modify(id, (current) => {
+      if (expected && JSON.stringify(taskSchema.parse(current)) !== JSON.stringify(taskSchema.parse(expected))) throw new TaskChangedError();
       const task: Task = { ...current, ...patch };
       validateRepeat(task.due, task.repeat);
       const completing = !current.done && task.done;
@@ -48,10 +51,22 @@ export function createRepository(store: TaskStore) {
       return created;
     },
 
+    async addApprovedTask(id: string, input: TaskInput, plannedFor: string | null): Promise<Task> {
+      validateRepeat(input.due, input.repeat);
+      const task = taskSchema.parse({ ...input, id, plannedFor, done: false, completedAt: null, createdAt: new Date().toISOString() });
+      await store.insert([task]);
+      const stored = (await store.list()).find((stored) => stored.id === id);
+      if (!stored) throw new Error("Task write could not be confirmed");
+      return stored;
+    },
+
     async updateTask(id: string, patch: TaskPatch): Promise<Task | null> {
       return (await updateTaskWithNext(id, patch))?.task ?? null;
     },
     updateTaskWithNext,
+    async updateTaskIfUnchanged(id: string, patch: TaskPatch, expected: Task): Promise<Task | null> {
+      return (await updateTaskWithNext(id, patch, expected))?.task ?? null;
+    },
 
     deleteTask(id: string): Promise<boolean> {
       return store.remove(id);
@@ -73,4 +88,4 @@ function defaultStore(): TaskStore {
 
 const repository = createRepository(defaultStore());
 
-export const { listTasks, addTasks, updateTask, updateTaskWithNext, deleteTask, clearTaskProject } = repository;
+export const { listTasks, addTasks, addApprovedTask, updateTask, updateTaskWithNext, updateTaskIfUnchanged, deleteTask, clearTaskProject } = repository;

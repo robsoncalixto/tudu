@@ -9,6 +9,7 @@ const state = globalThis as typeof globalThis & { __tuduProjectQueues?: Map<stri
 export class ProjectError extends Error {
   constructor(public readonly code: "duplicate_project" | "invalid_project") { super(code); }
 }
+export class ProjectChangedError extends Error {}
 
 export function createProjectRepository(dataDir: string) {
   const file = path.join(dataDir, "projects.json");
@@ -39,17 +40,21 @@ export function createProjectRepository(dataDir: string) {
   }
   return {
     listProjects: () => locked(read),
-    addProject: (input: ProjectInput) => locked(async () => {
+    addProject: (input: ProjectInput, id: string = randomUUID()) => locked(async () => {
       const projects = await read();
       const parsed = projectInputSchema.parse(input);
+      const existing = projects.find((project) => project.id === id);
+      if (existing) return existing;
       unique(projects, parsed.name);
-      const project = { id: randomUUID(), ...parsed };
+      const project = projectSchema.parse({ id, ...parsed });
       await write([...projects, project]);
       return project;
     }),
-    updateProject: (id: string, input: ProjectInput) => locked(async () => {
+    updateProject: (id: string, input: ProjectInput, expectedName?: string) => locked(async () => {
       const projects = await read();
-      if (!projects.some((project) => project.id === id)) return null;
+      const current = projects.find((project) => project.id === id);
+      if (!current) return null;
+      if (expectedName !== undefined && current.name !== expectedName) throw new ProjectChangedError();
       const parsed = projectInputSchema.parse(input);
       unique(projects, parsed.name, id);
       const updated = { id, ...parsed };
