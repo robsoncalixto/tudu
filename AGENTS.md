@@ -159,7 +159,7 @@ run in a Node environment.
 
 Run with `npm run test:e2e` (`npm run test:e2e:ui` to watch and debug). Specs
 live in `e2e/`, one file per component: `board`, `composer`, `sidebar`,
-`task-list`, `task-row`. Playwright builds the app and serves it on port 3100
+`task-list`, `task-row`, `task-checklist`, `project-manager`. Playwright builds the app and serves it on port 3100
 with a throwaway data folder, so it never touches `./data` or a dev server on
 port 3000. First-time setup: `npx playwright install chromium`.
 
