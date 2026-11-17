@@ -2,10 +2,18 @@ import { describe, expect, it } from "vitest";
 import { taskShortcut } from "./task-shortcuts";
 
 const key = (key: string, extra: Partial<Parameters<typeof taskShortcut>[0]> = {}) => ({
-  key, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, repeat: false, defaultPrevented: false, ...extra,
+  key, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, repeat: false, defaultPrevented: false, isComposing: false, ...extra,
 });
 
 describe("task keyboard shortcuts", () => {
+  it("leaves only the composer on plain Escape, preserving other editing contexts and IME composition", () => {
+    expect(taskShortcut(key("Escape"), "composer", false)).toBe("leave-composer");
+    expect(taskShortcut(key("Escape"), true, false)).toBeNull();
+    expect(taskShortcut(key("Escape"), "composer", true)).toBeNull();
+    for (const modifier of ["ctrlKey", "metaKey", "altKey", "shiftKey", "defaultPrevented", "isComposing", "repeat"] as const) {
+      expect(taskShortcut(key("Escape", { [modifier]: true }), "composer", false)).toBeNull();
+    }
+  });
   it.each([
     ["n", "composer"], ["/", "composer"], ["j", "next"], ["ArrowDown", "next"],
     ["k", "previous"], ["ArrowUp", "previous"], ["x", "toggle"],

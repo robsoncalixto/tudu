@@ -39,17 +39,35 @@ export function useTaskShortcuts(tasks: Task[] | null, patch: (id: string, patch
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setDialog({ kind: "help" });
   }, []);
+  const requestDelete = useCallback((id: string) => {
+    if (pending.current || dialog) return;
+    const task = tasks?.find((task) => task.id === id);
+    if (!task) return;
+    returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setDeleteFailed(false);
+    setDialog({ kind: "delete", id: task.id, title: task.title });
+  }, [tasks, dialog]);
   const close = useCallback(() => {
     if (dialog?.kind === "delete" && pending.current) return;
     const target = returnFocus.current;
-    afterClose.current = () => { if (target?.isConnected) target.focus(); };
+    afterClose.current = () => {
+      if (target?.isConnected) target.focus();
+      else if (dialog?.kind === "delete") rows().find((row) => row.dataset.taskId === dialog.id)?.focus();
+    };
     setDialog(null);
-  }, [dialog]);
+  }, [dialog, rows]);
 
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
-      const action = taskShortcut(event, isTypingTarget(event.target), dialog !== null || Boolean(document.querySelector("dialog[open]")));
+      const typing = event.target instanceof HTMLTextAreaElement && root.current?.contains(event.target)
+        && event.target.closest(".composer") ? "composer" : isTypingTarget(event.target);
+      const action = taskShortcut(event, typing, dialog !== null || Boolean(document.querySelector("dialog[open]")));
       if (!action) return;
+      if (action === "leave-composer") {
+        event.preventDefault();
+        const target = rows()[0] ?? root.current?.querySelector<HTMLElement>(".shortcut-help");
+        target?.focus(); return;
+      }
       if (action === "composer") { event.preventDefault(); focusComposer(); return; }
       if (action === "help") { event.preventDefault(); showHelp(); return; }
       const visible = rows();
@@ -66,8 +84,7 @@ export function useTaskShortcuts(tasks: Task[] | null, patch: (id: string, patch
       if (!task || !active || pending.current) return;
       event.preventDefault();
       if (action === "delete") {
-        returnFocus.current = active; setDeleteFailed(false);
-        setDialog({ kind: "delete", id: task.id, title: task.title }); return;
+        requestDelete(task.id); return;
       }
       pending.current = true;
       void patch(task.id, { done: !task.done }).then((changed) => {
@@ -79,7 +96,7 @@ export function useTaskShortcuts(tasks: Task[] | null, patch: (id: string, patch
     }
     document.addEventListener("keydown", keydown);
     return () => document.removeEventListener("keydown", keydown);
-  }, [tasks, patch, dialog, rows, focusAfter, focusComposer, showHelp]);
+  }, [tasks, patch, dialog, rows, focusAfter, focusComposer, showHelp, requestDelete]);
 
   async function confirmDelete() {
     if (dialog?.kind !== "delete" || pending.current) return;
@@ -93,5 +110,5 @@ export function useTaskShortcuts(tasks: Task[] | null, patch: (id: string, patch
       } else setDeleteFailed(true);
     } finally { pending.current = false; setDeleting(false); }
   }
-  return { root, showHelp, dialogProps: { dialog, deleting, deleteFailed, onClose: close, onClosed, onDelete: confirmDelete } };
+  return { root, showHelp, requestDelete, dialogProps: { dialog, deleting, deleteFailed, onClose: close, onClosed, onDelete: confirmDelete } };
 }

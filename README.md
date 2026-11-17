@@ -151,7 +151,8 @@ shortcuts.
 ## Keyboard shortcuts
 
 Use the **?** button or press `?` outside a field for help in the current
-language. Press Tab to leave the composer before using task shortcuts.
+language. Press Escape to leave the composer without losing your draft: focus
+moves to the first visible task, or the help button when the view is empty.
 
 | Key | Action |
 | --- | --- |
@@ -161,11 +162,12 @@ language. Press Tab to leave the composer before using task shortcuts.
 | `x` | Complete or reopen the focused task |
 | Delete or Backspace | Ask to delete the focused task |
 | `?` | Open shortcut help |
-| Escape | Close help or cancel deletion |
+| Escape | Leave the composer, close help or cancel deletion |
 
 Focus visibly selects the task. Navigation follows the current filter and sort
 order; completed tasks join it only while **Done** is expanded. Confirmation
-starts on Cancel, and pending deletion cannot be submitted twice. After a
+starts on Cancel for both the row's × button and the keyboard, and pending
+deletion cannot be submitted twice. After a
 successful change focus moves to a neighboring task, or the composer if none
 remain. A failed change restores the task and offers a retry. Shortcuts are off
 in inputs, selects, editable content and dialogs; modified browser shortcuts
@@ -247,7 +249,13 @@ This stores the header in Claude Code's local configuration. Other clients
 that support Streamable HTTP can use the same URL and authorization header.
 The endpoint accepts loopback Host headers (`localhost`, `127.0.0.1`, `[::1]`)
 and loopback browser Origins only; a client without an Origin is allowed.
-For an app on another machine, use an SSH tunnel and connect to the local URL:
+For an app on another machine, use an SSH tunnel and connect to the local URL.
+
+The regular web interface and REST API have no authentication. Keep the app on
+a trusted network and use forwarding for remote access; publishing its port
+publicly would expose those routes even though MCP requires a token.
+
+Create a local forwarded port:
 
 ```bash
 ssh -N -L 3001:localhost:3000 user@server

@@ -63,6 +63,7 @@ src/
       selectors.ts        Pure functions: sorting, filtering, counts
       api.ts              Browser client for the tasks endpoints
       use-tasks.ts        Hook that owns the task list and optimistic updates
+      use-task-shortcuts.ts Keyboard focus, help and shared mouse/keyboard delete confirmation
       use-projects.ts     Project registry state and task-assignment callback
       shortcut-schema.ts  Keyboard action and dialog contracts
       task-shortcuts.ts   Pure key-to-action mapping

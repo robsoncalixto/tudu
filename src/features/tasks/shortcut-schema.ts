@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { taskSchema } from "./schema";
 
-export const shortcutActionSchema = z.enum(["composer", "next", "previous", "toggle", "delete", "help"]);
+export const shortcutActionSchema = z.enum(["composer", "leave-composer", "next", "previous", "toggle", "delete", "help"]);
 export type ShortcutAction = z.infer<typeof shortcutActionSchema>;
 export const shortcutDialogSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("help") }),
