@@ -9,9 +9,10 @@ interface Props {
   projectCounts: TaskView["projectCounts"];
   filter: TaskFilter;
   onFilter: (filter: TaskFilter) => void;
+  onShortcuts: () => void;
 }
 
-export function Sidebar({ t, openCount, todayCount, tagCounts, projectCounts, filter, onFilter }: Props) {
+export function Sidebar({ t, openCount, todayCount, tagCounts, projectCounts, filter, onFilter, onShortcuts }: Props) {
   const tagFilter = filter.kind === "tag" ? filter.tag : null;
   // A tag stays listed while it is the active filter, even with no open tasks left.
   const tags =
@@ -50,7 +51,10 @@ export function Sidebar({ t, openCount, todayCount, tagCounts, projectCounts, fi
         ))}
       </nav>
 
-      <a href="/settings" className="nav-item nav-link">{t.settings}</a>
+      <div className="sidebar-actions">
+        <a href="/settings" className="nav-item nav-link">{t.settings}</a>
+        <button type="button" className="nav-item shortcut-help" aria-label={t.keyboardShortcuts} title={t.keyboardShortcuts} onClick={onShortcuts}>?</button>
+      </div>
     </aside>
   );
 }

@@ -158,6 +158,70 @@ p {
   color: rgb(255 255 255 / 0.5);
 }
 
+.sidebar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-sm);
+}
+
+.shortcut-help {
+  justify-content: center;
+}
+
+.task:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.task-shortcuts {
+  width: min(560px, calc(100% - 2 * var(--s-md)));
+  max-height: calc(100% - 2 * var(--s-md));
+  overflow-y: auto;
+  color: var(--text);
+}
+
+.task-shortcuts::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+.task-shortcuts h2 {
+  margin: 0 0 var(--s-md);
+  font-family: var(--heading);
+}
+
+.task-shortcuts p,
+.task-shortcuts dl {
+  margin-bottom: var(--s-md);
+}
+
+.task-shortcuts dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-sm);
+  margin-bottom: var(--s-sm);
+}
+
+.task-shortcuts dt {
+  flex: 0 1 150px;
+  font-family: var(--heading);
+}
+
+.task-shortcuts dd {
+  flex: 1 1 180px;
+  margin: 0;
+}
+
+.shortcut-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-sm);
+}
+
+.shortcut-error {
+  color: var(--error);
+}
+
 .panel {
   background: var(--surface);
   color: var(--on-surface);
@@ -676,6 +740,10 @@ label.chip:hover {
 
   .brand {
     padding: 0;
+  }
+
+  .sidebar-actions {
+    margin-left: auto;
   }
 
   .nav {

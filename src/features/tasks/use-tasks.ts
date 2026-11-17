@@ -78,9 +78,10 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
       snapshot = current;
       return current?.filter((task) => task.id !== id) ?? null;
     });
-    tasksApi.remove(id).catch((error) => {
+    return tasksApi.remove(id).then(() => true).catch((error) => {
       setTasks(snapshot);
       report.current(errorCode(error));
+      return false;
     });
   }, []);
 

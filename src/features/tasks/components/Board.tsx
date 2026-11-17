@@ -15,6 +15,8 @@ import { TaskList } from "./TaskList";
 import { ProjectManager } from "./ProjectManager";
 import type { Settings } from "@/features/settings/schema";
 import type { Task } from "../schema";
+import { useTaskShortcuts } from "../use-task-shortcuts";
+import { TaskShortcuts } from "./TaskShortcuts";
 
 type Notice = { kind: "ok" | "error"; text: string } | null;
 
@@ -31,6 +33,7 @@ export function Board({ settings }: { settings: Settings }) {
     if (task.due && today) setNotice({ kind: "ok", text: t.nextOccurrence(dueLabel(task.due, today, locale, t, settings.dateFormat)) });
   }, [today, locale, t, settings.dateFormat]);
   const { tasks, aiEnabled, add, capture, patch, remove, clearProject } = useTasks(fail, scheduled);
+  const shortcuts = useTaskShortcuts(tasks, patch, remove);
   const { projects, createProject, renameProject, deleteProject } = useProjects(fail, clearProject);
   const view = useMemo(() => buildTaskView(tasks ?? [], filter, today ?? "", projects), [tasks, filter, today, projects]);
   const projectName = filter.kind === "project" ? projects.find((project) => project.id === filter.id)?.name : null;
@@ -58,7 +61,8 @@ export function Board({ settings }: { settings: Settings }) {
   };
 
   return (
-    <div className="shell">
+    <div className="shell" ref={shortcuts.root}>
+      <TaskShortcuts t={t} {...shortcuts.dialogProps} />
       <Sidebar
         t={t}
         openCount={view.openCount}
@@ -67,6 +71,7 @@ export function Board({ settings }: { settings: Settings }) {
         projectCounts={view.projectCounts}
         filter={filter}
         onFilter={setFilter}
+        onShortcuts={shortcuts.showHelp}
       />
 
       <main className="panel">

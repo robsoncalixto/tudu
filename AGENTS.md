@@ -62,8 +62,11 @@ src/
       api.ts              Browser client for the tasks endpoints
       use-tasks.ts        Hook that owns the task list and optimistic updates
       use-projects.ts     Project registry state and task-assignment callback
+      shortcut-schema.ts  Keyboard action and dialog contracts
+      task-shortcuts.ts   Pure key-to-action mapping
+      use-task-shortcuts.ts Task navigation, mutation guards and focus recovery
       recurrence.ts       Pure next-date logic and repeat-date validation
-      components/         Board (composition), Sidebar, Composer, TaskList, TaskRow, TaskChecklist, TaskRepeat, ProjectManager
+      components/         Board (composition), Sidebar, Composer, TaskList, TaskRow, TaskChecklist, TaskRepeat, TaskShortcuts, ProjectManager
       server/
         repository.ts     The data contract; picks the store from DATABASE_URL
         store.ts          The TaskStore interface every backend implements
@@ -189,7 +192,7 @@ run in a Node environment.
 
 Run with `npm run test:e2e` (`npm run test:e2e:ui` to watch and debug). Specs
 live in `e2e/`, one file per component: `board`, `composer`, `sidebar`,
-`task-list`, `task-row`, `task-checklist`, `task-repeat`, `project-manager`,
+`task-list`, `task-row`, `task-checklist`, `task-repeat`, `task-shortcuts`, `project-manager`,
 `settings-panel`, `work-log-panel`.
 Playwright builds the app and serves it on port 3100
 with a throwaway data folder, so it never touches `./data` or a dev server on

@@ -148,6 +148,29 @@ limits shows an error and keeps the original text. AI capture still receives
 the full note; explicit task fields sent to the JSON API are not parsed as
 shortcuts.
 
+## Keyboard shortcuts
+
+Use the **?** button or press `?` outside a field for help in the current
+language. Press Tab to leave the composer before using task shortcuts.
+
+| Key | Action |
+| --- | --- |
+| `n` or `/` | Focus the composer |
+| `j` or `↓` | Focus the next visible task |
+| `k` or `↑` | Focus the previous visible task |
+| `x` | Complete or reopen the focused task |
+| Delete or Backspace | Ask to delete the focused task |
+| `?` | Open shortcut help |
+| Escape | Close help or cancel deletion |
+
+Focus visibly selects the task. Navigation follows the current filter and sort
+order; completed tasks join it only while **Done** is expanded. Confirmation
+starts on Cancel, and pending deletion cannot be submitted twice. After a
+successful change focus moves to a neighboring task, or the composer if none
+remain. A failed change restores the task and offers a retry. Shortcuts are off
+in inputs, selects, editable content and dialogs; modified browser shortcuts
+and normal Tab/Enter behavior remain available.
+
 ## Settings
 
 Choose English or Portuguese, the default priority for new tasks, the initial
