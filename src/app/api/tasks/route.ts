@@ -3,6 +3,7 @@ import { addTasks, listTasks } from "@/features/tasks/server/repository";
 import { taskCreationSchema } from "@/features/tasks/schema";
 import { ProjectError, withValidProjectIds } from "@/features/projects/server/repository";
 import { getSettings } from "@/features/settings/server/repository";
+import { InvalidRepeatError } from "@/features/tasks/recurrence";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
     const tasks = await withValidProjectIds(inputs.map((input) => input.projectId), () => addTasks(inputs));
     return NextResponse.json({ tasks }, { status: 201 });
   } catch (error) {
+    if (error instanceof InvalidRepeatError) return NextResponse.json({ error: "invalid_repeat" }, { status: 400 });
     if (error instanceof ProjectError) return NextResponse.json({ error: error.code }, { status: 400 });
     throw error;
   }

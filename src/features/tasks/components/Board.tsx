@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { errorMessage } from "@/i18n";
 import { useLocale } from "@/i18n/use-locale";
-import { longDate } from "@/lib/dates";
+import { dueLabel, longDate } from "@/lib/dates";
 import { errorCode } from "@/lib/http";
 import { useToday } from "@/lib/use-today";
 import { buildTaskView, type TaskFilter } from "../selectors";
@@ -14,6 +14,7 @@ import { Sidebar } from "./Sidebar";
 import { TaskList } from "./TaskList";
 import { ProjectManager } from "./ProjectManager";
 import type { Settings } from "@/features/settings/schema";
+import type { Task } from "../schema";
 
 type Notice = { kind: "ok" | "error"; text: string } | null;
 
@@ -26,7 +27,10 @@ export function Board({ settings }: { settings: Settings }) {
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
 
   const fail = useCallback((code: string) => setNotice({ kind: "error", text: errorMessage(t, code) }), [t]);
-  const { tasks, aiEnabled, add, capture, patch, remove, clearProject } = useTasks(fail);
+  const scheduled = useCallback((task: Task) => {
+    if (task.due && today) setNotice({ kind: "ok", text: t.nextOccurrence(dueLabel(task.due, today, locale, t, settings.dateFormat)) });
+  }, [today, locale, t, settings.dateFormat]);
+  const { tasks, aiEnabled, add, capture, patch, remove, clearProject } = useTasks(fail, scheduled);
   const { projects, createProject, renameProject, deleteProject } = useProjects(fail, clearProject);
   const view = useMemo(() => buildTaskView(tasks ?? [], filter, today ?? "", projects), [tasks, filter, today, projects]);
   const projectName = filter.kind === "project" ? projects.find((project) => project.id === filter.id)?.name : null;

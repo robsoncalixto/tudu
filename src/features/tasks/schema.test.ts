@@ -11,6 +11,7 @@ describe("taskInputSchema", () => {
       tags: [],
       steps: [],
       projectId: null,
+      repeat: null,
     });
   });
 

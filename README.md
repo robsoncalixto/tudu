@@ -115,6 +115,7 @@ action into steps, AI capture can keep those steps as a checklist on the task.
 | Assign a project | Choose a project or **No project** on a task row |
 | Filter by project | Click its name in the sidebar |
 | Change preferences | Open **Settings** from the sidebar, choose values, then **Save settings** |
+| Repeat a task | Open **Repeat** on a task, choose a schedule and due date, then **Save repeat rule** |
 
 **Today** includes tasks picked for the current local calendar day, plus tasks
 due today or overdue. Its badge counts open tasks. Selections are saved with the
@@ -131,6 +132,20 @@ save valid settings; reading it leaves the original file untouched.
 Preferences are shared by browsers using this installation and saved on the
 server. They take effect when saved and when you return to the task board;
 browser-only language settings are no longer used.
+
+Repeating tasks support daily, weekdays (Monday–Friday), weekly on selected
+days, and monthly on a chosen day. Completion saves the next task together with
+the completed one. The next due date follows the scheduled date, even if you
+complete it late; it can therefore still be overdue. Monthly dates clamp to the
+last day of a shorter month while preserving the chosen day (January 31 →
+February 28 → March 31).
+
+New occurrences keep the title, notes, priority, project, tags and rule; they
+start open with unchecked steps and no manual Today selection. Change or remove
+the rule on the open occurrence to affect what comes next. Tasks already created
+are independent. Reopening and completing the same occurrence, retrying its
+request, or deleting its next task does not generate a second copy. Both storage
+backends persist the rule and next-task link; PostgreSQL upgrades automatically.
 
 The default priority applies to title-only API requests and is supplied to AI
 capture. Explicit task priorities are preserved. The AI section shows whether

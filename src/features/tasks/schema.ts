@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { projectIdSchema } from "@/features/projects/schema";
+import { repeatRuleSchema } from "@/features/recurrence/schema";
 
 export const PRIORITIES = ["low", "medium", "high"] as const;
 export type Priority = (typeof PRIORITIES)[number];
@@ -29,6 +30,7 @@ export const taskInputSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
   steps: stepsSchema.default([]),
   projectId: projectIdSchema.default(null),
+  repeat: repeatRuleSchema.nullable().default(null),
 });
 
 export const taskPatchSchema = z
@@ -42,6 +44,7 @@ export const taskPatchSchema = z
     plannedFor: z.iso.date().nullable(),
     steps: stepsSchema,
     projectId: projectIdSchema,
+    repeat: repeatRuleSchema.nullable(),
   })
   .partial();
 
@@ -59,6 +62,10 @@ export const taskSchema = taskInputSchema.extend({
   createdAt: z.iso.datetime(),
   completedAt: z.iso.datetime().nullable(),
   plannedFor: z.iso.date().nullable().default(null),
+  nextOccurrenceId: z.string().nullable().default(null),
 });
 
 export type Task = z.infer<typeof taskSchema>;
+
+export const taskUpdateSchema = z.object({ task: taskSchema, nextTask: taskSchema.nullable().default(null) });
+export type TaskUpdate = z.infer<typeof taskUpdateSchema>;

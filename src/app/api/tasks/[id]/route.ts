@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { deleteTask, updateTask } from "@/features/tasks/server/repository";
+import { deleteTask, updateTaskWithNext } from "@/features/tasks/server/repository";
+import { InvalidRepeatError } from "@/features/tasks/recurrence";
 import { taskPatchSchema } from "@/features/tasks/schema";
 import { ProjectError, withValidProjectIds } from "@/features/projects/server/repository";
 
@@ -12,10 +13,11 @@ export async function PATCH(request: Request, { params }: Context) {
     return NextResponse.json({ error: "invalid_task" }, { status: 400 });
   }
   try {
-    const task = await withValidProjectIds([parsed.data.projectId], () => updateTask(id, parsed.data));
-    if (!task) return NextResponse.json({ error: "not_found" }, { status: 404 });
-    return NextResponse.json({ task });
+    const result = await withValidProjectIds([parsed.data.projectId], () => updateTaskWithNext(id, parsed.data));
+    if (!result) return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof InvalidRepeatError) return NextResponse.json({ error: "invalid_repeat" }, { status: 400 });
     if (error instanceof ProjectError) return NextResponse.json({ error: error.code }, { status: 400 });
     throw error;
   }

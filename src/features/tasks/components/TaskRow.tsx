@@ -5,6 +5,7 @@ import { dayDiff, dueLabel, type DateFormat } from "@/lib/dates";
 import type { Dictionary, Locale } from "@/i18n";
 import { PRIORITIES, type Task, type TaskPatch } from "../schema";
 import { TaskChecklist } from "./TaskChecklist";
+import { TaskRepeat } from "./TaskRepeat";
 import type { Project } from "@/features/projects/schema";
 
 interface Props {
@@ -104,6 +105,7 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
           ))}
         </div>
         <TaskChecklist steps={task.steps ?? []} t={t} onChange={(steps) => onPatch(task.id, { steps })} />
+        <TaskRepeat task={task} today={today} locale={locale} t={t} onChange={(patch) => onPatch(task.id, patch)} />
       </div>
 
       <label className={`chip due${overdue ? " is-overdue" : ""}${task.due ? "" : " is-empty"}`}>

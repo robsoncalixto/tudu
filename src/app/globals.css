@@ -777,8 +777,56 @@ label.chip:hover {
   font-size: 14px;
 }
 
-.task:has(.checklist[open]) {
+.task:has(.checklist[open], .repeat-editor[open]) {
   align-items: start;
+}
+
+.repeat-editor {
+  margin-top: var(--s-sm);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.repeat-editor summary {
+  cursor: pointer;
+  font-family: var(--heading);
+}
+
+.repeat-editor fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  margin: var(--s-sm) 0 0;
+}
+
+.repeat-editor label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-sm);
+  margin-bottom: var(--s-sm);
+}
+
+.repeat-editor select,
+.repeat-editor input:not([type="checkbox"]) {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--s-xs) var(--s-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.repeat-weekdays label {
+  display: inline-flex;
+  margin-right: var(--s-sm);
+}
+
+.repeat-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-sm);
+  margin-top: var(--s-sm);
 }
 
 .checklist summary {

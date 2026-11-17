@@ -11,11 +11,13 @@ import type { Task, TaskPatch } from "./schema";
  * caller can keep the user's text; `patch` and `remove` update optimistically,
  * roll back on failure and report the error code through `onError`.
  */
-export function useTasks(onError: (code: string) => void) {
+export function useTasks(onError: (code: string) => void, onNext?: (task: Task) => void) {
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [aiEnabled, setAiEnabled] = useState(false);
   const report = useRef(onError);
   report.current = onError;
+  const scheduled = useRef(onNext);
+  scheduled.current = onNext;
 
   useEffect(() => {
     tasksApi
@@ -49,7 +51,14 @@ export function useTasks(onError: (code: string) => void) {
     return tasksApi
       .update(id, changes)
       .then((saved) => {
-        setTasks((current) => current?.map((task) => (task.id === id ? saved : task)) ?? null);
+        setTasks((current) => {
+          if (!current) return null;
+          const next = current.map((task) => task.id === id ? saved.task : task);
+          // Retries may return an occurrence already displayed or being edited.
+          if (saved.nextTask && !next.some((task) => task.id === saved.nextTask!.id)) next.push(saved.nextTask);
+          return next;
+        });
+        if (changes.done && saved.nextTask && !saved.nextTask.done) scheduled.current?.(saved.nextTask);
         return true;
       })
       .catch((error) => {

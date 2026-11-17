@@ -1,5 +1,6 @@
 import { expect, test as base, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 import type { Step } from "../src/features/tasks/schema";
+import type { RepeatRule } from "../src/features/recurrence/schema";
 import type { Project } from "../src/features/projects/schema";
 import { DEFAULT_SETTINGS, type Settings, type SettingsPatch } from "../src/features/settings/schema";
 
@@ -17,11 +18,13 @@ export interface SeedTask {
   plannedFor?: string | null;
   steps?: Step[];
   projectId?: string | null;
+  repeat?: RepeatRule | null;
 }
 
 export interface StoredTask extends Required<SeedTask> {
   id: string;
   done: boolean;
+  nextOccurrenceId: string | null;
 }
 
 export async function listTasks(request: APIRequestContext): Promise<StoredTask[]> {
