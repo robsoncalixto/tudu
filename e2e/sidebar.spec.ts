@@ -86,7 +86,7 @@ test.describe("Sidebar", () => {
     await expect(page.getByText("0 concluídas")).toBeVisible();
     await expect(sidebar(page).getByRole("button", { name: /Todas as tarefas/ })).toBeVisible();
     await expect(sidebar(page).getByText("Etiquetas", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Adicionar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Adicionar", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Criar com IA" })).toBeVisible();
     await expect(page.getByPlaceholder(/Escreva uma tarefa/)).toBeVisible();
     await expect(page.locator("#open-heading")).toHaveText("Abertas 1");
@@ -98,17 +98,61 @@ test.describe("Sidebar", () => {
 
     await sidebar(page).getByRole("button", { name: "EN" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.getByRole("button", { name: "Add" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add", exact: true })).toBeVisible();
   });
 
   test("remembers the chosen language after a reload", async ({ page }) => {
     await openApp(page);
     await sidebar(page).getByRole("button", { name: "PT" }).click();
-    await expect(page.getByRole("button", { name: "Adicionar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Adicionar", exact: true })).toBeVisible();
 
     await page.reload();
 
-    await expect(page.getByRole("button", { name: "Adicionar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Adicionar", exact: true })).toBeVisible();
     await expect(page.getByText("Nada em aberto.")).toBeVisible();
   });
 });
+
+for (const language of [
+  { code: "EN", today: "Today", all: "All tasks", done: "Done", empty: "Nothing planned for today." },
+  { code: "PT", today: "Hoje", all: "Todas as tarefas", done: "Concluídas", empty: "Nada planejado para hoje." },
+]) {
+  test(`Today navigation and counts in ${language.code}`, async ({ page, request }) => {
+    const tasks = await seed(request, [
+      { title: "Picked", plannedFor: "2026-11-17", tags: ["work"] },
+      { title: "Future picked", plannedFor: "2026-11-17", due: "2026-12-01" },
+      { title: "Due now", due: "2026-11-17" },
+      { title: "Late", due: "2026-11-16" },
+      { title: "Later", due: "2026-11-18", tags: ["work"] },
+      { title: "Backlog" },
+      { title: "Finished", plannedFor: "2026-11-17" },
+    ]);
+    await request.patch(`/api/tasks/${tasks[6].id}`, { data: { done: true } });
+    await openApp(page);
+    await sidebar(page).getByRole("button", { name: language.code, exact: true }).click();
+    const todayButton = sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) });
+    await expect(todayButton).toHaveText(`${language.today}4`);
+    await expect(sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) })).toHaveText(`${language.all}6`);
+    await todayButton.click();
+    await expect(todayButton).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("heading", { name: `${language.today} 4`, exact: true })).toBeVisible();
+    expect(await rowTitles(openSection(page))).toEqual(["Late", "Due now", "Future picked", "Picked"]);
+    await expect(page.getByText(`${language.done} 1`, { exact: true })).toBeVisible();
+    await expect(row(page, "Finished")).toBeHidden();
+
+    await sidebar(page).getByRole("button", { name: "#work" }).click();
+    expect(await rowTitles(openSection(page))).toEqual(["Later", "Picked"]);
+    await expect(todayButton).toHaveText(`${language.today}4`);
+    await sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) }).click();
+    await expect(openSection(page).getByRole("listitem")).toHaveCount(6);
+  });
+
+  test(`Today empty state in ${language.code}`, async ({ page, request }) => {
+    await seed(request, [{ title: "Unplanned" }, { title: "Old pick", plannedFor: "2026-11-16" }]);
+    await openApp(page);
+    await sidebar(page).getByRole("button", { name: language.code, exact: true }).click();
+    await sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
+    await expect(page.getByText(language.empty, { exact: true })).toBeVisible();
+    await expect(openSection(page).getByRole("listitem")).toHaveCount(0);
+  });
+}

@@ -42,7 +42,7 @@ test.describe("Board", () => {
   test("still shows saved tasks after a reload", async ({ page, request }) => {
     await openApp(page);
     await page.getByRole("textbox", { name: /Write a task/ }).fill("Survive a reload");
-    await page.getByRole("button", { name: "Add" }).click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
     await expect(row(page, "Survive a reload")).toBeVisible();
 
     await page.reload();
@@ -61,6 +61,67 @@ test.describe("Board", () => {
     await expect(row(page, "A task with a fairly long title")).toBeVisible();
     const overflows = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(overflows).toBe(false);
-    await expect(page.getByRole("button", { name: "Add" })).toBeInViewport();
+    await expect(page.getByRole("button", { name: "Add", exact: true })).toBeInViewport();
   });
+});
+
+for (const language of [
+  { code: "EN", today: "Today", add: "Add to today", remove: "Remove from today" },
+  { code: "PT", today: "Hoje", add: "Adicionar ao dia de hoje", remove: "Remover do dia de hoje" },
+]) {
+  for (const width of [320, 375]) {
+    test(`Today controls fit a ${width}px phone screen in ${language.code}`, async ({ page, request }) => {
+      await seed(request, [{ title: "A longer task title for the daily plan", due: TODAY, tags: ["mobile"] }]);
+      await page.setViewportSize({ width, height: 812 });
+      await openApp(page);
+      await page.getByRole("button", { name: language.code, exact: true }).click();
+      await page.getByRole("complementary").getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
+      const task = row(page, "A longer task title");
+      const control = task.getByRole("button", { name: language.add });
+      await expect(control).toBeInViewport();
+      await control.focus();
+      await expect(control).toBeFocused();
+      await control.press("Enter");
+      await expect(task.getByRole("button", { name: language.remove })).toBeInViewport();
+      await expect.poll(async () => (await listTasks(request))[0].plannedFor).toBe(TODAY);
+      const priority = task.getByRole("button", { name: /Priority:|Prioridade:/ });
+      expect(await priority.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        const card = element.closest(".card")!.getBoundingClientRect();
+        return bounds.left >= card.left && bounds.right <= card.right;
+      })).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+    });
+  }
+}
+
+test("refreshes Today at local midnight without reloading", async ({ page, request }) => {
+  await seed(request, [
+    { title: "Yesterday's selection", plannedFor: TODAY },
+    { title: "Deadline", due: TODAY },
+    { title: "Next day", due: "2026-11-18" },
+  ]);
+  await page.clock.install();
+  await page.clock.setSystemTime(new Date("2026-11-17T23:59:59-03:00"));
+  await openApp(page);
+  await page.getByRole("complementary").getByRole("button", { name: /^Today/ }).click();
+  await expect(openSection(page).getByRole("listitem")).toHaveCount(2);
+  await page.clock.fastForward(2000);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("November 18");
+  await expect(row(openSection(page), "Yesterday's selection")).toHaveCount(0);
+  await expect(row(openSection(page), "Deadline")).toBeVisible();
+  await expect(row(openSection(page), "Next day")).toBeVisible();
+  expect((await listTasks(request))[0].plannedFor).toBe(TODAY);
+});
+
+test("refreshes Today when returning to a suspended tab", async ({ page, request }) => {
+  await seed(request, [{ title: "Old selection", plannedFor: TODAY }]);
+  await openApp(page);
+  await page.getByRole("complementary").getByRole("button", { name: /^Today/ }).click();
+  await expect(row(page, "Old selection")).toBeVisible();
+  await page.clock.setFixedTime(new Date("2026-11-18T10:00:00-03:00"));
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("November 18");
+  await expect(row(page, "Old selection")).toHaveCount(0);
+  await expect(page.getByRole("complementary").getByRole("button", { name: /^Today/ })).toHaveText("Today0");
 });

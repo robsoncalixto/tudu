@@ -15,6 +15,7 @@ function task(overrides: Partial<Task> = {}): Task {
     done: false,
     createdAt: `2026-01-01T00:00:${String(counter).padStart(2, "0")}.000Z`,
     completedAt: null,
+    plannedFor: null,
     ...overrides,
   };
 }
@@ -29,7 +30,7 @@ describe("buildTaskView", () => {
         task({ title: "later", due: "2026-03-10" }),
         task({ title: "sooner", due: "2026-03-01" }),
       ],
-      null,
+      { kind: "all" },
     );
     expect(titles(view.open)).toEqual(["sooner", "later", "undated"]);
   });
@@ -42,7 +43,7 @@ describe("buildTaskView", () => {
         task({ title: "medium-new" }),
         task({ title: "high", priority: "high" }),
       ],
-      null,
+      { kind: "all" },
     );
     expect(titles(view.open)).toEqual(["high", "medium-old", "medium-new", "low"]);
   });
@@ -54,7 +55,7 @@ describe("buildTaskView", () => {
         task({ title: "done-earlier", done: true, completedAt: "2026-02-01T10:00:00.000Z" }),
         task({ title: "done-later", done: true, completedAt: "2026-02-02T10:00:00.000Z" }),
       ],
-      null,
+      { kind: "all" },
     );
     expect(titles(view.open)).toEqual(["open"]);
     expect(titles(view.done)).toEqual(["done-later", "done-earlier"]);
@@ -67,7 +68,7 @@ describe("buildTaskView", () => {
         task({ title: "b", tags: ["home"] }),
         task({ title: "c", tags: ["work"], done: true, completedAt: "2026-02-01T10:00:00.000Z" }),
       ],
-      "work",
+      { kind: "tag", tag: "work" },
     );
     expect(titles(view.open)).toEqual(["a"]);
     expect(titles(view.done)).toEqual(["c"]);
@@ -81,7 +82,7 @@ describe("buildTaskView", () => {
         task({ tags: ["work"] }),
         task({ tags: ["archived"], done: true }),
       ],
-      null,
+      { kind: "all" },
     );
     expect(view.tagCounts).toEqual([
       ["alpha", 1],
@@ -91,7 +92,75 @@ describe("buildTaskView", () => {
 
   it("does not reorder the array it was given", () => {
     const input = [task({ title: "undated" }), task({ title: "dated", due: "2026-03-01" })];
-    buildTaskView(input, null);
+    buildTaskView(input, { kind: "all" });
     expect(titles(input)).toEqual(["undated", "dated"]);
+  });
+});
+
+describe("Today view", () => {
+  const today = "2026-11-17";
+  const todayFilter = { kind: "today" } as const;
+
+  it("includes picked, due-today and overdue tasks once, sorted by urgency", () => {
+    const view = buildTaskView([
+      task({ title: "picked", plannedFor: today }),
+      task({ title: "both", plannedFor: today, due: today }),
+      task({ title: "overdue", due: "2026-11-16" }),
+      task({ title: "future picked", due: "2026-12-01", plannedFor: today }),
+      task({ title: "future", due: "2026-11-18" }),
+      task({ title: "undated" }),
+      task({ title: "yesterday's pick", plannedFor: "2026-11-16" }),
+      task({ title: "tomorrow's pick", plannedFor: "2026-11-18" }),
+    ], todayFilter, today);
+    expect(titles(view.open)).toEqual(["overdue", "both", "future picked", "picked"]);
+    expect(view.todayCount).toBe(4);
+    expect(view.openCount).toBe(8);
+  });
+
+  it("keeps matching completed tasks separate and excludes them from the badge", () => {
+    const view = buildTaskView([
+      task({ title: "open", plannedFor: today }),
+      task({ title: "done", plannedFor: today, done: true, completedAt: "2026-11-17T14:00:00.000Z" }),
+      task({ title: "unrelated done", done: true }),
+    ], todayFilter, today);
+    expect(titles(view.open)).toEqual(["open"]);
+    expect(titles(view.done)).toEqual(["done"]);
+    expect(view.todayCount).toBe(1);
+  });
+
+  it("counts today across tags and retains all-tasks and tag navigation", () => {
+    const tasks = [
+      task({ title: "work", plannedFor: today, tags: ["work"] }),
+      task({ title: "home", due: today, tags: ["home"] }),
+      task({ title: "later", tags: ["work"] }),
+    ];
+    const view = buildTaskView(tasks, { kind: "tag", tag: "work" }, today);
+    expect(titles(view.open)).toEqual(["work", "later"]);
+    expect(view.todayCount).toBe(2);
+    expect(view.tagCounts).toEqual([["home", 1], ["work", 2]]);
+    expect(buildTaskView(tasks, { kind: "all" }, today).open).toHaveLength(3);
+  });
+
+  it("expires yesterday's picks but keeps overdue tasks when the date changes", () => {
+    const tasks = [task({ title: "pick", plannedFor: today }), task({ title: "deadline", due: today })];
+    expect(buildTaskView(tasks, todayFilter, today).todayCount).toBe(2);
+    const nextDay = buildTaskView(tasks, todayFilter, "2026-11-18");
+    expect(titles(nextDay.open)).toEqual(["deadline"]);
+    expect(tasks[0].plannedFor).toBe(today);
+  });
+
+  it("keeps deadline-driven tasks after a manual selection is removed", () => {
+    const view = buildTaskView([
+      task({ title: "due", due: today, plannedFor: null }),
+      task({ title: "late", due: "2026-11-16", plannedFor: null }),
+      task({ title: "removed", plannedFor: null }),
+    ], todayFilter, today);
+    expect(titles(view.open)).toEqual(["late", "due"]);
+  });
+
+  it("shows no today tasks until the local date is available", () => {
+    const view = buildTaskView([task({ due: today })], todayFilter);
+    expect(view.todayCount).toBe(0);
+    expect(view.open).toEqual([]);
   });
 });

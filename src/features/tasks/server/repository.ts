@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import type { Task, TaskInput, TaskPatch } from "../schema";
+import { z } from "zod";
+import { taskSchema, type Task, type TaskInput, type TaskPatch } from "../schema";
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), "data");
 const FILE = path.join(DATA_DIR, "tasks.json");
@@ -19,7 +20,7 @@ function locked<T>(fn: () => Promise<T>): Promise<T> {
 
 async function read(): Promise<Task[]> {
   try {
-    return JSON.parse(await fs.readFile(FILE, "utf8")) as Task[];
+    return z.array(taskSchema).parse(JSON.parse(await fs.readFile(FILE, "utf8")));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
@@ -41,13 +42,15 @@ export function addTasks(inputs: TaskInput[]): Promise<Task[]> {
   return locked(async () => {
     const tasks = await read();
     const now = new Date().toISOString();
-    const created = inputs.map<Task>((input) => ({
-      ...input,
-      id: randomUUID(),
-      done: false,
-      createdAt: now,
-      completedAt: null,
-    }));
+    const created = inputs.map((input) =>
+      taskSchema.parse({
+        ...input,
+        id: randomUUID(),
+        done: false,
+        createdAt: now,
+        completedAt: null,
+      }),
+    );
     await write([...tasks, ...created]);
     return created;
   });

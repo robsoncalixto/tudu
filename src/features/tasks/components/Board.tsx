@@ -6,7 +6,7 @@ import { useLocale } from "@/i18n/use-locale";
 import { longDate } from "@/lib/dates";
 import { errorCode } from "@/lib/http";
 import { useToday } from "@/lib/use-today";
-import { buildTaskView } from "../selectors";
+import { buildTaskView, type TaskFilter } from "../selectors";
 import { useTasks } from "../use-tasks";
 import { Composer, type ComposerMode } from "./Composer";
 import { Sidebar } from "./Sidebar";
@@ -18,12 +18,13 @@ export function Board() {
   const { locale, setLocale, t } = useLocale();
   const today = useToday();
   const [notice, setNotice] = useState<Notice>(null);
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [filter, setFilter] = useState<TaskFilter>({ kind: "all" });
+  const tagFilter = filter.kind === "tag" ? filter.tag : null;
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
 
   const fail = useCallback((code: string) => setNotice({ kind: "error", text: errorMessage(t, code) }), [t]);
   const { tasks, aiEnabled, add, capture, patch, remove } = useTasks(fail);
-  const view = useMemo(() => buildTaskView(tasks ?? [], tagFilter), [tasks, tagFilter]);
+  const view = useMemo(() => buildTaskView(tasks ?? [], filter, today ?? ""), [tasks, filter, today]);
 
   async function submit(mode: ComposerMode, text: string): Promise<boolean> {
     if (!today) return false;
@@ -32,7 +33,7 @@ export function Board() {
       const created =
         mode === "ai" ? await capture(text, today) : await add(text.replace(/\s+/g, " ").slice(0, 300));
       setFresh(new Set(created.map((task) => task.id)));
-      setTagFilter(null);
+      setFilter({ kind: "all" });
       if (mode === "ai") setNotice({ kind: "ok", text: t.added(created.length) });
       return true;
     } catch (error) {
@@ -42,7 +43,10 @@ export function Board() {
   }
 
   const date = today ? longDate(today, locale) : null;
-  const list = { today: today ?? "", locale, t, onPatch: patch, onDelete: remove, onTag: setTagFilter };
+  const list = {
+    today: today ?? "", locale, t, onPatch: patch, onDelete: remove,
+    onTag: (tag: string) => setFilter({ kind: "tag", tag }),
+  };
 
   return (
     <div className="shell">
@@ -51,9 +55,10 @@ export function Board() {
         locale={locale}
         onLocale={setLocale}
         openCount={view.openCount}
+        todayCount={view.todayCount}
         tagCounts={view.tagCounts}
-        tagFilter={tagFilter}
-        onTag={setTagFilter}
+        filter={filter}
+        onFilter={setFilter}
       />
 
       <main className="panel">
@@ -83,12 +88,12 @@ export function Board() {
             <>
               <section aria-labelledby="open-heading">
                 <h2 id="open-heading" className="section-title">
-                  {tagFilter ? `#${tagFilter}` : t.open} <span>{view.open.length}</span>
+                  {tagFilter ? `#${tagFilter}` : filter.kind === "today" ? t.today : t.open} <span>{view.open.length}</span>
                 </h2>
                 {view.open.length === 0 ? (
                   <div className="card empty">
-                    <p className="empty-title">{tagFilter ? t.emptyFiltered : t.emptyTitle}</p>
-                    {!tagFilter && <p>{t.emptyBody}</p>}
+                    <p className="empty-title">{tagFilter ? t.emptyFiltered : filter.kind === "today" ? t.emptyToday : t.emptyTitle}</p>
+                    {!tagFilter && <p>{filter.kind === "today" ? t.emptyTodayBody : t.emptyBody}</p>}
                   </div>
                 ) : (
                   <TaskList tasks={view.open} header fresh={fresh} {...list} />

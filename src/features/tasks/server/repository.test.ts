@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -76,5 +76,30 @@ describe("repository", () => {
     const tasks = await repo.listTasks();
     expect(tasks).toHaveLength(25);
     expect(new Set(tasks.map((task) => task.id)).size).toBe(25);
+  });
+
+  it("reads legacy tasks with no selection and preserves them when saving", async () => {
+    const legacy = {
+      ...input("Existing"), id: "old", done: false,
+      createdAt: "2026-11-01T12:00:00.000Z", completedAt: null,
+    };
+    await writeFile(path.join(dir, "tasks.json"), JSON.stringify([legacy]));
+    expect(await repo.listTasks()).toEqual([{ ...legacy, plannedFor: null }]);
+    await repo.updateTask("old", { plannedFor: "2026-11-17" });
+    expect(await repo.listTasks()).toEqual([{ ...legacy, plannedFor: "2026-11-17" }]);
+  });
+
+  it("saves and clears selections independently of due dates and completion", async () => {
+    const [task] = await repo.addTasks([{ ...input("Plan"), due: "2026-11-16" }]);
+    expect(task.plannedFor).toBeNull();
+    await repo.updateTask(task.id, { plannedFor: "2026-11-17" });
+    await repo.updateTask(task.id, { done: true });
+    expect((await repo.listTasks())[0]).toMatchObject({
+      plannedFor: "2026-11-17", done: true, due: "2026-11-16",
+    });
+    await repo.updateTask(task.id, { plannedFor: null });
+    expect((await repo.listTasks())[0]).toMatchObject({ plannedFor: null, due: "2026-11-16" });
+    const stored = JSON.parse(await readFile(path.join(dir, "tasks.json"), "utf8"));
+    expect(stored[0].plannedFor).toBeNull();
   });
 });
