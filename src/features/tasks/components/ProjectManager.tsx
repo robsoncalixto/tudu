@@ -38,13 +38,13 @@ export function ProjectManager({ projects, t, onCreate, onRename, onDelete }: Pr
                     onChange={(event) => setEditing({ ...editing, name: event.target.value })}
                     onKeyDown={(event) => { if (event.key === "Escape") setEditing(null); }} />
                   <button className="chip" type="submit" disabled={!editing.name.trim()}>{t.saveProject}</button>
-                  <button className="chip" type="button" onClick={() => setEditing(null)}>{t.cancelStep}</button>
+                  <button className="chip" type="button" onClick={() => setEditing(null)}>{t.cancel}</button>
                 </form>
               ) : (
                 <>
                   <span>{project.name}</span>
                   <button className="chip" type="button" aria-label={t.renameProject(project.name)}
-                    onClick={() => setEditing({ id: project.id, name: project.name })}>{t.editStep}</button>
+                    onClick={() => setEditing({ id: project.id, name: project.name })}>{t.edit}</button>
                   <button className="chip" type="button" aria-label={t.deleteProject(project.name)}
                     onClick={() => { void save(() => onDelete(project.id)); }}>×</button>
                 </>

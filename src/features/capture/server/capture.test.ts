@@ -38,4 +38,12 @@ describe("AI checklist capture", () => {
     expect(tasks.map((task) => task.projectId)).toEqual([project.id, null, null]);
     expect(parse.mock.calls[0][0].messages[0].content).toContain(JSON.stringify([project]));
   });
+  it("uses the configured default priority in capture instructions", async () => {
+    parse.mockResolvedValue({ stop_reason: "end_turn", parsed_output: { tasks: [{
+      title: "Report", notes: "", priority: "low", due: null, tags: [], steps: [], projectId: null,
+    }] } });
+    const [task] = await captureTasks("Write report", "2026-11-17", [], "low");
+    expect(parse.mock.calls[0][0].system).toContain('otherwise "low"');
+    expect(task.priority).toBe("low");
+  });
 });

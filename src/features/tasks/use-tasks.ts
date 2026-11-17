@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { captureApi } from "@/features/capture/api";
-import { projectsApi } from "@/features/projects/api";
-import type { Project } from "@/features/projects/schema";
 import { errorCode } from "@/lib/http";
 import { tasksApi } from "./api";
 import type { Task, TaskPatch } from "./schema";
@@ -16,12 +14,10 @@ import type { Task, TaskPatch } from "./schema";
 export function useTasks(onError: (code: string) => void) {
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [aiEnabled, setAiEnabled] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([]);
   const report = useRef(onError);
   report.current = onError;
 
   useEffect(() => {
-    projectsApi.list().then(setProjects).catch(() => report.current("generic"));
     tasksApi
       .list()
       .then(setTasks)
@@ -78,27 +74,8 @@ export function useTasks(onError: (code: string) => void) {
     });
   }, []);
 
-  const createProject = useCallback(async (name: string) => {
-    try {
-      const project = await projectsApi.create(name);
-      setProjects((current) => [...current, project]);
-      return true;
-    } catch (error) { report.current(errorCode(error)); return false; }
+  const clearProject = useCallback((id: string) => {
+    setTasks((current) => current?.map((task) => task.projectId === id ? { ...task, projectId: null } : task) ?? null);
   }, []);
-  const renameProject = useCallback(async (id: string, name: string) => {
-    try {
-      const project = await projectsApi.rename(id, name);
-      setProjects((current) => current.map((item) => item.id === id ? project : item));
-      return true;
-    } catch (error) { report.current(errorCode(error)); return false; }
-  }, []);
-  const deleteProject = useCallback(async (id: string) => {
-    try {
-      await projectsApi.remove(id);
-      setProjects((current) => current.filter((project) => project.id !== id));
-      setTasks((current) => current?.map((task) => task.projectId === id ? { ...task, projectId: null } : task) ?? null);
-      return true;
-    } catch (error) { report.current(errorCode(error)); return false; }
-  }, []);
-  return { tasks, projects, aiEnabled, add, capture, patch, remove, createProject, renameProject, deleteProject };
+  return { tasks, aiEnabled, add, capture, patch, remove, clearProject };
 }

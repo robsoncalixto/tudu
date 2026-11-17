@@ -8,23 +8,26 @@ import { errorCode } from "@/lib/http";
 import { useToday } from "@/lib/use-today";
 import { buildTaskView, type TaskFilter } from "../selectors";
 import { useTasks } from "../use-tasks";
+import { useProjects } from "../use-projects";
 import { Composer, type ComposerMode } from "./Composer";
 import { Sidebar } from "./Sidebar";
 import { TaskList } from "./TaskList";
 import { ProjectManager } from "./ProjectManager";
+import type { Settings } from "@/features/settings/schema";
 
 type Notice = { kind: "ok" | "error"; text: string } | null;
 
-export function Board() {
-  const { locale, setLocale, t } = useLocale();
+export function Board({ settings }: { settings: Settings }) {
+  const { locale, t } = useLocale(settings.locale);
   const today = useToday();
   const [notice, setNotice] = useState<Notice>(null);
-  const [filter, setFilter] = useState<TaskFilter>({ kind: "all" });
+  const [filter, setFilter] = useState<TaskFilter>({ kind: settings.startView });
   const tagFilter = filter.kind === "tag" ? filter.tag : null;
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
 
   const fail = useCallback((code: string) => setNotice({ kind: "error", text: errorMessage(t, code) }), [t]);
-  const { tasks, projects, aiEnabled, add, capture, patch, remove, createProject, renameProject, deleteProject } = useTasks(fail);
+  const { tasks, aiEnabled, add, capture, patch, remove, clearProject } = useTasks(fail);
+  const { projects, createProject, renameProject, deleteProject } = useProjects(fail, clearProject);
   const view = useMemo(() => buildTaskView(tasks ?? [], filter, today ?? "", projects), [tasks, filter, today, projects]);
   const projectName = filter.kind === "project" ? projects.find((project) => project.id === filter.id)?.name : null;
 
@@ -44,9 +47,9 @@ export function Board() {
     }
   }
 
-  const date = today ? longDate(today, locale) : null;
+  const date = today ? longDate(today, locale, settings.dateFormat) : null;
   const list = {
-    today: today ?? "", locale, t, projects, onPatch: patch, onDelete: remove,
+    today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: patch, onDelete: remove,
     onTag: (tag: string) => setFilter({ kind: "tag", tag }),
   };
 
@@ -54,8 +57,6 @@ export function Board() {
     <div className="shell">
       <Sidebar
         t={t}
-        locale={locale}
-        onLocale={setLocale}
         openCount={view.openCount}
         todayCount={view.todayCount}
         tagCounts={view.tagCounts}

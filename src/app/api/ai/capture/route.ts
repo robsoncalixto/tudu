@@ -4,6 +4,7 @@ import { z } from "zod";
 import { aiEnabled, CaptureRefusedError, captureTasks } from "@/features/capture/server/capture";
 import { addTasks } from "@/features/tasks/server/repository";
 import { listProjects, ProjectError, withValidProjectIds } from "@/features/projects/server/repository";
+import { getSettings } from "@/features/settings/server/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const drafts = await captureTasks(parsed.data.text, parsed.data.today, await listProjects());
+    const [projects, settings] = await Promise.all([listProjects(), getSettings()]);
+    const drafts = await captureTasks(parsed.data.text, parsed.data.today, projects, settings.defaultPriority);
     if (drafts.length === 0) {
       return NextResponse.json({ error: "no_tasks" }, { status: 422 });
     }

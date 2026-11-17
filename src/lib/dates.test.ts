@@ -52,3 +52,10 @@ describe("longDate", () => {
     expect(longDate(TODAY, "pt-BR")).toEqual({ weekday: "terça-feira", rest: "17 de novembro" });
   });
 });
+
+it("formats the heading and all task dates as ISO when requested", () => {
+  expect(longDate("2026-11-17", "en", "iso")).toEqual({ weekday: "Tuesday", rest: "2026-11-17" });
+  expect(longDate("2026-11-17", "pt-BR", "iso")).toEqual({ weekday: "terça-feira", rest: "2026-11-17" });
+  expect(dueLabel("2026-11-17", "2026-11-17", "en", dictionaries.en, "iso")).toBe("2026-11-17");
+  expect(dueLabel("2026-11-16", "2026-11-17", "pt-BR", dictionaries["pt-BR"], "iso")).toBe("2026-11-16");
+});

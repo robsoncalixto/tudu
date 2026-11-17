@@ -1,10 +1,8 @@
-import { LOCALES, type Dictionary, type Locale } from "@/i18n";
+import type { Dictionary } from "@/i18n";
 import type { TaskFilter, TaskView } from "../selectors";
 
 interface Props {
   t: Dictionary;
-  locale: Locale;
-  onLocale: (locale: Locale) => void;
   openCount: number;
   todayCount: number;
   tagCounts: TaskView["tagCounts"];
@@ -13,9 +11,7 @@ interface Props {
   onFilter: (filter: TaskFilter) => void;
 }
 
-const LOCALE_LABEL: Record<Locale, string> = { en: "EN", "pt-BR": "PT" };
-
-export function Sidebar({ t, locale, onLocale, openCount, todayCount, tagCounts, projectCounts, filter, onFilter }: Props) {
+export function Sidebar({ t, openCount, todayCount, tagCounts, projectCounts, filter, onFilter }: Props) {
   const tagFilter = filter.kind === "tag" ? filter.tag : null;
   // A tag stays listed while it is the active filter, even with no open tasks left.
   const tags =
@@ -53,19 +49,7 @@ export function Sidebar({ t, locale, onLocale, openCount, todayCount, tagCounts,
         ))}
       </nav>
 
-      <div className="locale" role="group" aria-label={t.language}>
-        {LOCALES.map((code) => (
-          <button
-            type="button"
-            key={code}
-            className={code === locale ? "is-active" : ""}
-            aria-pressed={code === locale}
-            onClick={() => onLocale(code)}
-          >
-            {LOCALE_LABEL[code]}
-          </button>
-        ))}
-      </div>
+      <a href="/settings" className="nav-item settings-link">{t.settings}</a>
     </aside>
   );
 }

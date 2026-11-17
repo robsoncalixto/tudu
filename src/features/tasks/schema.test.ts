@@ -63,3 +63,12 @@ describe("taskSchema", () => {
     expect(task.due).toBeNull();
   });
 });
+
+describe("task creation defaults", () => {
+  it("uses the selected priority only when a task has no explicit priority", async () => {
+    const { taskCreationSchema } = await import("./schema");
+    expect(taskCreationSchema("high").parse({ title: "Default" })).toMatchObject({ priority: "high" });
+    expect(taskCreationSchema("high").parse([{ title: "Default" }, { title: "Explicit", priority: "low" }]))
+      .toMatchObject([{ priority: "high" }, { priority: "low" }]);
+  });
+});
