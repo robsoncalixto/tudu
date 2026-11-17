@@ -1,4 +1,4 @@
-import { expect, listProjects, listTasks, openApp, row, seed, seedProjects, sidebar, test } from "./support";
+import { expect, listProjects, listTasks, openApp, row, seed, seedProjects, sidebar, test, setLanguage } from "./support";
 
 const languages = [
   { code: "EN", manage: "Manage projects", newName: "New project", name: "Project name", create: "Create project", save: "Save project", rename: "Rename project: ", remove: "Delete project: ", project: "Project", error: "Something went wrong. Try again.", duplicate: "A project with that name already exists." },
@@ -8,7 +8,7 @@ for (const language of languages) {
   test(`creates, renames and deletes projects without deleting tasks in ${language.code}`, async ({ page, request }) => {
     await seed(request, [{ title: "Client report", notes: "Keep these notes" }]);
     await openApp(page);
-    await sidebar(page).getByRole("button", { name: language.code, exact: true }).click();
+    await setLanguage(page, language.code);
     const manager = page.getByRole("group", { name: language.manage, exact: true });
     await manager.getByText(language.manage, { exact: true }).click();
     await manager.getByRole("textbox", { name: language.newName, exact: true }).fill("  Acme  ");
@@ -40,7 +40,7 @@ for (const language of languages) {
 
   test(`project failures keep typed names and allow retries in ${language.code}`, async ({ page, request }) => {
     await openApp(page);
-    await sidebar(page).getByRole("button", { name: language.code, exact: true }).click();
+    await setLanguage(page, language.code);
     const manager = page.getByRole("group", { name: language.manage, exact: true });
     await manager.getByText(language.manage, { exact: true }).click();
     await page.route("**/api/projects", (route) => route.request().method() === "POST"
@@ -76,7 +76,7 @@ for (const language of languages) {
     await seedProjects(request, ["Acme"]);
     await page.setViewportSize({ width: 320, height: 900 });
     await openApp(page);
-    await sidebar(page).getByRole("button", { name: language.code, exact: true }).click();
+    await setLanguage(page, language.code);
     const manager = page.getByRole("group", { name: language.manage, exact: true });
     await manager.getByText(language.manage, { exact: true }).click();
     await expect(manager.getByRole("button", { name: language.create, exact: true })).toBeDisabled();

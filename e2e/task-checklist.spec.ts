@@ -1,4 +1,4 @@
-import { expect, listTasks, openApp, row, seed, sidebar, test } from "./support";
+import { expect, listTasks, openApp, row, seed, sidebar, test, setLanguage } from "./support";
 
 const languages = [
   { code: "EN", checklist: "Checklist", add: "Add step", input: "New step", title: "Step title", save: "Save step", rename: "Rename step: ", remove: "Delete step: ", cancel: "Cancel", error: "Something went wrong. Try again." },
@@ -9,7 +9,7 @@ for (const language of languages) {
   test(`checklist lifecycle and progress in ${language.code}`, async ({ page, request }) => {
     await seed(request, [{ title: "Prepare release" }]);
     await openApp(page);
-    await sidebar(page).getByRole("button", { name: language.code, exact: true }).click();
+    await setLanguage(page, language.code);
     const task = row(page, "Prepare release");
     await expect(task.getByText(`${language.checklist} 0/0`, { exact: true })).toBeVisible();
     await task.getByText(`${language.checklist} 0/0`, { exact: true }).click();
@@ -41,7 +41,7 @@ for (const language of languages) {
   test(`checklist save failures preserve drafts and recover in ${language.code}`, async ({ page, request }) => {
     await seed(request, [{ title: "Retry checklist", steps: [{ id: "one", title: "Original", done: false }] }]);
     await openApp(page);
-    await sidebar(page).getByRole("button", { name: language.code, exact: true }).click();
+    await setLanguage(page, language.code);
     const task = row(page, "Retry checklist");
     await task.getByText(`${language.checklist} 0/1`, { exact: true }).click();
     const fail = async () => page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
@@ -82,7 +82,7 @@ for (const language of languages) {
     await seed(request, [{ title: "Small screen", steps: [{ id: "one", title: "A very long step title that wraps across a narrow phone screen", done: false }] }]);
     await page.setViewportSize({ width: 320, height: 900 });
     await openApp(page);
-    await sidebar(page).getByRole("button", { name: language.code, exact: true }).click();
+    await setLanguage(page, language.code);
     const task = row(page, "Small screen");
     await task.getByText(`${language.checklist} 0/1`, { exact: true }).click();
     const input = task.getByRole("textbox", { name: language.input, exact: true });
@@ -108,7 +108,7 @@ for (const language of languages) {
       await route.fulfill({ status: 201, json: { tasks } });
     });
     await openApp(page);
-    await sidebar(page).getByRole("button", { name: language.code, exact: true }).click();
+    await setLanguage(page, language.code);
     await page.getByRole("textbox").fill("Prepare the report: draft, then review");
     await page.getByRole("button", { name: language.code === "EN" ? "Create with AI" : "Criar com IA", exact: true }).click();
     const task = row(page, "Captured plan");

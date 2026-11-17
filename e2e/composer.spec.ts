@@ -1,4 +1,4 @@
-import { addTask, composer, expect, listTasks, openApp, openSection, row, rowTitles, seedProjects, test, TODAY } from "./support";
+import { addTask, composer, expect, listTasks, openApp, openSection, row, rowTitles, seedProjects, test, TODAY, setLanguage } from "./support";
 
 test.describe("Composer", () => {
   test("adds a task with Enter and clears the field", async ({ page, request }) => {
@@ -179,7 +179,7 @@ for (const code of ["EN", "PT"]) {
       await route.fulfill({ status: 201, json: await saved.json() });
     });
     await openApp(page);
-    await page.getByRole("complementary").getByRole("button", { name: code, exact: true }).click();
+    await setLanguage(page, code);
     await page.getByRole("textbox").fill("Write the report for Acme");
     await page.getByRole("button", { name: code === "EN" ? "Create with AI" : "Criar com IA", exact: true }).click();
     await expect(row(page, "Acme report").getByRole("combobox")).toHaveValue(project.id);

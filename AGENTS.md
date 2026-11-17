@@ -7,7 +7,8 @@ Guidance for anyone — person or coding agent — changing this repository.
 TUDU is an open source to-do list for managing work tasks. It is a single
 Next.js web app that runs locally in Docker. By default tasks live in
 `data/tasks.json`; setting `DATABASE_URL` stores tasks in PostgreSQL instead.
-Project names stay in `data/projects.json` in either mode. The app is AI native:
+Project names stay in `data/projects.json` and app preferences in
+`data/settings.json` in either mode. The app is AI native:
 a note typed in plain language can be
 turned into structured tasks. The interface is in English, with Portuguese
 (pt-BR) as a second language.
@@ -50,12 +51,15 @@ src/
     api/tasks/            GET, POST            /api/tasks
     api/tasks/[id]/       PATCH, DELETE        /api/tasks/:id
     api/ai/capture/       GET status, POST     /api/ai/capture
+    api/settings/         GET, PATCH           /api/settings
+    settings/page.tsx     Settings route
   features/
     tasks/
       schema.ts           Zod schemas and the Task types (shared by client and server)
       selectors.ts        Pure functions: sorting, filtering, counts
       api.ts              Browser client for the tasks endpoints
       use-tasks.ts        Hook that owns the task list and optimistic updates
+      use-projects.ts     Project registry state and task-assignment callback
       components/         Board (composition), Sidebar, Composer, TaskList, TaskRow, TaskChecklist, ProjectManager
       server/
         repository.ts     The data contract; picks the store from DATABASE_URL
@@ -65,6 +69,11 @@ src/
     projects/
       schema.ts, api.ts   Project contract and browser client
       server/repository.ts Server-side project registry (data/projects.json)
+    settings/
+      schema.ts, api.ts   Validated preferences and browser client
+      use-settings.ts     Draft preferences, saving and error recovery
+      components/         SettingsPanel
+      server/repository.ts Atomic settings.json persistence
     capture/
       api.ts              Browser client for the capture endpoint
       server/capture.ts   Prompt, output schema and the model call
@@ -72,13 +81,14 @@ src/
     locales/en.ts         Source dictionary; its shape is the Dictionary type
     locales/pt-BR.ts      Must satisfy Dictionary
     index.ts              Locales, dictionaries, errorMessage()
-    use-locale.ts         Hook: current language, persisted in localStorage
+    use-locale.ts         Hook: dictionary and document language from server preferences
   lib/                    Feature-agnostic helpers (dates, http, use-today)
 e2e/                      End-to-end tests, one spec per component, plus support.ts
 design.md                 The design system (source of truth for the UI)
 docker/postgres-init.sql  Creates the tudu_test database in the Postgres container
 data/tasks.json           Runtime task data, git-ignored
 data/projects.json        Project registry in both storage modes, git-ignored
+data/settings.json        App preferences in both storage modes, git-ignored
 ```
 
 Imports use the `@/` alias, which points at `src/`.
@@ -159,7 +169,8 @@ run in a Node environment.
 
 Run with `npm run test:e2e` (`npm run test:e2e:ui` to watch and debug). Specs
 live in `e2e/`, one file per component: `board`, `composer`, `sidebar`,
-`task-list`, `task-row`, `task-checklist`, `project-manager`. Playwright builds the app and serves it on port 3100
+`task-list`, `task-row`, `task-checklist`, `project-manager`, `settings-panel`.
+Playwright builds the app and serves it on port 3100
 with a throwaway data folder, so it never touches `./data` or a dev server on
 port 3000. First-time setup: `npx playwright install chromium`.
 
@@ -186,7 +197,8 @@ port 3000. First-time setup: `npx playwright install chromium`.
 - JSON in, JSON out. Success bodies are wrapped: `{ "tasks": [...] }` or `{ "task": {...} }`.
 - Errors are `{ "error": "<code>" }` with a matching HTTP status. The code is a
   stable machine string (`invalid_task`, `not_found`, `ai_disabled`, `ai_auth`,
-  `ai_busy`, `ai_failed`, `no_tasks`), never a sentence.
+  `ai_busy`, `ai_failed`, `no_tasks`, `invalid_note`, `invalid_project`,
+  `duplicate_project`, `invalid_settings`), never a sentence.
 - User-facing error text lives in the `errors` section of the dictionaries,
   keyed by that code. A new code needs an entry in both languages; unknown codes
   fall back to `errors.generic`.
@@ -203,7 +215,7 @@ port 3000. First-time setup: `npx playwright install chromium`.
 - Dates are formatted with `Intl` through `src/lib/dates.ts`, never by hand.
 - Task content is the user's own text and is never translated.
 - To add a language: create `locales/<code>.ts`, then register it in `LOCALES`
-  and `dictionaries` in `src/i18n/index.ts`, and add its label in `Sidebar.tsx`.
+  and `dictionaries` in `src/i18n/index.ts`, and add its language option in `SettingsPanel.tsx`.
 
 ## Design system
 

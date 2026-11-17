@@ -8,7 +8,7 @@ due dates and tags.
 - **No database needed** — tasks live in a single JSON file (`data/tasks.json`),
   or in PostgreSQL if you prefer
 - **AI native** — optional capture box that turns notes into structured tasks
-- **English and Portuguese** — English by default, switch with the EN / PT toggle
+- **English and Portuguese** — English by default, choose the language in Settings
 - **Docker** for local development
 
 ## Run with Docker
@@ -48,7 +48,8 @@ table on first start, and a brand-new database begins with the tasks already in
 `data/tasks.json` (the file is left untouched). Remove `DATABASE_URL` to go back
 to the file.
 
-Project names are stored in `data/projects.json` in both storage modes. Task
+Project names are stored in `data/projects.json` and app preferences in
+`data/settings.json` in both storage modes. Task
 assignments use the selected task backend. Keep the whole `data/` directory
 when backing up an installation. Deleting a project preserves its tasks and
 removes their assignments. AI capture can select an existing project when a
@@ -113,11 +114,24 @@ action into steps, AI capture can keep those steps as a checklist on the task.
 | Manage projects | Open **Manage projects** to create, rename or delete a project |
 | Assign a project | Choose a project or **No project** on a task row |
 | Filter by project | Click its name in the sidebar |
+| Change preferences | Open **Settings** from the sidebar, choose values, then **Save settings** |
 
 **Today** includes tasks picked for the current local calendar day, plus tasks
 due today or overdue. Its badge counts open tasks. Selections are saved with the
 task and expire when the day changes; they never change the due date. Completed
 tasks stay in the collapsed **Done** section when they match the selected view.
+
+## Settings
+
+Choose English or Portuguese, the default priority for new tasks, the initial
+view (All tasks or Today), and language-based or ISO (`YYYY-MM-DD`) dates.
+Preferences are shared by browsers using this installation and saved on the
+server. They take effect when saved and when you return to the task board;
+browser-only language settings are no longer used.
+
+The default priority applies to title-only API requests and is supplied to AI
+capture. Explicit task priorities are preserved. The AI section shows whether
+capture is configured; provider configuration remains on the server.
 
 ## Project layout
 

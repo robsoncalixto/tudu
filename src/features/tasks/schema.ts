@@ -48,6 +48,11 @@ export const taskPatchSchema = z
 export type TaskInput = z.infer<typeof taskInputSchema>;
 export type TaskPatch = z.infer<typeof taskPatchSchema>;
 
+export function taskCreationSchema(defaultPriority: Priority) {
+  const input = taskInputSchema.extend({ priority: z.enum(PRIORITIES).default(defaultPriority) });
+  return z.union([input, z.array(input).min(1).max(50)]);
+}
+
 export const taskSchema = taskInputSchema.extend({
   id: z.string(),
   done: z.boolean(),

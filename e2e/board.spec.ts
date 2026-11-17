@@ -1,4 +1,4 @@
-import { expect, listTasks, openApp, openSection, doneSection, row, seed, test, TODAY, TOMORROW } from "./support";
+import { expect, listTasks, openApp, openSection, doneSection, row, seed, test, TODAY, TOMORROW, setLanguage } from "./support";
 
 test.describe("Board", () => {
   test("shows the app name, today's date and an empty state", async ({ page }) => {
@@ -93,7 +93,7 @@ for (const language of [
       await seed(request, [{ title: "A longer task title for the daily plan", due: TODAY, tags: ["mobile"] }]);
       await page.setViewportSize({ width, height: 812 });
       await openApp(page);
-      await page.getByRole("button", { name: language.code, exact: true }).click();
+      await setLanguage(page, language.code);
       await page.getByRole("complementary").getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
       const task = row(page, "A longer task title");
       const control = task.getByRole("button", { name: language.add });

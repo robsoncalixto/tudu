@@ -1,6 +1,7 @@
 import { expect, test as base, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 import type { Step } from "../src/features/tasks/schema";
 import type { Project } from "../src/features/projects/schema";
+import { DEFAULT_SETTINGS, type Settings, type SettingsPatch } from "../src/features/settings/schema";
 
 /** The day every test runs on: Tuesday, November 17, 2026 (local time). */
 export const TODAY = "2026-11-17";
@@ -58,6 +59,7 @@ export async function seed(request: APIRequestContext, tasks: SeedTask[]): Promi
 }
 
 async function reset(request: APIRequestContext) {
+  await saveSettings(request, DEFAULT_SETTINGS);
   for (const task of await listTasks(request)) {
     await request.delete(`/api/tasks/${task.id}`);
   }
@@ -65,6 +67,26 @@ async function reset(request: APIRequestContext) {
     const response = await request.delete(`/api/projects/${project.id}`);
     expect(response.status()).toBe(204);
   }
+}
+
+export async function saveSettings(request: APIRequestContext, patch: SettingsPatch): Promise<Settings> {
+  const response = await request.patch("/api/settings", { data: patch });
+  expect(response.ok()).toBe(true);
+  return (await response.json()).settings;
+}
+
+export async function listSettings(request: APIRequestContext): Promise<Settings> {
+  const response = await request.get("/api/settings");
+  expect(response.ok()).toBe(true);
+  return (await response.json()).settings;
+}
+
+export async function setLanguage(page: Page, code: string) {
+  const locale = code === "PT" || code === "pt-BR" ? "pt-BR" : "en";
+  await saveSettings(page.request, { locale });
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", locale);
+  await expect(page.locator("#open-heading")).toBeVisible();
 }
 
 /** Each test starts with no tasks and a fixed clock. */

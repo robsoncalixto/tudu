@@ -48,7 +48,7 @@ export function TaskChecklist({ steps, t, onChange }: Props) {
                     onKeyDown={(event) => { if (event.key === "Escape") setEditing(null); }}
                   />
                   <button type="submit" className="chip" disabled={!editing.title.trim()}>{t.saveStep}</button>
-                  <button type="button" className="chip" onClick={() => setEditing(null)}>{t.cancelStep}</button>
+                  <button type="button" className="chip" onClick={() => setEditing(null)}>{t.cancel}</button>
                 </form>
               ) : (
                 <>
@@ -61,7 +61,7 @@ export function TaskChecklist({ steps, t, onChange }: Props) {
                   <button
                     type="button" className="chip" aria-label={t.renameStep(step.title)}
                     onClick={() => setEditing({ id: step.id, title: step.title })}
-                  >{t.editStep}</button>
+                  >{t.edit}</button>
                   <button
                     type="button" className="chip" aria-label={t.deleteStep(step.title)}
                     onClick={() => { void save(steps.filter((item) => item.id !== step.id)); }}

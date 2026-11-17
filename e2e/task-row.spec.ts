@@ -1,4 +1,4 @@
-import { expect, listTasks, openApp, openSection, doneSection, row, seed, seedProjects, test, TODAY, YESTERDAY } from "./support";
+import { expect, listTasks, openApp, openSection, doneSection, row, seed, seedProjects, test, TODAY, YESTERDAY, setLanguage } from "./support";
 
 test.describe("TaskRow", () => {
   test("shows title, notes, due date, priority and tags", async ({ page, request }) => {
@@ -156,7 +156,7 @@ for (const language of [
   test(`adds and removes a persisted daily selection in ${language.code}`, async ({ page, request }) => {
     await seed(request, [{ title: "Daily pick" }]);
     await openApp(page);
-    await page.getByRole("button", { name: language.code, exact: true }).click();
+    await setLanguage(page, language.code);
     await row(page, "Daily pick").getByRole("button", { name: language.add, exact: true }).click();
     await expect.poll(async () => (await listTasks(request))[0].plannedFor).toBe(TODAY);
     expect((await listTasks(request))[0].due).toBeNull();
@@ -178,7 +178,7 @@ for (const language of [
       { title: "Late pick", due: YESTERDAY, plannedFor: TODAY },
     ]);
     await openApp(page);
-    await page.getByRole("button", { name: language.code, exact: true }).click();
+    await setLanguage(page, language.code);
     const todayButton = page.getByRole("complementary").getByRole("button", { name: new RegExp(`^${language.today}`) });
     await todayButton.click();
     for (const title of ["Deadline pick", "Late pick"]) {
@@ -200,7 +200,7 @@ for (const language of [
   test(`recovers from failed selection and removal in ${language.code}`, async ({ page, request }) => {
     await seed(request, [{ title: "Retry pick" }]);
     await openApp(page);
-    await page.getByRole("button", { name: language.code, exact: true }).click();
+    await setLanguage(page, language.code);
     const todayButton = page.getByRole("complementary").getByRole("button", { name: new RegExp(`^${language.today}`) });
     await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
     await row(page, "Retry pick").getByRole("button", { name: language.add }).click();
@@ -232,7 +232,7 @@ for (const language of [
     const projects = await seedProjects(request, ["Acme", "Beta"]);
     await seed(request, [{ title: "Assignable task" }]);
     await openApp(page);
-    await page.getByRole("complementary").getByRole("button", { name: language.code, exact: true }).click();
+    await setLanguage(page, language.code);
     const select = row(page, "Assignable task").getByRole("combobox", { name: language.project, exact: true });
     await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
     await select.selectOption(projects[0].id);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { dayDiff, dueLabel } from "@/lib/dates";
+import { dayDiff, dueLabel, type DateFormat } from "@/lib/dates";
 import type { Dictionary, Locale } from "@/i18n";
 import { PRIORITIES, type Task, type TaskPatch } from "../schema";
 import { TaskChecklist } from "./TaskChecklist";
@@ -13,13 +13,14 @@ interface Props {
   fresh?: boolean;
   today: string;
   locale: Locale;
+  dateFormat: DateFormat;
   t: Dictionary;
   onPatch: (id: string, patch: TaskPatch) => Promise<boolean>;
   onDelete: (id: string) => void;
   onTag: (tag: string) => void;
 }
 
-export function TaskRow({ task, projects, fresh, today, locale, t, onPatch, onDelete, onTag }: Props) {
+export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, onPatch, onDelete, onTag }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.title);
 
@@ -107,7 +108,7 @@ export function TaskRow({ task, projects, fresh, today, locale, t, onPatch, onDe
 
       <label className={`chip due${overdue ? " is-overdue" : ""}${task.due ? "" : " is-empty"}`}>
         <span>
-          {task.due ? dueLabel(task.due, today, locale, t) : t.noDate}
+          {task.due ? dueLabel(task.due, today, locale, t, dateFormat) : t.noDate}
           {overdue && ` · ${t.overdue}`}
         </span>
         <input
