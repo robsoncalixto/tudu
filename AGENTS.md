@@ -39,6 +39,7 @@ the app and exercise the change in both languages.
 - Next.js 16 (App Router), React 19, TypeScript in strict mode
 - Zod for every schema: API input, stored tasks, AI output
 - `@anthropic-ai/sdk` for the AI capture
+- `@modelcontextprotocol/server` for the opt-in local HTTP MCP endpoint
 - Vitest for unit tests, Playwright for end-to-end tests
 - Plain CSS with design tokens (no CSS framework, no component library)
 - Node 22 in Docker
@@ -55,6 +56,7 @@ src/
     settings/page.tsx     Settings route
     work-log/page.tsx     Read-only daily work log
     api/work-log/summary/ POST optional AI summary from saved completed tasks
+    api/mcp/              Authenticated Streamable HTTP MCP endpoint
   features/
     tasks/
       schema.ts           Zod schemas and the Task types (shared by client and server)
@@ -96,6 +98,12 @@ src/
     capture/
       api.ts              Browser client for the capture endpoint
       server/capture.ts   Prompt, output schema and the model call
+    mcp/
+      schema.ts           Tool inputs derived from task schemas
+      selectors.ts        Pure filtering and pagination
+      server/tools.ts     Tool execution through injected repository operations
+      server/handler.ts   Official SDK tool registration and HTTP transport
+      server/access.ts    Opt-in bearer token and loopback Host/Origin checks
   i18n/
     locales/en.ts         Source dictionary; its shape is the Dictionary type
     locales/pt-BR.ts      Must satisfy Dictionary
@@ -215,16 +223,27 @@ port 3000. First-time setup: `npx playwright install chromium`.
 - A feature with visible text is checked in Portuguese as well as English.
 - Tests never call the real AI. Mock `/api/ai/capture` with `page.route()`, as
   `composer.spec.ts` does.
+- `mcp.spec.ts` uses the official MCP client against the same isolated app and
+  asserts saved state through the REST API. It covers protocol behavior rather
+  than a UI; MCP descriptions are English and task content is never translated.
 
 ## API conventions
 
 - JSON in, JSON out. Success bodies are wrapped: `{ "tasks": [...] }` or `{ "task": {...} }`.
   Task PATCH also includes `nextTask` (the linked next occurrence or `null`).
+- `/api/mcp` follows MCP JSON-RPC instead. Tool results include text JSON and
+  `structuredContent`; tool failures set `isError` with a stable error code.
+  The app route injects existing server functions, including saved defaults,
+  project validation and repeat handling. MCP code never reads storage directly.
+  It is disabled without a valid server-only `TUDU_MCP_TOKEN`; never expose that
+  token to browser code. Delete requires `confirm: true` and a description
+  instructing the client to obtain explicit human confirmation first.
 - Errors are `{ "error": "<code>" }` with a matching HTTP status. The code is a
   stable machine string (`invalid_task`, `not_found`, `ai_disabled`, `ai_auth`,
   `ai_busy`, `ai_failed`, `no_tasks`, `invalid_note`, `invalid_project`,
   `duplicate_project`, `invalid_settings`, `invalid_repeat`, `invalid_quick_task`, `invalid_work_log`,
-  `no_completed_tasks`, `work_log_too_large`, `work_log_ai_failed`, `copy_failed`), never a sentence.
+  `no_completed_tasks`, `work_log_too_large`, `work_log_ai_failed`, `copy_failed`,
+  `mcp_disabled`, `mcp_unauthorized`), never a sentence.
 - User-facing error text lives in the `errors` section of the dictionaries,
   keyed by that code. A new code needs an entry in both languages; unknown codes
   fall back to `errors.generic`.
