@@ -4,6 +4,12 @@ import { parseQuickTask } from "./parser";
 const TODAY = "2026-11-17";
 
 describe("quick-add shortcuts", () => {
+  it.each([
+    "Revisar a segunda versão do relatório", "Repetir a terça revisão", "Revisar a quarta tentativa",
+    "Pagar a quinta parcela", "Preparar a sexta entrega",
+  ])("preserves ordinary Portuguese ordinals in %s", (title) => {
+    expect(parseQuickTask(title, TODAY)).toMatchObject({ title, tags: [], due: null });
+  });
   it("removes recognized tokens from the title and returns validated task fields", () => {
     expect(parseQuickTask("Fix login #bug !high tomorrow", TODAY)).toEqual({
       title: "Fix login", notes: "", priority: "high", due: "2026-11-18", tags: ["bug"],
@@ -44,11 +50,11 @@ describe("quick-add shortcuts", () => {
 describe("quick-add dates", () => {
   it.each([
     ["today", TODAY], ["HOJE", TODAY], ["tomorrow", "2026-11-18"], ["amanhã", "2026-11-18"], ["AMANHA", "2026-11-18"],
-    ["Monday", "2026-11-23"], ["segunda-feira", "2026-11-23"], ["segunda", "2026-11-23"],
-    ["Tuesday", "2026-11-24"], ["terça-feira", "2026-11-24"], ["terca", "2026-11-24"],
-    ["Wednesday", "2026-11-18"], ["quarta-feira", "2026-11-18"], ["quarta", "2026-11-18"],
-    ["Thursday", "2026-11-19"], ["quinta-feira", "2026-11-19"], ["quinta", "2026-11-19"],
-    ["Friday", "2026-11-20"], ["sexta-feira", "2026-11-20"], ["sexta", "2026-11-20"],
+    ["Monday", "2026-11-23"], ["segunda-feira", "2026-11-23"],
+    ["Tuesday", "2026-11-24"], ["terça-feira", "2026-11-24"], ["TERCA-FEIRA", "2026-11-24"],
+    ["Wednesday", "2026-11-18"], ["quarta-feira", "2026-11-18"],
+    ["Thursday", "2026-11-19"], ["quinta-feira", "2026-11-19"],
+    ["Friday", "2026-11-20"], ["sexta-feira", "2026-11-20"],
     ["Saturday", "2026-11-21"], ["sábado", "2026-11-21"], ["sabado", "2026-11-21"],
     ["Sunday", "2026-11-22"], ["domingo", "2026-11-22"], ["2028-02-29", "2028-02-29"],
   ])("resolves %s to %s without reading the system clock", (token, due) => {

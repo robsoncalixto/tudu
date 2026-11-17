@@ -132,8 +132,10 @@ priority and tomorrow's due date. Tags are lowercase and deduplicated.
 priority token, the server applies the saved default priority at save time.
 
 Dates accept `today` / `hoje`, `tomorrow` / `amanhã` (also `amanha`), English
-weekday names, Portuguese weekdays (`segunda-feira`, `terça-feira`, …; short
-forms such as `segunda` and `terça` also work), and valid `YYYY-MM-DD` dates.
+weekday names, Portuguese weekdays in their full forms (`segunda-feira`,
+`terça-feira`, …, `sábado`, `domingo`), and valid `YYYY-MM-DD` dates.
+Short forms such as `segunda`, `terça` and `quarta` stay as ordinary title text,
+so phrases such as `segunda versão` or `quarta tentativa` are preserved.
 Weekdays mean their next occurrence; use `today` or `hoje` for the current day.
 The last priority or date token wins. Dates use the browser's current day,
 independently of the server's time zone.

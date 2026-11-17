@@ -6,7 +6,7 @@ export const en = {
   creating: "Creating…",
   composerHint: "Enter adds one task · {mod}+Enter turns a note into several",
   shortSyntaxTitle: "Quick-add shortcuts",
-  shortSyntaxHint: "Use separate words: #tag, !low / !medium / !high, today, tomorrow, a weekday, or YYYY-MM-DD. Prefix a shortcut with \\ to keep it in the title. For example: Fix login #bug !high tomorrow.",
+  shortSyntaxHint: "Use separate words: #tag, !low / !medium / !high, today, tomorrow, Monday / segunda-feira, or YYYY-MM-DD. Portuguese weekdays use the full -feira form, sábado or domingo. Prefix a shortcut with \\ to keep it in the title. For example: Fix login #bug !high tomorrow.",
   aiOff: "AI capture is off. Set ANTHROPIC_API_KEY in .env to turn it on.",
   open: "Open",
   allTasks: "All tasks",

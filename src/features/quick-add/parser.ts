@@ -4,11 +4,11 @@ import { quickAddInputSchema, quickTaskSchema, type QuickTask } from "./schema";
 
 const WEEKDAYS: Record<string, number> = {
   sunday: 0, domingo: 0,
-  monday: 1, segunda: 1, "segunda-feira": 1,
-  tuesday: 2, terca: 2, "terca-feira": 2,
-  wednesday: 3, quarta: 3, "quarta-feira": 3,
-  thursday: 4, quinta: 4, "quinta-feira": 4,
-  friday: 5, sexta: 5, "sexta-feira": 5,
+  monday: 1, "segunda-feira": 1,
+  tuesday: 2, "terca-feira": 2,
+  wednesday: 3, "quarta-feira": 3,
+  thursday: 4, "quinta-feira": 4,
+  friday: 5, "sexta-feira": 5,
   saturday: 6, sabado: 6,
 };
 const RELATIVE_DAYS: Record<string, number> = { today: 0, hoje: 0, tomorrow: 1, amanha: 1 };

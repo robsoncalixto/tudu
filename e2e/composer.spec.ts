@@ -1,6 +1,16 @@
 import { addTask, composer, expect, listTasks, openApp, openSection, row, rowTitles, saveSettings, seedProjects, test, TODAY, setLanguage } from "./support";
 
 test.describe("Composer", () => {
+  test("Portuguese ordinals stay in ordinary task titles without adding a due date", async ({ page, request }) => {
+    await openApp(page); await setLanguage(page, "pt-BR");
+    for (const title of ["Revisar a segunda versão do relatório", "Revisar a quarta tentativa"]) {
+      await composer(page).fill(title); await composer(page).press("Enter");
+      await expect(row(openSection(page), title)).toBeVisible();
+    }
+    expect((await listTasks(request)).map(({ title, due }) => ({ title, due }))).toEqual([
+      { title: "Revisar a segunda versão do relatório", due: null }, { title: "Revisar a quarta tentativa", due: null },
+    ]);
+  });
   test("adds a task with Enter and clears the field", async ({ page, request }) => {
     await openApp(page);
     await composer(page).fill("Call the supplier");

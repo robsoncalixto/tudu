@@ -8,7 +8,7 @@ export const ptBR: Dictionary = {
   creating: "Criando…",
   composerHint: "Enter adiciona uma tarefa · {mod}+Enter transforma a anotação em várias",
   shortSyntaxTitle: "Atalhos para adicionar tarefas",
-  shortSyntaxHint: "Use palavras separadas: #etiqueta, !low / !medium / !high, hoje, amanhã, um dia da semana ou YYYY-MM-DD. Coloque \\ antes de um atalho para mantê-lo no título. Por exemplo: Corrigir login #bug !high amanhã.",
+  shortSyntaxHint: "Use palavras separadas: #etiqueta, !low / !medium / !high, hoje, amanhã, segunda-feira ou YYYY-MM-DD. Dias da semana usam a forma completa com -feira, sábado ou domingo; segunda e quarta continuam sendo texto. Coloque \\ antes de um atalho para mantê-lo no título. Por exemplo: Corrigir login #bug !high amanhã.",
   aiOff: "A captura com IA está desligada. Defina ANTHROPIC_API_KEY no .env para ativá-la.",
   open: "Abertas",
   allTasks: "Todas as tarefas",
