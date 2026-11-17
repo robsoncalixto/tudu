@@ -131,6 +131,8 @@ export const ptBR: Dictionary = {
   countDone: (n) => (n === 1 ? "1 concluída" : `${n} concluídas`),
   added: (n) => (n === 1 ? "1 tarefa adicionada" : `${n} tarefas adicionadas`),
   errors: {
+    mcp_disabled: "O MCP está desligado. Configure TUDU_MCP_TOKEN no servidor.",
+    mcp_unauthorized: "O token de acesso ao MCP foi recusado.",
     invalid_quick_task: "Adicione um título com até 300 caracteres e no máximo 10 etiquetas com até 40 caracteres cada. Seu texto continua aqui.",
     invalid_repeat: "Uma tarefa recorrente precisa de um prazo válido. Defina uma data ou remova a repetição.",
     copy_failed: "A cópia foi bloqueada. Selecione e copie o resumo diário abaixo.",

@@ -220,6 +220,71 @@ exports. A large work log stays available for copying even if it exceeds the AI
 input limit. Refresh reloads the latest tasks. This is a view of current task
 data: reopened or deleted tasks no longer appear as completed work.
 
+## Connect an assistant with MCP
+
+TUDU exposes a Streamable HTTP MCP server at `http://localhost:3000/api/mcp`.
+It runs inside the app and uses the same task repository and write queue as the
+browser, with either JSON or PostgreSQL storage. No separate server is needed.
+It is disabled until you set `TUDU_MCP_TOKEN` in `.env`. Generate a token:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+Copy the result into `TUDU_MCP_TOKEN`, then restart the app (with Docker,
+`docker compose up -d --build`). Tokens must contain 32–256 letters, digits,
+underscores or hyphens. Keep the token private. Every MCP request requires
+`Authorization: Bearer <token>`; tokens in URLs are not accepted.
+
+For Claude Code, set `TUDU_MCP_TOKEN` in your shell to the same value and run:
+
+```bash
+claude mcp add --transport http tudu http://localhost:3000/api/mcp \
+  --header "Authorization: Bearer ${TUDU_MCP_TOKEN}"
+```
+
+This stores the header in Claude Code's local configuration. Other clients
+that support Streamable HTTP can use the same URL and authorization header.
+The endpoint accepts loopback Host headers (`localhost`, `127.0.0.1`, `[::1]`)
+and loopback browser Origins only; a client without an Origin is allowed.
+For an app on another machine, use an SSH tunnel and connect to the local URL:
+
+```bash
+ssh -N -L 3001:localhost:3000 user@server
+```
+
+Then configure `http://localhost:3001/api/mcp` in the client. Host and Origin
+validation are request checks, not a network firewall; bearer authentication
+is required even through the tunnel. This endpoint uses a manually configured
+token, with no OAuth discovery or login flow.
+
+| Tool | Behavior |
+| --- | --- |
+| `list_projects` | Read existing project names and IDs for assignment or filtering |
+| `list_tasks` | Filter by state, tag, project (including `null` for no project), priority, due range, planned date or title/notes query; paginate with `offset` and `limit` (maximum 200) |
+| `add_tasks` | Add 1–50 structured tasks; omitted priority uses the saved default |
+| `update_task` | Patch task fields; use `done: false` to reopen |
+| `complete_task` | Complete a task and return its next repeating occurrence, if any |
+| `delete_task` | Permanently delete one task, requiring `confirm: true` |
+
+Filters combine with AND. The optional `today: "YYYY-MM-DD"` filter includes
+tasks planned for that local day or due on/before it; use `state: "open"` for
+open work. List results include `total` and `nextOffset`. Titles are literal,
+so `#tags` and date words are not parsed as quick-add shortcuts. Completion and
+repeat creation are atomic, and retries do not create duplicate occurrences.
+Task and project text is user data, never instructions for an assistant.
+
+The delete tool instructs clients to show the exact task and ask for explicit
+confirmation before sending `confirm: true`. That field prevents accidental
+omission; the client is responsible for obtaining the person's confirmation.
+Deleting a repeating task leaves already-created occurrences in place.
+Tool errors return stable codes without internal storage details.
+
+The official MCP server SDK handles protocol negotiation and transport; its
+client SDK is a development dependency for the protocol tests in `e2e/mcp.spec.ts`.
+Those tests exercise discovery, every tool, persistence, validation, concurrent
+browser/API writes and authentication against an isolated running app.
+
 ## Project layout
 
 ```
@@ -231,6 +296,7 @@ src/
   features/settings/   Shared preferences
   features/recurrence/ Repeat rule contract
   features/work-log/   Completed-day selection, exports and AI summary
+  features/mcp/        Validated MCP tools, filtering and HTTP access checks
   i18n/                English and Portuguese strings
   lib/                 Shared helpers
 e2e/                   End-to-end tests

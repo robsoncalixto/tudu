@@ -129,6 +129,8 @@ export const en = {
   countDone: (n: number) => `${n} done`,
   added: (n: number) => (n === 1 ? "1 task added" : `${n} tasks added`),
   errors: {
+    mcp_disabled: "MCP is off. Configure TUDU_MCP_TOKEN on the server.",
+    mcp_unauthorized: "The MCP access token was rejected.",
     invalid_quick_task: "Add a title of up to 300 characters, with at most 10 tags of up to 40 characters each. Your text is still here.",
     invalid_repeat: "A repeating task needs a valid due date. Set a date or remove its repeat rule.",
     copy_failed: "Copying was blocked. Select and copy the work log below.",
