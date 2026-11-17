@@ -35,7 +35,8 @@ export function Sidebar({ t, openCount, todayCount, tagCounts, projectCounts, fi
           label={t.today} count={todayCount} active={filter.kind === "today"}
           onClick={() => onFilter({ kind: "today" })}
         />
-        <a href="/work-log" className="nav-item nav-link">{t.workLog}</a>
+        <a href="/work-log" className="nav-item nav-link nav-secondary">{t.workLog}</a>
+        <a href="/agent" className="nav-item nav-link nav-secondary">{t.agent}</a>
         {projectCounts.length > 0 && <p className="nav-label">{t.projects}</p>}
         {projectCounts.map(([project, count]) => (
           <NavItem key={project.id} label={project.name} count={count} ariaLabel={`${t.project}: ${project.name}, ${t.countOpen(count)}`}
@@ -52,6 +53,20 @@ export function Sidebar({ t, openCount, todayCount, tagCounts, projectCounts, fi
       </nav>
 
       <div className="sidebar-actions">
+        <details className="more-views"
+          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault(); event.stopPropagation(); event.currentTarget.open = false;
+              event.currentTarget.querySelector("summary")?.focus();
+            }
+          }}>
+          <summary className="nav-item" aria-label={t.moreViews} title={t.moreViews}>⋯</summary>
+          <div className="more-view-links">
+            <a href="/work-log" className="nav-item nav-link">{t.workLog}</a>
+            <a href="/agent" className="nav-item nav-link">{t.agent}</a>
+          </div>
+        </details>
         <a href="/settings" className="nav-item nav-link">{t.settings}</a>
         <button type="button" className="nav-item shortcut-help" aria-label={t.keyboardShortcuts} title={t.keyboardShortcuts} onClick={onShortcuts}>?</button>
       </div>

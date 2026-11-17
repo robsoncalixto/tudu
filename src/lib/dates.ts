@@ -3,6 +3,10 @@ import type { Dictionary, Locale } from "@/i18n";
 export const DATE_FORMATS = ["locale", "iso"] as const;
 export type DateFormat = (typeof DATE_FORMATS)[number];
 
+export function formatTimestamp(instant: string, locale: Locale, timeZone?: string): string {
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone }).format(new Date(instant));
+}
+
 export function weekdayName(day: number, locale: Locale): string {
   return new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" })
     .format(new Date(Date.UTC(2026, 10, 15 + day, 12)));

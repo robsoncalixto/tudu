@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { dictionaries } from "@/i18n";
-import { dateInTimeZone, dayDiff, dueLabel, longDate, toISODate, weekdayName } from "./dates";
+import { dateInTimeZone, dayDiff, dueLabel, formatTimestamp, longDate, toISODate, weekdayName } from "./dates";
+
+it("formats decision timestamps in the requested language and time zone", () => {
+  expect(formatTimestamp("2026-11-17T12:30:00Z", "en", "UTC")).toContain("Nov 17, 2026");
+  expect(formatTimestamp("2026-11-17T12:30:00Z", "pt-BR", "America/Sao_Paulo")).toContain("09:30");
+});
 
 it("finds a timestamp's calendar date in the requested time zone", () => {
   expect(dateInTimeZone("2026-11-17T02:59:59Z", "America/Sao_Paulo")).toBe("2026-11-16");

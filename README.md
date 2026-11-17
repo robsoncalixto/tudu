@@ -49,7 +49,8 @@ table on first start, and a brand-new database begins with the tasks already in
 to the file.
 
 Project names are stored in `data/projects.json` and app preferences in
-`data/settings.json` in both storage modes. Task
+`data/settings.json` in both storage modes. Assistant proposals and their
+decision history live in `data/proposals.json` in both modes too. Task
 assignments use the selected task backend. Keep the whole `data/` directory
 when backing up an installation. Deleting a project preserves its tasks and
 removes their assignments. AI capture can select an existing project when a
@@ -142,6 +143,7 @@ action into steps, AI capture can keep those steps as a checklist on the task.
 | Change preferences | Open **Settings** from the sidebar, choose values, then **Save settings** |
 | Repeat a task | Open **Repeat** on a task, choose a schedule and due date, then **Save repeat rule** |
 | Report completed work | Open **Work log**, choose a day and grouping, then copy plain text or Markdown |
+| Review suggestions | Open **Assistant**, ask for changes, then edit and accept or reject each proposal |
 
 **Today** includes tasks picked for the current local calendar day, plus tasks
 due today or overdue. Its badge counts open tasks. Selections are saved with the
@@ -248,6 +250,55 @@ exports. A large work log stays available for copying even if it exceeds the AI
 input limit. Refresh reloads the latest tasks. This is a view of current task
 data: reopened or deleted tasks no longer appear as completed work.
 
+## Plan with the assistant
+
+Open **Assistant** from the sidebar (on phones, use **More views** / **⋯**).
+Describe new work or ask for priorities,
+due dates, checklist steps, project organization or a plan for the day. The
+selected provider receives the note plus saved open tasks and project names.
+The assistant generates pending proposals; it has no tools that execute changes.
+Task and project text stays in its original language. New explanations use
+the interface language at request time; recorded explanations are preserved.
+
+Review each proposal, edit its fields and deliberately activate **Accept and
+save**, or choose **Reject proposal**. Enter while editing a field does not
+approve it. Related changes to one task are grouped into one proposal so they
+can be saved together. Planning a day does not change the due date. Existing
+checklist progress is retained when adding steps. To use a newly suggested
+project, approve the project first, then select it while reviewing a task.
+
+The decision history keeps the original suggestion, the exact edited values
+that were approved, rejected proposals, the request, provider/model and times.
+It survives browser reloads and app restarts. Pending proposals can still be
+reviewed if the provider key is removed. History is separate from current task
+state: later manual edits or deletion do not rewrite a recorded decision.
+Back up `data/proposals.json` along with the other data files and the task
+database when using PostgreSQL.
+
+Approval revalidates fields and project assignments. If a task or project has
+changed since the suggestion, its newer version is preserved; reject the stale
+proposal and request a fresh one. Duplicate approval requests return the saved
+decision. New task/project IDs are assigned by the server and cannot be
+redirected through an edited proposal.
+
+If a write cannot be confirmed, the proposal shows **Save not confirmed**.
+**Check save status** only reads the target and records success when its state
+matches the approved change; it never repeats a mutation. Review your tasks
+and projects before **Dismiss unresolved save**. Dismissing records an
+unconfirmed outcome and does not undo any saved change. You can then request
+a new proposal if needed.
+
+Requests accept up to 8,000 characters and generate up to 20 suggestions.
+Saved open-task/project context is limited to 60,000 characters rather than
+silently dropping data. Invalid, invented-target or conflicting output is
+rejected before proposals are saved. Normal task management remains available
+without AI.
+
+For a trusted OpenAI-compatible server gateway, an administrator may set
+`OPENAI_BASE_URL` on the server. The selected OpenAI credential is sent to that
+endpoint. It is never a browser preference. Browser tests use this option with
+a loopback-only synthetic provider and a dummy key; no test makes a real AI call.
+
 ## Connect an assistant with MCP
 
 TUDU exposes a Streamable HTTP MCP server at `http://localhost:3000/api/mcp`.
@@ -327,6 +378,7 @@ src/
   features/tasks/      Task schema, storage, hooks and components
   features/capture/    Turning a note into tasks with AI
   features/ai/         Provider selection contract and shared structured generation
+  features/agent/      Reviewed proposals, explicit decisions and durable audit history
   features/projects/   Project registry
   features/settings/   Shared preferences
   features/recurrence/ Repeat rule contract

@@ -43,7 +43,12 @@ export function createJsonStore(dataDir: string): TaskStore {
 
     insert: (created) =>
       locked(async () => {
-        await write([...(await read()), ...created]);
+        const tasks = await read();
+        const ids = new Set(tasks.map((task) => task.id));
+        for (const task of created) {
+          if (!ids.has(task.id)) { tasks.push(task); ids.add(task.id); }
+        }
+        await write(tasks);
       }),
 
     modify: (id, change) =>

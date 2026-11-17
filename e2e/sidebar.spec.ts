@@ -1,8 +1,8 @@
 import { expect, openApp, openSection, row, rowTitles, seed, seedProjects, sidebar, test, setLanguage } from "./support";
 
 for (const language of [
-  { code: "en", all: "All tasks", today: "Today", settings: "Settings" },
-  { code: "pt-BR", all: "Todas as tarefas", today: "Hoje", settings: "Configurações" },
+  { code: "en", all: "All tasks", today: "Today", settings: "Settings", agent: "Assistant", workLog: "Work log", more: "More views" },
+  { code: "pt-BR", all: "Todas as tarefas", today: "Hoje", settings: "Configurações", agent: "Assistente", workLog: "Resumo diário", more: "Mais visualizações" },
 ]) {
   test(`phone navigation exposes both primary views and settings in ${language.code}`, async ({ page, request }) => {
     await seed(request, [{ title: "Plan", due: "2026-11-17" }]);
@@ -20,8 +20,23 @@ for (const language of [
       await item.click();
       await expect(item).toHaveAttribute("aria-current", "page");
     }
+    const more = sidebar(page).getByLabel(language.more, { exact: true });
+    await more.click();
+    await expect(sidebar(page).getByRole("link", { name: language.agent, exact: true })).toBeInViewport();
+    await expect(sidebar(page).getByRole("link", { name: language.workLog, exact: true })).toBeInViewport();
+    await page.keyboard.press("ArrowDown");
+    await expect(page.getByRole("listitem", { name: "Plan", exact: true })).not.toBeFocused();
+    await page.keyboard.press("Escape"); await expect(more).toBeFocused();
     await sidebar(page).getByRole("link", { name: language.settings, exact: true }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(language.settings);
+  });
+  test(`phone secondary navigation opens the assistant in ${language.code}`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await openApp(page); await setLanguage(page, language.code);
+    await sidebar(page).getByLabel(language.more, { exact: true }).click();
+    await sidebar(page).getByRole("link", { name: language.agent, exact: true }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(language.agent);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   });
 }
 

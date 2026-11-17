@@ -3,6 +3,8 @@ import type { Step } from "../src/features/tasks/schema";
 import type { RepeatRule } from "../src/features/recurrence/schema";
 import type { Project } from "../src/features/projects/schema";
 import { DEFAULT_SETTINGS, type Settings, type SettingsPatch } from "../src/features/settings/schema";
+import { unlink } from "node:fs/promises";
+import path from "node:path";
 
 /** The day every test runs on: Tuesday, November 17, 2026 (local time). */
 export const TODAY = "2026-11-17";
@@ -62,6 +64,9 @@ export async function seed(request: APIRequestContext, tasks: SeedTask[]): Promi
 }
 
 async function reset(request: APIRequestContext) {
+  const dataDir = process.env.TUDU_E2E_DATA_DIR;
+  if (!dataDir || !path.basename(dataDir).startsWith("tudu-e2e-")) throw new Error("Proposal reset requires an isolated tudu-e2e- directory");
+  await unlink(path.join(dataDir, "proposals.json")).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; });
   await saveSettings(request, DEFAULT_SETTINGS);
   for (const task of await listTasks(request)) {
     await request.delete(`/api/tasks/${task.id}`);

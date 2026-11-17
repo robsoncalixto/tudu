@@ -13,6 +13,22 @@ beforeEach(async () => {
 afterEach(() => rm(dir, { recursive: true, force: true }));
 
 describe("project registry", () => {
+  it("creates an approved id once without replacing an existing project", async () => {
+    const id = "00000000-0000-4000-8000-000000000001";
+    await Promise.all(Array.from({ length: 4 }, () => repo.addProject({ name: "Approved" }, id)));
+    expect(await repo.listProjects()).toEqual([{ id, name: "Approved" }]);
+    await repo.updateProject(id, { name: "Human rename" });
+    expect(await repo.addProject({ name: "Do not overwrite" }, id)).toEqual({ id, name: "Human rename" });
+  });
+  it("checks a rename baseline inside the registry lock", async () => {
+    const project = await repo.addProject({ name: "Original" });
+    const results = await Promise.allSettled([
+      repo.updateProject(project.id, { name: "First rename" }, "Original"),
+      repo.updateProject(project.id, { name: "Stale rename" }, "Original"),
+    ]);
+    expect(results.map((result) => result.status)).toEqual(["fulfilled", "rejected"]);
+    expect(await repo.listProjects()).toEqual([{ ...project, name: "First rename" }]);
+  });
   it("persists creation and rename with stable ids and atomic writes", async () => {
     expect(await repo.listProjects()).toEqual([]);
     const project = await repo.addProject({ name: "  Acme  " });

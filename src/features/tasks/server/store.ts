@@ -7,6 +7,7 @@ import type { Task, TaskUpdate } from "../schema";
 export interface TaskStore {
   /** Every task, oldest first. */
   list(): Promise<Task[]>;
+  /** Existing ids are preserved without overwriting, allowing approved creation retries. */
   insert(tasks: Task[]): Promise<void>;
   /** Saves a change and any new occurrence atomically; returns the linked task on retries too. */
   modify(id: string, change: (task: Task) => TaskUpdate): Promise<TaskUpdate | null>;
