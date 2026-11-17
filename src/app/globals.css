@@ -878,3 +878,66 @@ label.chip:hover {
   white-space: nowrap;
   border: 0;
 }
+
+.project-manager {
+  margin-top: var(--s-lg);
+}
+
+.project-manager summary {
+  cursor: pointer;
+  font-family: var(--heading);
+}
+
+.project-manager fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  margin: var(--s-md) 0 0;
+}
+
+.project-manager p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.project-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--s-md) 0;
+}
+
+.project-list li,
+.project-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-sm);
+  margin-bottom: var(--s-sm);
+}
+
+.project-list li > span {
+  flex: 1 1 120px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.project-form {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-form input {
+  flex: 1 1 150px;
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  padding: var(--s-xs) var(--s-sm);
+}
+
+.project-select {
+  max-width: 100%;
+  border: 0;
+  text-overflow: ellipsis;
+}

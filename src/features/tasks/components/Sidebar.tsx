@@ -8,13 +8,14 @@ interface Props {
   openCount: number;
   todayCount: number;
   tagCounts: TaskView["tagCounts"];
+  projectCounts: TaskView["projectCounts"];
   filter: TaskFilter;
   onFilter: (filter: TaskFilter) => void;
 }
 
 const LOCALE_LABEL: Record<Locale, string> = { en: "EN", "pt-BR": "PT" };
 
-export function Sidebar({ t, locale, onLocale, openCount, todayCount, tagCounts, filter, onFilter }: Props) {
+export function Sidebar({ t, locale, onLocale, openCount, todayCount, tagCounts, projectCounts, filter, onFilter }: Props) {
   const tagFilter = filter.kind === "tag" ? filter.tag : null;
   // A tag stays listed while it is the active filter, even with no open tasks left.
   const tags =
@@ -37,6 +38,12 @@ export function Sidebar({ t, locale, onLocale, openCount, todayCount, tagCounts,
           label={t.today} count={todayCount} active={filter.kind === "today"}
           onClick={() => onFilter({ kind: "today" })}
         />
+        {projectCounts.length > 0 && <p className="nav-label">{t.projects}</p>}
+        {projectCounts.map(([project, count]) => (
+          <NavItem key={project.id} label={project.name} count={count} ariaLabel={`${t.project}: ${project.name}, ${t.countOpen(count)}`}
+            active={filter.kind === "project" && filter.id === project.id}
+            onClick={() => onFilter({ kind: "project", id: project.id })} />
+        ))}
         {tags.length > 0 && <p className="nav-label">{t.tags}</p>}
         {tags.map(([tag, count]) => (
           <NavItem
@@ -63,12 +70,13 @@ export function Sidebar({ t, locale, onLocale, openCount, todayCount, tagCounts,
   );
 }
 
-function NavItem(props: { label: string; count: number; active: boolean; onClick: () => void }) {
+function NavItem(props: { label: string; count: number; active: boolean; onClick: () => void; ariaLabel?: string }) {
   return (
     <button
       type="button"
       className={`nav-item${props.active ? " is-active" : ""}`}
       aria-current={props.active ? "page" : undefined}
+      aria-label={props.ariaLabel}
       onClick={props.onClick}
     >
       <span>{props.label}</span>

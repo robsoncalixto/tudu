@@ -5,8 +5,10 @@ Guidance for anyone — person or coding agent — changing this repository.
 ## What this is
 
 TUDU is an open source to-do list for managing work tasks. It is a single
-Next.js web app that runs locally in Docker. By default tasks live in one JSON
-file; setting `DATABASE_URL` stores them in PostgreSQL instead. The app is AI native: a note typed in plain language can be
+Next.js web app that runs locally in Docker. By default tasks live in
+`data/tasks.json`; setting `DATABASE_URL` stores tasks in PostgreSQL instead.
+Project names stay in `data/projects.json` in either mode. The app is AI native:
+a note typed in plain language can be
 turned into structured tasks. The interface is in English, with Portuguese
 (pt-BR) as a second language.
 
@@ -54,12 +56,15 @@ src/
       selectors.ts        Pure functions: sorting, filtering, counts
       api.ts              Browser client for the tasks endpoints
       use-tasks.ts        Hook that owns the task list and optimistic updates
-      components/         Board (composition), Sidebar, Composer, TaskList, TaskRow, TaskChecklist
+      components/         Board (composition), Sidebar, Composer, TaskList, TaskRow, TaskChecklist, ProjectManager
       server/
         repository.ts     The data contract; picks the store from DATABASE_URL
         store.ts          The TaskStore interface every backend implements
         json-store.ts     Default backend: data/tasks.json
         postgres-store.ts PostgreSQL backend, schema migrations and pool
+    projects/
+      schema.ts, api.ts   Project contract and browser client
+      server/repository.ts Server-side project registry (data/projects.json)
     capture/
       api.ts              Browser client for the capture endpoint
       server/capture.ts   Prompt, output schema and the model call
@@ -72,7 +77,8 @@ src/
 e2e/                      End-to-end tests, one spec per component, plus support.ts
 design.md                 The design system (source of truth for the UI)
 docker/postgres-init.sql  Creates the tudu_test database in the Postgres container
-data/tasks.json           Runtime data, git-ignored
+data/tasks.json           Runtime task data, git-ignored
+data/projects.json        Project registry in both storage modes, git-ignored
 ```
 
 Imports use the `@/` alias, which points at `src/`.
@@ -92,7 +98,8 @@ Imports use the `@/` alias, which points at `src/`.
    not import from it; they talk to the server through the feature's `api.ts`.
 4. **One door to the data.** Everything else reaches tasks through
    `tasks/server/repository.ts` and its exported functions (`listTasks`,
-   `addTasks`, `updateTask`, `deleteTask`), which are the contract. The
+   `addTasks`, `updateTask`, `deleteTask`), which are the contract.
+   `clearTaskProject` clears assignments when a project is deleted. The
    repository holds the rules (ids, timestamps, completion) and hands storage to
    a `TaskStore`: `json-store.ts` (the default) or `postgres-store.ts` when
    `DATABASE_URL` is set. Only those stores touch `data/tasks.json` or the
@@ -100,6 +107,9 @@ Imports use the `@/` alias, which points at `src/`.
    writes through one queue and writes the file atomically; the Postgres store
    uses transactions with row locks. A schema change is a new entry at the end
    of `MIGRATIONS`, never an edit to an old one.
+   Routes guard project assignments with `withValidProjectIds` and supply
+   `clearTaskProject` to project deletion. This keeps cross-feature server
+   coordination in `app` and serializes assignment changes with deletion.
 5. **Schemas are the contract.** Define the shape once in `schema.ts` with Zod
    and derive TypeScript types from it with `z.infer`. Never hand-write a type
    that duplicates a schema.
@@ -149,7 +159,7 @@ run in a Node environment.
 
 Run with `npm run test:e2e` (`npm run test:e2e:ui` to watch and debug). Specs
 live in `e2e/`, one file per component: `board`, `composer`, `sidebar`,
-`task-list`, `task-row`. Playwright builds the app and serves it on port 3100
+`task-list`, `task-row`, `task-checklist`, `project-manager`. Playwright builds the app and serves it on port 3100
 with a throwaway data folder, so it never touches `./data` or a dev server on
 port 3000. First-time setup: `npx playwright install chromium`.
 

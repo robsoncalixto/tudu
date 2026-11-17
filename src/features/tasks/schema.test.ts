@@ -10,6 +10,7 @@ describe("taskInputSchema", () => {
       due: null,
       tags: [],
       steps: [],
+      projectId: null,
     });
   });
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { addTasks, listTasks } from "@/features/tasks/server/repository";
 import { taskInputSchema } from "@/features/tasks/schema";
+import { ProjectError, withValidProjectIds } from "@/features/projects/server/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -17,5 +18,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_task" }, { status: 400 });
   }
   const inputs = Array.isArray(parsed.data) ? parsed.data : [parsed.data];
-  return NextResponse.json({ tasks: await addTasks(inputs) }, { status: 201 });
+  try {
+    const tasks = await withValidProjectIds(inputs.map((input) => input.projectId), () => addTasks(inputs));
+    return NextResponse.json({ tasks }, { status: 201 });
+  } catch (error) {
+    if (error instanceof ProjectError) return NextResponse.json({ error: error.code }, { status: 400 });
+    throw error;
+  }
 }

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { aiEnabled, CaptureRefusedError, captureTasks } from "@/features/capture/server/capture";
 import { addTasks } from "@/features/tasks/server/repository";
+import { listProjects, ProjectError, withValidProjectIds } from "@/features/projects/server/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -25,12 +26,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const drafts = await captureTasks(parsed.data.text, parsed.data.today);
+    const drafts = await captureTasks(parsed.data.text, parsed.data.today, await listProjects());
     if (drafts.length === 0) {
       return NextResponse.json({ error: "no_tasks" }, { status: 422 });
     }
-    return NextResponse.json({ tasks: await addTasks(drafts) }, { status: 201 });
+    const tasks = await withValidProjectIds(drafts.map((draft) => draft.projectId), () => addTasks(drafts));
+    return NextResponse.json({ tasks }, { status: 201 });
   } catch (error) {
+    if (error instanceof ProjectError) return NextResponse.json({ error: error.code }, { status: 400 });
     if (error instanceof CaptureRefusedError) {
       return NextResponse.json({ error: "no_tasks" }, { status: 422 });
     }

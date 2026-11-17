@@ -48,6 +48,12 @@ table on first start, and a brand-new database begins with the tasks already in
 `data/tasks.json` (the file is left untouched). Remove `DATABASE_URL` to go back
 to the file.
 
+Project names are stored in `data/projects.json` in both storage modes. Task
+assignments use the selected task backend. Keep the whole `data/` directory
+when backing up an installation. Deleting a project preserves its tasks and
+removes their assignments. AI capture can select an existing project when a
+note names it; it does not invent projects.
+
 ## Tests
 
 Unit tests:
@@ -104,6 +110,9 @@ action into steps, AI capture can keep those steps as a checklist on the task.
 | Plan today | Click **Add to today** on a task, then **Today** in the sidebar |
 | Remove a daily selection | Click **Remove from today**; tasks due today or overdue remain visible |
 | Filter by tag | Click a `#tag` |
+| Manage projects | Open **Manage projects** to create, rename or delete a project |
+| Assign a project | Choose a project or **No project** on a task row |
+| Filter by project | Click its name in the sidebar |
 
 **Today** includes tasks picked for the current local calendar day, plus tasks
 due today or overdue. Its badge counts open tasks. Selections are saved with the

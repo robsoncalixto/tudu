@@ -10,7 +10,7 @@ import { createRepository } from "./repository";
 
 type Repository = ReturnType<typeof createRepository>;
 
-const input = (title: string): TaskInput => ({ title, notes: "", priority: "medium", due: null, tags: [], steps: [] });
+const input = (title: string): TaskInput => ({ title, notes: "", priority: "medium", due: null, tags: [], steps: [], projectId: null });
 
 interface Backend {
   name: string;
@@ -80,7 +80,7 @@ describe.each(backends)("repository on $name", (backend) => {
 
   it("stores every field exactly as given", async () => {
     const [created] = await repo.addTasks([
-      { title: "Plan Q1", notes: "Ask Ana", priority: "high", due: "2026-11-30", tags: ["work", "q1"], steps: [] },
+      { title: "Plan Q1", notes: "Ask Ana", priority: "high", due: "2026-11-30", tags: ["work", "q1"], steps: [], projectId: null },
     ]);
     expect(await repo.listTasks()).toEqual([created]);
   });
@@ -102,7 +102,7 @@ describe.each(backends)("repository on $name", (backend) => {
     });
     expect(updated).toMatchObject({ title: "b", notes: "n", priority: "low", due: "2026-12-01", tags: ["x"] });
     expect(await repo.listTasks()).toEqual([updated]);
-    expect(await repo.updateTask(task.id, { due: null, tags: [] })).toMatchObject({ due: null, tags: [], steps: [] });
+    expect(await repo.updateTask(task.id, { due: null, tags: [] })).toMatchObject({ due: null, tags: [], steps: [], projectId: null });
   });
 
   it("sets and clears completedAt when done changes", async () => {
@@ -172,6 +172,22 @@ describe.each(backends)("repository on $name", (backend) => {
     expect((await repo.listTasks())[0].steps).toEqual([changed[0]]);
     await repo.updateTask(task.id, { steps: [] });
     expect((await repo.listTasks())[0].steps).toEqual([]);
+  });
+  it("clears a deleted project on open and completed tasks, preserving every other field", async () => {
+    const projectId = "00000000-0000-4000-8000-000000000001";
+    const otherId = "00000000-0000-4000-8000-000000000002";
+    const tasks = await repo.addTasks([
+      { ...input("Open"), projectId }, { ...input("Done"), projectId },
+      { ...input("Other"), projectId: otherId }, input("None"),
+    ]);
+    await repo.updateTask(tasks[1].id, { done: true });
+    const before = await repo.listTasks();
+    await repo.clearTaskProject(projectId);
+    expect(await repo.listTasks()).toEqual(before.map((task) => task.projectId === projectId ? { ...task, projectId: null } : task));
+    await repo.updateTask(tasks[0].id, { projectId: otherId });
+    expect((await repo.listTasks())[0].projectId).toBe(otherId);
+    await repo.updateTask(tasks[0].id, { projectId: null });
+    expect((await repo.listTasks())[0].projectId).toBeNull();
   });
 });
 

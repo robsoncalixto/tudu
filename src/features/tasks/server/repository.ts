@@ -40,6 +40,9 @@ export function createRepository(store: TaskStore) {
     deleteTask(id: string): Promise<boolean> {
       return store.remove(id);
     },
+    clearTaskProject(id: string): Promise<void> {
+      return store.clearProject(id);
+    },
   };
 }
 
@@ -54,4 +57,4 @@ function defaultStore(): TaskStore {
 
 const repository = createRepository(defaultStore());
 
-export const { listTasks, addTasks, updateTask, deleteTask } = repository;
+export const { listTasks, addTasks, updateTask, deleteTask, clearTaskProject } = repository;

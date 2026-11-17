@@ -1,4 +1,4 @@
-import { expect, openApp, openSection, row, rowTitles, seed, sidebar, test } from "./support";
+import { expect, openApp, openSection, row, rowTitles, seed, seedProjects, sidebar, test } from "./support";
 
 test.describe("Sidebar", () => {
   test("shows the name without a logo and the open-task count", async ({ page, request }) => {
@@ -154,5 +154,32 @@ for (const language of [
     await sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
     await expect(page.getByText(language.empty, { exact: true })).toBeVisible();
     await expect(openSection(page).getByRole("listitem")).toHaveCount(0);
+  });
+}
+
+for (const language of [
+  { code: "EN", project: "Project", empty: "No open tasks in this project.", all: "All tasks" },
+  { code: "PT", project: "Projeto", empty: "Nenhuma tarefa aberta neste projeto.", all: "Todas as tarefas" },
+]) {
+  test(`project filters and global open counts in ${language.code}`, async ({ page, request }) => {
+    const [acme] = await seedProjects(request, ["Acme", "Empty client"]);
+    const tasks = await seed(request, [
+      { title: "Client work", projectId: acme.id, tags: ["work"] },
+      { title: "Completed work", projectId: acme.id }, { title: "Unassigned work" },
+    ]);
+    await request.patch(`/api/tasks/${tasks[1].id}`, { data: { done: true } });
+    await openApp(page);
+    await sidebar(page).getByRole("button", { name: language.code, exact: true }).click();
+    const acmeButton = sidebar(page).getByRole("button", { name: new RegExp(`^${language.project}: Acme,`) });
+    await expect(acmeButton).toHaveText("Acme1");
+    await acmeButton.click();
+    expect(await rowTitles(openSection(page))).toEqual(["Client work"]);
+    await expect(acmeButton).toHaveAttribute("aria-current", "page");
+    await sidebar(page).getByRole("button", { name: "#work" }).click();
+    await expect(acmeButton).toHaveText("Acme1");
+    await sidebar(page).getByRole("button", { name: new RegExp(`^${language.project}: Empty client,`) }).click();
+    await expect(page.getByText(language.empty, { exact: true })).toBeVisible();
+    await sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) }).click();
+    expect(await rowTitles(openSection(page))).toEqual(["Client work", "Unassigned work"]);
   });
 }

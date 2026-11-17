@@ -1,6 +1,7 @@
 import type { Dictionary, Locale } from "@/i18n";
 import type { Task, TaskPatch } from "../schema";
 import { TaskRow } from "./TaskRow";
+import type { Project } from "@/features/projects/schema";
 
 export interface TaskActions {
   onPatch: (id: string, patch: TaskPatch) => Promise<boolean>;
@@ -10,6 +11,7 @@ export interface TaskActions {
 
 interface Props extends TaskActions {
   tasks: Task[];
+  projects: Project[];
   today: string;
   locale: Locale;
   t: Dictionary;

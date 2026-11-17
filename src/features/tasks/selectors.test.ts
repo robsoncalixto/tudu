@@ -17,6 +17,7 @@ function task(overrides: Partial<Task> = {}): Task {
     completedAt: null,
     plannedFor: null,
     steps: [],
+    projectId: null,
     ...overrides,
   };
 }
@@ -163,5 +164,32 @@ describe("Today view", () => {
     const view = buildTaskView([task({ due: today })], todayFilter);
     expect(view.todayCount).toBe(0);
     expect(view.open).toEqual([]);
+  });
+});
+
+describe("project views", () => {
+  it("filters open and completed tasks while keeping global project counts and tags", () => {
+    const acme = { id: "00000000-0000-4000-8000-000000000001", name: "Acme" };
+    const beta = { id: "00000000-0000-4000-8000-000000000002", name: "Beta" };
+    const tasks = [
+      task({ title: "Acme open", projectId: acme.id, tags: ["work"] }),
+      task({ title: "Acme done", projectId: acme.id, done: true }),
+      task({ title: "Beta open", projectId: beta.id }), task({ title: "Unassigned" }),
+    ];
+    const projects = [beta, acme];
+    const view = buildTaskView(tasks, { kind: "project", id: acme.id }, "2026-11-17", projects);
+    expect(titles(view.open)).toEqual(["Acme open"]);
+    expect(titles(view.done)).toEqual(["Acme done"]);
+    expect(view.openCount).toBe(3);
+    expect(view.projectCounts).toEqual([[acme, 1], [beta, 1]]);
+    expect(view.tagCounts).toEqual([["work", 1]]);
+    expect(projects).toEqual([beta, acme]);
+    expect(buildTaskView(tasks, { kind: "tag", tag: "work" }, "2026-11-17", projects).projectCounts).toEqual(view.projectCounts);
+  });
+  it("keeps projects with no open tasks in navigation", () => {
+    const empty = { id: "00000000-0000-4000-8000-000000000001", name: "Empty" };
+    const view = buildTaskView([], { kind: "project", id: empty.id }, "2026-11-17", [empty]);
+    expect(view.open).toEqual([]);
+    expect(view.projectCounts).toEqual([[empty, 0]]);
   });
 });

@@ -28,4 +28,14 @@ describe("AI checklist capture", () => {
     expect(tasks[1].steps).toHaveLength(100);
     expect(tasks[1].steps[0].title).toHaveLength(300);
   });
+  it("selects only known projects and includes their names in the model context", async () => {
+    const project = { id: "00000000-0000-4000-8000-000000000001", name: "Acme" };
+    const draft = { title: "Report", notes: "", priority: "medium", due: null, tags: [], steps: [] };
+    parse.mockResolvedValue({ stop_reason: "end_turn", parsed_output: { tasks: [
+      { ...draft, projectId: project.id }, { ...draft, projectId: "invented-id" }, { ...draft, projectId: null },
+    ] } });
+    const tasks = await captureTasks("Acme report", "2026-11-17", [project]);
+    expect(tasks.map((task) => task.projectId)).toEqual([project.id, null, null]);
+    expect(parse.mock.calls[0][0].messages[0].content).toContain(JSON.stringify([project]));
+  });
 });

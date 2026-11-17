@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { projectIdSchema } from "@/features/projects/schema";
 
 export const PRIORITIES = ["low", "medium", "high"] as const;
 export type Priority = (typeof PRIORITIES)[number];
@@ -27,6 +28,7 @@ export const taskInputSchema = z.object({
   due: dueDate.default(null),
   tags: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
   steps: stepsSchema.default([]),
+  projectId: projectIdSchema.default(null),
 });
 
 export const taskPatchSchema = z
@@ -39,6 +41,7 @@ export const taskPatchSchema = z
     done: z.boolean(),
     plannedFor: z.iso.date().nullable(),
     steps: stepsSchema,
+    projectId: projectIdSchema,
   })
   .partial();
 

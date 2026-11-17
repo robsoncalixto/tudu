@@ -11,6 +11,7 @@ import { useTasks } from "../use-tasks";
 import { Composer, type ComposerMode } from "./Composer";
 import { Sidebar } from "./Sidebar";
 import { TaskList } from "./TaskList";
+import { ProjectManager } from "./ProjectManager";
 
 type Notice = { kind: "ok" | "error"; text: string } | null;
 
@@ -23,8 +24,9 @@ export function Board() {
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
 
   const fail = useCallback((code: string) => setNotice({ kind: "error", text: errorMessage(t, code) }), [t]);
-  const { tasks, aiEnabled, add, capture, patch, remove } = useTasks(fail);
-  const view = useMemo(() => buildTaskView(tasks ?? [], filter, today ?? ""), [tasks, filter, today]);
+  const { tasks, projects, aiEnabled, add, capture, patch, remove, createProject, renameProject, deleteProject } = useTasks(fail);
+  const view = useMemo(() => buildTaskView(tasks ?? [], filter, today ?? "", projects), [tasks, filter, today, projects]);
+  const projectName = filter.kind === "project" ? projects.find((project) => project.id === filter.id)?.name : null;
 
   async function submit(mode: ComposerMode, text: string): Promise<boolean> {
     if (!today) return false;
@@ -44,7 +46,7 @@ export function Board() {
 
   const date = today ? longDate(today, locale) : null;
   const list = {
-    today: today ?? "", locale, t, onPatch: patch, onDelete: remove,
+    today: today ?? "", locale, t, projects, onPatch: patch, onDelete: remove,
     onTag: (tag: string) => setFilter({ kind: "tag", tag }),
   };
 
@@ -57,6 +59,7 @@ export function Board() {
         openCount={view.openCount}
         todayCount={view.todayCount}
         tagCounts={view.tagCounts}
+        projectCounts={view.projectCounts}
         filter={filter}
         onFilter={setFilter}
       />
@@ -78,6 +81,12 @@ export function Board() {
             </div>
           </header>
 
+          <ProjectManager projects={projects} t={t} onCreate={createProject} onRename={renameProject}
+            onDelete={async (id) => {
+              if (!await deleteProject(id)) return false;
+              setFilter((current) => current.kind === "project" && current.id === id ? { kind: "all" } : current);
+              return true;
+            }} />
           <Composer t={t} aiEnabled={aiEnabled} onSubmit={submit} />
 
           <p className={`notice${notice ? ` is-${notice.kind}` : ""}`} role="status">
@@ -88,12 +97,12 @@ export function Board() {
             <>
               <section aria-labelledby="open-heading">
                 <h2 id="open-heading" className="section-title">
-                  {tagFilter ? `#${tagFilter}` : filter.kind === "today" ? t.today : t.open} <span>{view.open.length}</span>
+                  {projectName ?? (tagFilter ? `#${tagFilter}` : filter.kind === "today" ? t.today : t.open)} <span>{view.open.length}</span>
                 </h2>
                 {view.open.length === 0 ? (
                   <div className="card empty">
-                    <p className="empty-title">{tagFilter ? t.emptyFiltered : filter.kind === "today" ? t.emptyToday : t.emptyTitle}</p>
-                    {!tagFilter && <p>{filter.kind === "today" ? t.emptyTodayBody : t.emptyBody}</p>}
+                    <p className="empty-title">{projectName ? t.emptyProject : tagFilter ? t.emptyFiltered : filter.kind === "today" ? t.emptyToday : t.emptyTitle}</p>
+                    {!tagFilter && !projectName && <p>{filter.kind === "today" ? t.emptyTodayBody : t.emptyBody}</p>}
                   </div>
                 ) : (
                   <TaskList tasks={view.open} header fresh={fresh} {...list} />
