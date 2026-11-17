@@ -53,6 +53,8 @@ src/
     api/ai/capture/       GET status, POST     /api/ai/capture
     api/settings/         GET, PATCH           /api/settings
     settings/page.tsx     Settings route
+    work-log/page.tsx     Read-only daily work log
+    api/work-log/summary/ POST optional AI summary from saved completed tasks
   features/
     tasks/
       schema.ts           Zod schemas and the Task types (shared by client and server)
@@ -77,6 +79,13 @@ src/
       use-settings.ts     Draft preferences, saving and error recovery
       components/         SettingsPanel
       server/repository.ts Atomic settings.json persistence
+    work-log/
+      schema.ts, api.ts   Day/time-zone query, grouping and summary contracts
+      selectors.ts        Completed-day filtering and project/tag grouping
+      format.ts           Plain-text and escaped Markdown export
+      use-work-log.ts     Fetching, clipboard and stale-summary protection
+      components/         WorkLogPanel
+      server/summary.ts   Structured, read-only AI summary
     capture/
       api.ts              Browser client for the capture endpoint
       server/capture.ts   Prompt, output schema and the model call
@@ -176,7 +185,8 @@ run in a Node environment.
 
 Run with `npm run test:e2e` (`npm run test:e2e:ui` to watch and debug). Specs
 live in `e2e/`, one file per component: `board`, `composer`, `sidebar`,
-`task-list`, `task-row`, `task-checklist`, `task-repeat`, `project-manager`, `settings-panel`.
+`task-list`, `task-row`, `task-checklist`, `task-repeat`, `project-manager`,
+`settings-panel`, `work-log-panel`.
 Playwright builds the app and serves it on port 3100
 with a throwaway data folder, so it never touches `./data` or a dev server on
 port 3000. First-time setup: `npx playwright install chromium`.
@@ -206,7 +216,8 @@ port 3000. First-time setup: `npx playwright install chromium`.
 - Errors are `{ "error": "<code>" }` with a matching HTTP status. The code is a
   stable machine string (`invalid_task`, `not_found`, `ai_disabled`, `ai_auth`,
   `ai_busy`, `ai_failed`, `no_tasks`, `invalid_note`, `invalid_project`,
-  `duplicate_project`, `invalid_settings`, `invalid_repeat`), never a sentence.
+  `duplicate_project`, `invalid_settings`, `invalid_repeat`, `invalid_work_log`,
+  `no_completed_tasks`, `work_log_too_large`, `work_log_ai_failed`, `copy_failed`), never a sentence.
 - User-facing error text lives in the `errors` section of the dictionaries,
   keyed by that code. A new code needs an entry in both languages; unknown codes
   fall back to `errors.generic`.
@@ -245,8 +256,10 @@ variables at the top of `src/app/globals.css`.
 
 ## AI capture
 
-- All model code lives in `src/features/capture/server/capture.ts`: the system
-  prompt, the Zod output schema and the single API call. Use the official SDK
+- Capture model code lives in `src/features/capture/server/capture.ts`: the system
+  prompt, the Zod output schema and the single API call. Work-log summarization
+  lives in `work-log/server/summary.ts` with its contract in `work-log/schema.ts`.
+  Use the official SDK
   with structured output; do not parse free text.
 - The model defaults to `claude-opus-5-5` and can be overridden with
   `TUDU_AI_MODEL`. The API key comes from `ANTHROPIC_API_KEY` and is read only
@@ -257,6 +270,9 @@ variables at the top of `src/app/globals.css`.
   and trim everything the model returns before saving it.
 - New AI features follow the same pattern: a `server/` function with a schema,
   a thin route, a client in `api.ts`.
+- A work-log summary reads saved task data, never a client-supplied task list.
+  It filters by the requested day and browser time zone and performs no writes.
+  Changing the day or refreshing invalidates pending summaries in the browser.
 
 ## Code conventions
 

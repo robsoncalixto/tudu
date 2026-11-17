@@ -1,5 +1,20 @@
 import { expect, listTasks, openApp, openSection, doneSection, row, seed, seedProjects, test, TODAY, YESTERDAY, setLanguage } from "./support";
 
+for (const language of [
+  { code: "en", checklist: "Checklist", repeat: "Repeat: Never" },
+  { code: "pt-BR", checklist: "Etapas", repeat: "Repetir: Nunca" },
+]) {
+  test(`unused checklist and repeat controls share a compact row in ${language.code}`, async ({ page, request }) => {
+    await seed(request, [{ title: "Simple task" }]);
+    await openApp(page);
+    await setLanguage(page, language.code);
+    const task = row(openSection(page), "Simple task");
+    const checklist = await task.getByText(`${language.checklist} 0/0`, { exact: true }).boundingBox();
+    const repeat = await task.getByText(language.repeat, { exact: true }).boundingBox();
+    expect(Math.abs(checklist!.y - repeat!.y)).toBeLessThan(2);
+  });
+}
+
 test.describe("TaskRow", () => {
   test("shows title, notes, due date, priority and tags", async ({ page, request }) => {
     await seed(request, [
