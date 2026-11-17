@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { ZodError } from "zod";
 import { settingsPatchSchema, settingsSchema, type Settings, type SettingsPatch } from "../schema";
 
 const state = globalThis as typeof globalThis & { __tuduSettingsQueues?: Map<string, Promise<unknown>> };
@@ -15,7 +16,10 @@ export function createSettingsRepository(dataDir: string) {
   async function read(): Promise<Settings> {
     try { return settingsSchema.parse(JSON.parse(await fs.readFile(file, "utf8"))); }
     catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return settingsSchema.parse({});
+      // Keep the original file for inspection; only an explicit save replaces it.
+      if ((error as NodeJS.ErrnoException).code === "ENOENT" || error instanceof SyntaxError || error instanceof ZodError) {
+        return settingsSchema.parse({});
+      }
       throw error;
     }
   }

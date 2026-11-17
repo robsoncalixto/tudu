@@ -653,6 +653,7 @@ label.chip:hover {
     position: static;
     height: auto;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--s-sm);
     padding: var(--s-sm) 16px;
@@ -664,9 +665,15 @@ label.chip:hover {
 
   .nav {
     flex-direction: row;
+    flex: 1 0 100%;
+    order: 1;
     align-items: center;
     overflow-x: auto;
     min-width: 0;
+  }
+
+  .settings-link {
+    margin-left: auto;
   }
 
   .nav-label {
@@ -983,6 +990,15 @@ label.chip:hover {
 }
 
 @media (max-width: 620px) {
+  .content {
+    padding-top: var(--s-md);
+  }
+
+  .project-manager,
+  .composer {
+    margin-top: var(--s-md);
+  }
+
   .settings-fields {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -125,6 +125,9 @@ tasks stay in the collapsed **Done** section when they match the selected view.
 
 Choose English or Portuguese, the default priority for new tasks, the initial
 view (All tasks or Today), and language-based or ISO (`YYYY-MM-DD`) dates.
+ISO mode uses exact dates in due chips, including today, tomorrow and yesterday.
+If a hand-edited preferences file is invalid, the app uses defaults until you
+save valid settings; reading it leaves the original file untouched.
 Preferences are shared by browsers using this installation and saved on the
 server. They take effect when saved and when you return to the task board;
 browser-only language settings are no longer used.
