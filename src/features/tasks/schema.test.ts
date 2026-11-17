@@ -9,6 +9,7 @@ describe("taskInputSchema", () => {
       priority: "medium",
       due: null,
       tags: [],
+      steps: [],
     });
   });
 

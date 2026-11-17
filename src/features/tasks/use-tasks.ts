@@ -46,15 +46,19 @@ export function useTasks(onError: (code: string) => void) {
       before = current?.find((task) => task.id === id);
       return current?.map((task) => (task.id === id ? { ...task, ...changes } : task)) ?? null;
     });
-    tasksApi
+    return tasksApi
       .update(id, changes)
-      .then((saved) => setTasks((current) => current?.map((task) => (task.id === id ? saved : task)) ?? null))
+      .then((saved) => {
+        setTasks((current) => current?.map((task) => (task.id === id ? saved : task)) ?? null);
+        return true;
+      })
       .catch((error) => {
         const previous = before;
         if (previous) {
           setTasks((current) => current?.map((task) => (task.id === id ? previous : task)) ?? null);
         }
         report.current(errorCode(error));
+        return false;
       });
   }, []);
 

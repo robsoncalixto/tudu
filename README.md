@@ -86,7 +86,8 @@ Paste something like:
 > book a room for the review, and at some point clean up the old dashboards.
 
 and it becomes three tasks, each with its own due date, priority and tags. The
-tasks stay in the language you wrote them in.
+tasks stay in the language you wrote them in. When a note explicitly breaks an
+action into steps, AI capture can keep those steps as a checklist on the task.
 
 ## Using it
 
@@ -96,6 +97,8 @@ tasks stay in the language you wrote them in.
 | Turn a note into tasks | `Ctrl`/`⌘` + `Enter`, or the **Create with AI** button |
 | Complete a task | Click its checkbox — it moves to **Done** |
 | Rename a task | Click the title |
+| Break a task into steps | Open **Checklist** on its row, then add steps |
+| Update a checklist | Check steps, rename them with **Edit**, or remove them with **×** |
 | Change priority | Click the priority label to cycle low → medium → high |
 | Set a due date | Click the date label |
 | Plan today | Click **Add to today** on a task, then **Today** in the sidebar |

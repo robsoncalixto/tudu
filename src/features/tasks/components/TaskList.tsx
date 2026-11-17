@@ -3,7 +3,7 @@ import type { Task, TaskPatch } from "../schema";
 import { TaskRow } from "./TaskRow";
 
 export interface TaskActions {
-  onPatch: (id: string, patch: TaskPatch) => void;
+  onPatch: (id: string, patch: TaskPatch) => Promise<boolean>;
   onDelete: (id: string) => void;
   onTag: (tag: string) => void;
 }

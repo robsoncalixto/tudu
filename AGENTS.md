@@ -54,7 +54,7 @@ src/
       selectors.ts        Pure functions: sorting, filtering, counts
       api.ts              Browser client for the tasks endpoints
       use-tasks.ts        Hook that owns the task list and optimistic updates
-      components/         Board (composition), Sidebar, Composer, TaskList, TaskRow
+      components/         Board (composition), Sidebar, Composer, TaskList, TaskRow, TaskChecklist
       server/
         repository.ts     The data contract; picks the store from DATABASE_URL
         store.ts          The TaskStore interface every backend implements

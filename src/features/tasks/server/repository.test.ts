@@ -10,7 +10,7 @@ import { createRepository } from "./repository";
 
 type Repository = ReturnType<typeof createRepository>;
 
-const input = (title: string): TaskInput => ({ title, notes: "", priority: "medium", due: null, tags: [] });
+const input = (title: string): TaskInput => ({ title, notes: "", priority: "medium", due: null, tags: [], steps: [] });
 
 interface Backend {
   name: string;
@@ -80,7 +80,7 @@ describe.each(backends)("repository on $name", (backend) => {
 
   it("stores every field exactly as given", async () => {
     const [created] = await repo.addTasks([
-      { title: "Plan Q1", notes: "Ask Ana", priority: "high", due: "2026-11-30", tags: ["work", "q1"] },
+      { title: "Plan Q1", notes: "Ask Ana", priority: "high", due: "2026-11-30", tags: ["work", "q1"], steps: [] },
     ]);
     expect(await repo.listTasks()).toEqual([created]);
   });
@@ -102,7 +102,7 @@ describe.each(backends)("repository on $name", (backend) => {
     });
     expect(updated).toMatchObject({ title: "b", notes: "n", priority: "low", due: "2026-12-01", tags: ["x"] });
     expect(await repo.listTasks()).toEqual([updated]);
-    expect(await repo.updateTask(task.id, { due: null, tags: [] })).toMatchObject({ due: null, tags: [] });
+    expect(await repo.updateTask(task.id, { due: null, tags: [] })).toMatchObject({ due: null, tags: [], steps: [] });
   });
 
   it("sets and clears completedAt when done changes", async () => {
@@ -159,6 +159,19 @@ describe.each(backends)("repository on $name", (backend) => {
     });
     await repo.updateTask(task.id, { plannedFor: null });
     expect((await repo.listTasks())[0]).toMatchObject({ plannedFor: null, due: "2026-11-16" });
+  });
+
+  it("persists checklist additions, completion, renaming and removal", async () => {
+    const steps = [{ id: "s1", title: "Draft", done: false }, { id: "s2", title: "Review", done: false }];
+    const [task] = await repo.addTasks([{ ...input("Report"), steps }]);
+    expect((await repo.listTasks())[0].steps).toEqual(steps);
+    const changed = [{ ...steps[0], title: "Write draft", done: true }, steps[1]];
+    await repo.updateTask(task.id, { steps: changed });
+    expect((await repo.listTasks())[0]).toMatchObject({ steps: changed, done: false });
+    await repo.updateTask(task.id, { steps: [changed[0]] });
+    expect((await repo.listTasks())[0].steps).toEqual([changed[0]]);
+    await repo.updateTask(task.id, { steps: [] });
+    expect((await repo.listTasks())[0].steps).toEqual([]);
   });
 });
 

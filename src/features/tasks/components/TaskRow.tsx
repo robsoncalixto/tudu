@@ -4,6 +4,7 @@ import { useState } from "react";
 import { dayDiff, dueLabel } from "@/lib/dates";
 import type { Dictionary, Locale } from "@/i18n";
 import { PRIORITIES, type Task, type TaskPatch } from "../schema";
+import { TaskChecklist } from "./TaskChecklist";
 
 interface Props {
   task: Task;
@@ -11,7 +12,7 @@ interface Props {
   today: string;
   locale: Locale;
   t: Dictionary;
-  onPatch: (id: string, patch: TaskPatch) => void;
+  onPatch: (id: string, patch: TaskPatch) => Promise<boolean>;
   onDelete: (id: string) => void;
   onTag: (tag: string) => void;
 }
@@ -92,6 +93,7 @@ export function TaskRow({ task, fresh, today, locale, t, onPatch, onDelete, onTa
             </button>
           ))}
         </div>
+        <TaskChecklist steps={task.steps ?? []} t={t} onChange={(steps) => onPatch(task.id, { steps })} />
       </div>
 
       <label className={`chip due${overdue ? " is-overdue" : ""}${task.due ? "" : " is-empty"}`}>

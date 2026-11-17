@@ -32,10 +32,10 @@ test.describe("Board", () => {
     await row(page, "Ship it").getByRole("checkbox").click();
 
     await expect(row(openSection(page), "Ship it")).toHaveCount(0);
-    await expect(doneSection(page).locator("summary")).toHaveText("Done 1");
+    await expect(doneSection(page).locator(":scope > summary")).toHaveText("Done 1");
     await expect(row(doneSection(page), "Ship it")).toBeHidden();
 
-    await doneSection(page).locator("summary").click();
+    await doneSection(page).locator(":scope > summary").click();
     await expect(row(doneSection(page), "Ship it")).toBeVisible();
   });
 
@@ -60,7 +60,7 @@ test.describe("Board", () => {
     await page.reload();
 
     await expect(page.getByText("1 done")).toBeVisible();
-    await doneSection(page).locator("summary").click();
+    await doneSection(page).locator(":scope > summary").click();
     const task = row(doneSection(page), "Plan Q1");
     await expect(task.getByRole("button", { name: "#q1" })).toBeVisible();
     await expect(task.getByRole("button", { name: "#work" })).toBeVisible();

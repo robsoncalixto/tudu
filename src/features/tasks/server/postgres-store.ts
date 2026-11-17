@@ -28,6 +28,7 @@ const MIGRATIONS = [
      completed_at timestamptz,
      planned_for  date
    )`,
+  `ALTER TABLE tasks ADD COLUMN steps jsonb NOT NULL DEFAULT '[]'`,
 ];
 
 // Any constant works; it only has to be the same for every TUDU process.
@@ -37,7 +38,7 @@ const MIGRATION_LOCK = 7_262_738;
 // keeps, so both backends return identical tasks whatever the driver parses.
 const ISO = `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`;
 const SELECT = `
-  SELECT id, title, notes, priority, tags, done,
+  SELECT id, title, notes, priority, tags, done, steps,
          to_char(due, 'YYYY-MM-DD') AS due,
          to_char(planned_for, 'YYYY-MM-DD') AS "plannedFor",
          to_char(created_at AT TIME ZONE 'UTC', ${ISO}) AS "createdAt",
@@ -46,8 +47,8 @@ const SELECT = `
 
 function insertTask(sql: Queryable, task: Task) {
   return sql.query(
-    `INSERT INTO tasks (id, title, notes, priority, due, tags, done, created_at, completed_at, planned_for)
-     VALUES ($1, $2, $3, $4, $5::date, $6::jsonb, $7, $8::timestamptz, $9::timestamptz, $10::date)
+    `INSERT INTO tasks (id, title, notes, priority, due, tags, done, created_at, completed_at, planned_for, steps)
+     VALUES ($1, $2, $3, $4, $5::date, $6::jsonb, $7, $8::timestamptz, $9::timestamptz, $10::date, $11::jsonb)
      ON CONFLICT (id) DO NOTHING`,
     [
       task.id,
@@ -60,6 +61,7 @@ function insertTask(sql: Queryable, task: Task) {
       task.createdAt,
       task.completedAt,
       task.plannedFor,
+      JSON.stringify(task.steps),
     ],
   );
 }
@@ -130,7 +132,7 @@ export function createPostgresStore(sql: Sql, options: { seed?: () => Promise<Ta
         await tx.query(
           `UPDATE tasks
               SET title = $2, notes = $3, priority = $4, due = $5::date, tags = $6::jsonb,
-                  done = $7, completed_at = $8::timestamptz, planned_for = $9::date
+                  done = $7, completed_at = $8::timestamptz, planned_for = $9::date, steps = $10::jsonb
             WHERE id = $1`,
           [
             id,
@@ -142,6 +144,7 @@ export function createPostgresStore(sql: Sql, options: { seed?: () => Promise<Ta
             next.done,
             next.completedAt,
             next.plannedFor,
+            JSON.stringify(next.steps),
           ],
         );
         return next;

@@ -23,7 +23,7 @@ test.describe("TaskRow", () => {
     await expect(row(openSection(page), "Toggle me")).toHaveCount(0);
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(true);
 
-    await doneSection(page).locator("summary").click();
+    await doneSection(page).locator(":scope > summary").click();
     const done = row(doneSection(page), "Toggle me");
     await expect(done.getByRole("checkbox", { name: "Mark as open" })).toBeChecked();
     await done.getByRole("checkbox").click();
@@ -115,7 +115,7 @@ test.describe("TaskRow", () => {
     await expect(row(page, "Late").getByText("Yesterday · overdue")).toBeVisible();
 
     await row(page, "Late").getByRole("checkbox").click();
-    await doneSection(page).locator("summary").click();
+    await doneSection(page).locator(":scope > summary").click();
     await expect(row(doneSection(page), "Late").getByText("Yesterday", { exact: true })).toBeVisible();
     await expect(page.getByText("overdue")).toHaveCount(0);
   });
@@ -191,7 +191,7 @@ for (const language of [
     await row(page, "Deadline pick").getByRole("checkbox").click();
     await expect(todayButton).toHaveText(`${language.today}1`);
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(true);
-    await doneSection(page).locator("summary").click();
+    await doneSection(page).locator(":scope > summary").click();
     await row(doneSection(page), "Deadline pick").getByRole("checkbox").click();
     await expect(todayButton).toHaveText(`${language.today}2`);
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(false);
