@@ -1,5 +1,30 @@
 import { expect, openApp, openSection, row, rowTitles, seed, seedProjects, sidebar, test, setLanguage } from "./support";
 
+for (const language of [
+  { code: "en", all: "All tasks", today: "Today", settings: "Settings" },
+  { code: "pt-BR", all: "Todas as tarefas", today: "Hoje", settings: "Configurações" },
+]) {
+  test(`phone navigation exposes both primary views and settings in ${language.code}`, async ({ page, request }) => {
+    await seed(request, [{ title: "Plan", due: "2026-11-17" }]);
+    await page.setViewportSize({ width: 320, height: 800 });
+    await openApp(page);
+    await setLanguage(page, language.code);
+    const navigation = await sidebar(page).getByRole("navigation").boundingBox();
+    for (const label of [language.all, language.today]) {
+      const item = sidebar(page).getByRole("button", { name: new RegExp(`^${label}`) });
+      const box = await item.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(navigation!.x + navigation!.width);
+      await item.click();
+      await expect(item).toHaveAttribute("aria-current", "page");
+    }
+    await sidebar(page).getByRole("link", { name: language.settings, exact: true }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(language.settings);
+  });
+}
+
 test.describe("Sidebar", () => {
   test("shows the name without a logo and the open-task count", async ({ page, request }) => {
     await seed(request, [{ title: "One" }, { title: "Two" }]);

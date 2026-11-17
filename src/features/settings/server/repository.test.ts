@@ -11,6 +11,14 @@ beforeEach(async () => { dir = await mkdtemp(path.join(tmpdir(), "tudu-test-sett
 afterEach(() => rm(dir, { recursive: true, force: true }));
 
 describe("settings repository", () => {
+  it.each(['{broken', '{"locale":"unknown"}', '{"locale":"pt-BR","unknown":true}'])("uses defaults for invalid stored preferences without overwriting %s", async (content) => {
+    const file = path.join(dir, "settings.json");
+    await writeFile(file, content);
+    expect(await repo.getSettings()).toEqual(DEFAULT_SETTINGS);
+    expect(await readFile(file, "utf8")).toBe(content);
+    await repo.updateSettings({ locale: "pt-BR" });
+    expect(await repo.getSettings()).toEqual({ ...DEFAULT_SETTINGS, locale: "pt-BR" });
+  });
   it("returns defaults without creating files until settings are saved", async () => {
     expect(await repo.getSettings()).toEqual(DEFAULT_SETTINGS);
     expect(await readdir(dir)).toEqual([]);
