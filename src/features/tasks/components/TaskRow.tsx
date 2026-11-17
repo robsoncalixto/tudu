@@ -36,7 +36,8 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
   }
 
   return (
-    <li className={`task${task.done ? " is-done" : ""}${fresh ? " is-new" : ""}`} data-priority={task.priority}>
+    <li className={`task${task.done ? " is-done" : ""}${fresh ? " is-new" : ""}`} data-priority={task.priority}
+      data-task-id={task.id} tabIndex={-1} aria-label={task.title}>
       <button
         type="button"
         className="check"
