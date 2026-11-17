@@ -1,4 +1,4 @@
-import { expect, listTasks, openApp, openSection, doneSection, row, seed, test, TODAY, YESTERDAY } from "./support";
+import { expect, listTasks, openApp, openSection, doneSection, row, seed, seedProjects, test, TODAY, YESTERDAY } from "./support";
 
 test.describe("TaskRow", () => {
   test("shows title, notes, due date, priority and tags", async ({ page, request }) => {
@@ -221,5 +221,32 @@ for (const language of [
     await row(page, "Retry pick").getByRole("button", { name: language.remove }).click();
     await expect(row(page, "Retry pick")).toHaveCount(0);
     await expect.poll(async () => (await listTasks(request))[0].plannedFor).toBeNull();
+  });
+}
+
+for (const language of [
+  { code: "EN", project: "Project", error: "Something went wrong. Try again." },
+  { code: "PT", project: "Projeto", error: "Algo deu errado. Tente novamente." },
+]) {
+  test(`assigns, switches and clears a task project in ${language.code}`, async ({ page, request }) => {
+    const projects = await seedProjects(request, ["Acme", "Beta"]);
+    await seed(request, [{ title: "Assignable task" }]);
+    await openApp(page);
+    await page.getByRole("complementary").getByRole("button", { name: language.code, exact: true }).click();
+    const select = row(page, "Assignable task").getByRole("combobox", { name: language.project, exact: true });
+    await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
+    await select.selectOption(projects[0].id);
+    await expect(page.getByRole("status")).toHaveText(language.error);
+    await expect(select).toHaveValue("");
+    expect((await listTasks(request))[0].projectId).toBeNull();
+    await page.unroute("**/api/tasks/*");
+    for (const project of projects) {
+      await select.selectOption(project.id);
+      await expect.poll(async () => (await listTasks(request))[0].projectId).toBe(project.id);
+    }
+    await page.reload();
+    await expect(select).toHaveValue(projects[1].id);
+    await select.selectOption("");
+    await expect.poll(async () => (await listTasks(request))[0].projectId).toBeNull();
   });
 }

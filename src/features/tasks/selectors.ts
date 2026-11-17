@@ -1,8 +1,9 @@
 import type { Task } from "./schema";
+import type { Project } from "@/features/projects/schema";
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 } as const;
 
-export type TaskFilter = { kind: "all" } | { kind: "today" } | { kind: "tag"; tag: string };
+export type TaskFilter = { kind: "all" } | { kind: "today" } | { kind: "tag"; tag: string } | { kind: "project"; id: string };
 
 function isForToday(task: Task, today: string): boolean {
   return Boolean(today) && (task.plannedFor === today || (task.due !== null && task.due <= today));
@@ -27,9 +28,10 @@ export interface TaskView {
   todayCount: number;
   /** Tags on open tasks with how many open tasks carry each, sorted by name. */
   tagCounts: [tag: string, count: number][];
+  projectCounts: [project: Project, count: number][];
 }
 
-export function buildTaskView(tasks: Task[], filter: TaskFilter, today: string = ""): TaskView {
+export function buildTaskView(tasks: Task[], filter: TaskFilter, today: string = "", projects: Project[] = []): TaskView {
   const counts = new Map<string, number>();
   for (const task of tasks) {
     if (task.done) continue;
@@ -38,6 +40,7 @@ export function buildTaskView(tasks: Task[], filter: TaskFilter, today: string =
   const visible = tasks.filter((task) => {
     if (filter.kind === "today") return isForToday(task, today);
     if (filter.kind === "tag") return task.tags.includes(filter.tag);
+    if (filter.kind === "project") return task.projectId === filter.id;
     return true;
   });
   return {
@@ -48,5 +51,8 @@ export function buildTaskView(tasks: Task[], filter: TaskFilter, today: string =
     openCount: tasks.filter((task) => !task.done).length,
     todayCount: tasks.filter((task) => !task.done && isForToday(task, today)).length,
     tagCounts: [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+    projectCounts: [...projects].sort((a, b) => a.name.localeCompare(b.name)).map((project) => [
+      project, tasks.filter((task) => !task.done && task.projectId === project.id).length,
+    ]),
   };
 }

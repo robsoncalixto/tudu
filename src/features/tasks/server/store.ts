@@ -11,4 +11,5 @@ export interface TaskStore {
   /** Applies `change` to the task atomically; null when it does not exist. */
   modify(id: string, change: (task: Task) => Task): Promise<Task | null>;
   remove(id: string): Promise<boolean>;
+  clearProject(id: string): Promise<void>;
 }

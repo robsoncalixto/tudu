@@ -1,5 +1,6 @@
 import { expect, test as base, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 import type { Step } from "../src/features/tasks/schema";
+import type { Project } from "../src/features/projects/schema";
 
 /** The day every test runs on: Tuesday, November 17, 2026 (local time). */
 export const TODAY = "2026-11-17";
@@ -14,6 +15,7 @@ export interface SeedTask {
   tags?: string[];
   plannedFor?: string | null;
   steps?: Step[];
+  projectId?: string | null;
 }
 
 export interface StoredTask extends Required<SeedTask> {
@@ -24,6 +26,20 @@ export interface StoredTask extends Required<SeedTask> {
 export async function listTasks(request: APIRequestContext): Promise<StoredTask[]> {
   const response = await request.get("/api/tasks");
   return (await response.json()).tasks;
+}
+
+export async function listProjects(request: APIRequestContext): Promise<Project[]> {
+  const response = await request.get("/api/projects");
+  expect(response.ok()).toBe(true);
+  return (await response.json()).projects;
+}
+
+export async function seedProjects(request: APIRequestContext, names: string[]): Promise<Project[]> {
+  return Promise.all(names.map(async (name) => {
+    const response = await request.post("/api/projects", { data: { name } });
+    expect(response.status()).toBe(201);
+    return (await response.json()).project as Project;
+  }));
 }
 
 export async function seed(request: APIRequestContext, tasks: SeedTask[]): Promise<StoredTask[]> {
@@ -44,6 +60,10 @@ export async function seed(request: APIRequestContext, tasks: SeedTask[]): Promi
 async function reset(request: APIRequestContext) {
   for (const task of await listTasks(request)) {
     await request.delete(`/api/tasks/${task.id}`);
+  }
+  for (const project of await listProjects(request)) {
+    const response = await request.delete(`/api/projects/${project.id}`);
+    expect(response.status()).toBe(204);
   }
 }
 

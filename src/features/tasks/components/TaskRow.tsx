@@ -5,9 +5,11 @@ import { dayDiff, dueLabel } from "@/lib/dates";
 import type { Dictionary, Locale } from "@/i18n";
 import { PRIORITIES, type Task, type TaskPatch } from "../schema";
 import { TaskChecklist } from "./TaskChecklist";
+import type { Project } from "@/features/projects/schema";
 
 interface Props {
   task: Task;
+  projects: Project[];
   fresh?: boolean;
   today: string;
   locale: Locale;
@@ -17,7 +19,7 @@ interface Props {
   onTag: (tag: string) => void;
 }
 
-export function TaskRow({ task, fresh, today, locale, t, onPatch, onDelete, onTag }: Props) {
+export function TaskRow({ task, projects, fresh, today, locale, t, onPatch, onDelete, onTag }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.title);
 
@@ -76,6 +78,13 @@ export function TaskRow({ task, fresh, today, locale, t, onPatch, onDelete, onTa
         {task.notes && <p className="task-notes">{task.notes}</p>}
 
         <div className="task-tags">
+          {projects.length > 0 && (
+            <select className="chip project-select" aria-label={t.project} value={task.projectId ?? ""}
+              onChange={(event) => { void onPatch(task.id, { projectId: event.target.value || null }); }}>
+              <option value="">{t.noProject}</option>
+              {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+            </select>
+          )}
           {!task.done && (
             <button
               type="button"

@@ -1,4 +1,4 @@
-import { addTask, composer, expect, listTasks, openApp, openSection, row, rowTitles, test, TODAY } from "./support";
+import { addTask, composer, expect, listTasks, openApp, openSection, row, rowTitles, seedProjects, test, TODAY } from "./support";
 
 test.describe("Composer", () => {
   test("adds a task with Enter and clears the field", async ({ page, request }) => {
@@ -169,3 +169,20 @@ test.describe("Composer", () => {
     await expect(page.locator("#open-heading")).toHaveText("Open 2");
   });
 });
+
+for (const code of ["EN", "PT"]) {
+  test(`AI capture selects an existing project in ${code}`, async ({ page, request }) => {
+    const [project] = await seedProjects(request, ["Acme"]);
+    await page.route("**/api/ai/capture", async (route) => {
+      if (route.request().method() === "GET") return route.fulfill({ json: { enabled: true } });
+      const saved = await request.post("/api/tasks", { data: { title: "Acme report", projectId: project.id } });
+      await route.fulfill({ status: 201, json: await saved.json() });
+    });
+    await openApp(page);
+    await page.getByRole("complementary").getByRole("button", { name: code, exact: true }).click();
+    await page.getByRole("textbox").fill("Write the report for Acme");
+    await page.getByRole("button", { name: code === "EN" ? "Create with AI" : "Criar com IA", exact: true }).click();
+    await expect(row(page, "Acme report").getByRole("combobox")).toHaveValue(project.id);
+    await expect.poll(async () => (await listTasks(request))[0].projectId).toBe(project.id);
+  });
+}

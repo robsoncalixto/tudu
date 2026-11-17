@@ -37,6 +37,9 @@ export function createJsonStore(dataDir: string): TaskStore {
 
   return {
     list: () => locked(read),
+    clearProject: (id) => locked(async () => {
+      await write((await read()).map((task) => task.projectId === id ? { ...task, projectId: null } : task));
+    }),
 
     insert: (created) =>
       locked(async () => {
