@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { errorCode } from "@/lib/http";
 import { settingsApi } from "./api";
-import { settingsChanges, type Settings, type SettingsPatch } from "./schema";
+import { settingsChanges, settingsSchema, type Settings, type SettingsPatch } from "./schema";
 
 export function useSettings(initial: Settings) {
   const [saved, setSaved] = useState(initial);
@@ -11,8 +11,7 @@ export function useSettings(initial: Settings) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedNotice, setSavedNotice] = useState(false);
-  const changes = settingsChanges(saved, draft);
-  const dirty = Object.keys(changes).length > 0;
+  const dirty = Object.entries(draft).some(([key, value]) => value !== saved[key as keyof Settings]);
   function change(patch: SettingsPatch) {
     setDraft((current) => ({ ...current, ...patch }));
     setSavedNotice(false);
@@ -20,10 +19,11 @@ export function useSettings(initial: Settings) {
   }
   async function save() {
     if (busy || !dirty) return;
+    if (!settingsSchema.safeParse(draft).success) { setError("invalid_settings"); return; }
     setBusy(true);
     setError(null);
     try {
-      const next = await settingsApi.update(changes);
+      const next = await settingsApi.update(settingsChanges(saved, draft));
       setSaved(next);
       setDraft(next);
       setSavedNotice(true);

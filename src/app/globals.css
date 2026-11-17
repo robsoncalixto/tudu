@@ -1117,7 +1117,8 @@ label.chip:hover {
   font: 600 14px/20px var(--heading);
 }
 
-.settings-fields select {
+.settings-fields select,
+.settings-fields input {
   width: 100%;
   min-width: 0;
   background: var(--surface);
@@ -1129,6 +1130,10 @@ label.chip:hover {
 
 .settings-fields .btn {
   justify-self: start;
+}
+
+.settings-fields .hint {
+  grid-column: 1 / -1;
 }
 
 .settings-ai p {

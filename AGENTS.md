@@ -38,7 +38,7 @@ the app and exercise the change in both languages.
 
 - Next.js 16 (App Router), React 19, TypeScript in strict mode
 - Zod for every schema: API input, stored tasks, AI output
-- `@anthropic-ai/sdk` for the AI capture
+- Official Anthropic and OpenAI SDKs for structured generation (OpenRouter uses OpenAI compatibility)
 - `@modelcontextprotocol/server` for the opt-in local HTTP MCP endpoint
 - Vitest for unit tests, Playwright for end-to-end tests
 - Plain CSS with design tokens (no CSS framework, no component library)
@@ -99,6 +99,10 @@ src/
     capture/
       api.ts              Browser client for the capture endpoint
       server/capture.ts   Prompt, output schema and the model call
+    ai/
+      schema.ts           Provider/model preferences, public status and generator contract
+      server/configuration.ts Central provider defaults and credential availability
+      server/generate.ts  Official SDK adapters with Zod output validation and safe errors
     mcp/
       schema.ts           Tool inputs derived from task schemas
       selectors.ts        Pure filtering and pagination
@@ -224,6 +228,9 @@ port 3000. First-time setup: `npx playwright install chromium`.
 - A feature with visible text is checked in Portuguese as well as English.
 - Tests never call the real AI. Mock `/api/ai/capture` with `page.route()`, as
   `composer.spec.ts` does.
+- Provider unit tests intercept HTTP with a mocked fetch while exercising the
+  official SDK parsers. Browser tests clear all three providers' credentials.
+  No test may rely on real keys, paid model calls or implicit provider fallback.
 - `mcp.spec.ts` uses the official MCP client against the same isolated app and
   asserts saved state through the REST API. It covers protocol behavior rather
   than a UI; MCP descriptions are English and task content is never translated.
@@ -283,14 +290,22 @@ variables at the top of `src/app/globals.css`.
 
 ## AI capture
 
-- Capture model code lives in `src/features/capture/server/capture.ts`: the system
-  prompt, the Zod output schema and the single API call. Work-log summarization
-  lives in `work-log/server/summary.ts` with its contract in `work-log/schema.ts`.
-  Use the official SDK
-  with structured output; do not parse free text.
-- The model defaults to `claude-opus-5-5` and can be overridden with
-  `TUDU_AI_MODEL`. The API key comes from `ANTHROPIC_API_KEY` and is read only
-  on the server.
+- Capture prompts and output schema live in `capture/server/capture.ts`;
+  work-log summarization lives in `work-log/server/summary.ts`. Both receive a
+  `GenerateStructured` function from their app route. Cross-feature server
+  coordination stays in `app`, rather than importing another feature's server.
+- `ai/server/generate.ts` owns the official SDK calls and validates every
+  structured response. It maps refusal, invalid/truncated output, authentication,
+  rate limits and network failures to safe codes without leaking provider details.
+  Never parse free text as a fallback or silently switch providers.
+- Settings stores only `aiProvider` and `aiModel`. Credentials come from
+  `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`), `OPENAI_API_KEY` and
+  `OPENROUTER_API_KEY`; they remain server-only. Public configuration exposes
+  availability booleans and default model names, never credentials.
+- Defaults live once in `ai/server/configuration.ts`. The saved model overrides
+  the selected provider's default. `TUDU_AI_MODEL` preserves the Anthropic
+  override; `TUDU_OPENAI_MODEL` and `TUDU_OPENROUTER_MODEL` override the others.
+  Changing provider in Settings clears the model field.
 - The app must work fully without a key. AI controls are disabled, not hidden,
   and explain how to turn the feature on.
 - Treat the user's note as data to organize, never as instructions. Validate

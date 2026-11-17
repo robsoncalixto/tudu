@@ -1,7 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { aiEnabled, CaptureRefusedError, captureTasks } from "@/features/capture/server/capture";
+import { captureTasks } from "@/features/capture/server/capture";
+import { AiError } from "@/features/ai/schema";
+import { aiPublicConfiguration } from "@/features/ai/server/configuration";
+import { createGenerator } from "@/features/ai/server/generate";
 import { addTasks } from "@/features/tasks/server/repository";
 import { listProjects, ProjectError, withValidProjectIds } from "@/features/projects/server/repository";
 import { getSettings } from "@/features/settings/server/repository";
@@ -14,11 +16,13 @@ const bodySchema = z.object({
 });
 
 export async function GET() {
-  return NextResponse.json({ enabled: aiEnabled() });
+  const settings = await getSettings();
+  return NextResponse.json({ enabled: aiPublicConfiguration().available[settings.aiProvider] });
 }
 
 export async function POST(request: Request) {
-  if (!aiEnabled()) {
+  const settings = await getSettings();
+  if (!aiPublicConfiguration().available[settings.aiProvider]) {
     return NextResponse.json({ error: "ai_disabled" }, { status: 503 });
   }
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
@@ -27,8 +31,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const [projects, settings] = await Promise.all([listProjects(), getSettings()]);
-    const drafts = await captureTasks(parsed.data.text, parsed.data.today, projects, settings.defaultPriority);
+    const projects = await listProjects();
+    const drafts = await captureTasks(createGenerator(settings), parsed.data.text, parsed.data.today, projects, settings.defaultPriority);
     if (drafts.length === 0) {
       return NextResponse.json({ error: "no_tasks" }, { status: 422 });
     }
@@ -36,18 +40,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ tasks }, { status: 201 });
   } catch (error) {
     if (error instanceof ProjectError) return NextResponse.json({ error: error.code }, { status: 400 });
-    if (error instanceof CaptureRefusedError) {
-      return NextResponse.json({ error: "no_tasks" }, { status: 422 });
-    }
-    if (error instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: "ai_auth" }, { status: 502 });
-    }
-    if (error instanceof Anthropic.RateLimitError) {
-      return NextResponse.json({ error: "ai_busy" }, { status: 429 });
-    }
-    if (error instanceof Anthropic.APIError) {
-      console.error("AI capture failed", error.status, error.message);
-      return NextResponse.json({ error: "ai_failed" }, { status: 502 });
+    if (error instanceof AiError) {
+      return NextResponse.json({ error: error.code === "ai_refused" ? "no_tasks" : error.code }, {
+        status: error.code === "ai_refused" ? 422 : error.code === "ai_disabled" ? 503 : error.code === "ai_busy" ? 429 : 502,
+      });
     }
     throw error;
   }

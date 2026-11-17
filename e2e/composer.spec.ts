@@ -81,7 +81,7 @@ test.describe("Composer", () => {
   test("explains how to turn AI on when there is no key", async ({ page }) => {
     await openApp(page);
 
-    await expect(page.getByText("AI capture is off. Set ANTHROPIC_API_KEY in .env to turn it on.")).toBeVisible();
+    await expect(page.getByText("AI is off. Configure the selected provider's API key in the server's .env file.")).toBeVisible();
     await composer(page).fill("some note");
     await expect(page.getByRole("button", { name: "Create with AI" })).toBeDisabled();
   });

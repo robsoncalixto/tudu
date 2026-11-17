@@ -84,8 +84,33 @@ Every new feature ships with both kinds of test; see [AGENTS.md](AGENTS.md).
 
 ## AI capture
 
-Set `ANTHROPIC_API_KEY` in `.env` to turn on **Create with AI**. Without a key
-the app works as a regular to-do list. `TUDU_AI_MODEL` overrides the model.
+Choose Anthropic, OpenAI or OpenRouter in **Settings**, then configure that
+provider's key in the server's `.env` file and restart the app. Keys are never
+entered or returned through the web interface. Without the selected provider's
+key, the app works as a regular to-do list and AI controls explain what to set.
+It does not silently switch to another configured provider.
+
+| Provider | Server credential | Default model | Optional server default override |
+| --- | --- | --- | --- |
+| Anthropic | `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`) | `claude-opus-5-5` | `TUDU_AI_MODEL` |
+| OpenAI | `OPENAI_API_KEY` | `gpt-6.2-sol` | `TUDU_OPENAI_MODEL` |
+| OpenRouter | `OPENROUTER_API_KEY` | `anthropic/claude-opus-5.5` | `TUDU_OPENROUTER_MODEL` |
+
+The model field in Settings overrides the selected provider's default; leave
+it blank to use the model shown as its placeholder. Switching provider clears
+that field so a model from a different provider is not reused accidentally.
+Capture and work-log summaries share this selection. Choose a model that
+supports structured output. An unsupported model or invalid output shows a
+stable error without saving tasks; there is no free-text parsing fallback.
+Anthropic API keys take precedence if both Anthropic credentials are set.
+
+The provider adapter uses the official Anthropic and OpenAI SDKs with Zod
+schemas. OpenAI uses [Responses structured parsing](https://github.com/openai/openai-node/blob/main/docs/structured-outputs.md);
+OpenRouter uses its compatible Chat Completions endpoint with strict JSON
+Schema and [`require_parameters: true`](https://openrouter.ai/docs/guides/features/structured-outputs)
+so routing requires structured-output support. All responses are validated
+locally before use. Automated tests mock provider HTTP requests and never use
+real keys or make paid model calls.
 
 Paste something like:
 
@@ -186,7 +211,8 @@ browser-only language settings are no longer used.
 
 The default priority applies to title-only API requests and is supplied to AI
 capture. Explicit task priorities are preserved. The AI section shows whether
-capture is configured; provider configuration remains on the server.
+the saved provider has a server credential. Provider/model choices are shared
+preferences; credentials remain on the server.
 
 ## Repeating tasks
 
@@ -215,7 +241,7 @@ person's text so titles cannot introduce extra formatting.
 
 Copying also works on LAN HTTP through a native selection fallback. If the
 browser blocks both clipboard methods, the page offers the full text for manual
-copying. An optional AI summary uses the configured Anthropic key and model,
+copying. An optional AI summary uses the provider and model selected in Settings,
 includes only the saved completed task titles, projects and tags for that day,
 and never changes tasks. Review it before sharing; it is included in subsequent
 exports. A large work log stays available for copying even if it exceeds the AI
@@ -300,6 +326,7 @@ src/
   app/                 Routes: page, layout, API endpoints
   features/tasks/      Task schema, storage, hooks and components
   features/capture/    Turning a note into tasks with AI
+  features/ai/         Provider selection contract and shared structured generation
   features/projects/   Project registry
   features/settings/   Shared preferences
   features/recurrence/ Repeat rule contract

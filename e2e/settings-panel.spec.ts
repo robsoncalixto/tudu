@@ -6,6 +6,41 @@ const languages = [
 ] as const;
 
 for (const language of languages) {
+  test(`selects providers and models, validates drafts and recovers failed saves in ${language.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: language.locale });
+    await page.goto("/settings");
+    const provider = page.getByRole("combobox", { name: language.locale === "en" ? "AI provider" : "Provedor de IA", exact: true });
+    const model = page.getByRole("textbox", { name: language.locale === "en" ? "AI model" : "Modelo de IA", exact: true });
+    const save = page.getByRole("button", { name: language.save, exact: true });
+    await provider.selectOption("openai"); await model.fill("custom-model");
+    expect((await listSettings(request)).aiProvider).toBe("anthropic");
+    await save.click(); await expect(page.getByRole("status")).toHaveText(language.saved);
+    expect(await listSettings(request)).toMatchObject({ aiProvider: "openai", aiModel: "custom-model" });
+    await page.reload(); await expect(provider).toHaveValue("openai"); await expect(model).toHaveValue("custom-model");
+    await provider.selectOption("openrouter"); await expect(model).toHaveValue("");
+    await expect(model).toHaveAttribute("placeholder", "anthropic/claude-opus-5.5");
+    await model.fill("bad model"); await save.click();
+    await expect(page.getByRole("status")).toHaveText(language.locale === "en"
+      ? "Those settings are invalid. Check your choices and try again."
+      : "Essas configurações são inválidas. Confira suas escolhas e tente novamente.");
+    expect((await listSettings(request)).aiProvider).toBe("openai");
+    await model.fill("openai/gpt-6.2-sol");
+    await page.route("**/api/settings", (route) => route.request().method() === "PATCH"
+      ? route.fulfill({ status: 500, json: { error: "failed" } }) : route.fallback());
+    await save.click(); await expect(page.getByRole("status")).toHaveText(language.error);
+    await expect(model).toHaveValue("openai/gpt-6.2-sol");
+    await page.unroute("**/api/settings"); await save.click();
+    await expect(page.getByRole("status")).toHaveText(language.saved);
+    const stored = await listSettings(request);
+    expect(stored).toMatchObject({ aiProvider: "openrouter", aiModel: "openai/gpt-6.2-sol" });
+    expect(JSON.stringify(stored)).not.toMatch(/apiKey|API_KEY|authToken/);
+    expect(await (await request.get("/api/ai/capture")).json()).toEqual({ enabled: false });
+    await page.getByRole("link", { name: language.back, exact: true }).click();
+    await page.getByRole("textbox", { name: /Write a task|Escreva uma tarefa/ }).fill("Works without AI");
+    await page.getByRole("button", { name: language.add, exact: true }).click();
+    expect((await listTasks(request)).map((task) => task.title)).toEqual(["Works without AI"]);
+    await expect(page.getByRole("button", { name: language.locale === "en" ? "Create with AI" : "Criar com IA", exact: true })).toBeDisabled();
+  });
   test(`saves and applies every preference in ${language.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: language.locale });
     await seed(request, [{ title: "Due task", due: TODAY }]);
@@ -18,7 +53,7 @@ for (const language of languages) {
     await page.getByRole("combobox", { name: language.format, exact: true }).selectOption("iso");
     await page.getByRole("button", { name: language.save, exact: true }).click();
     await expect(page.getByRole("status")).toHaveText(language.saved);
-    expect(await listSettings(request)).toEqual({ locale: language.locale, defaultPriority: "high", startView: "today", dateFormat: "iso" });
+    expect(await listSettings(request)).toEqual({ locale: language.locale, defaultPriority: "high", startView: "today", dateFormat: "iso", aiProvider: "anthropic", aiModel: "" });
     await expect(page.getByRole("heading", { name: language.ai, exact: true })).toBeVisible();
     await page.getByRole("link", { name: language.back, exact: true }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(TODAY);
@@ -90,7 +125,7 @@ test("settings API rejects invalid preferences and preserves partial updates", a
     expect(await response.json()).toEqual({ error: "invalid_settings" });
   }
   await saveSettings(request, { dateFormat: "iso" });
-  expect(await listSettings(request)).toEqual({ locale: "en", defaultPriority: "high", startView: "today", dateFormat: "iso" });
+  expect(await listSettings(request)).toEqual({ locale: "en", defaultPriority: "high", startView: "today", dateFormat: "iso", aiProvider: "anthropic", aiModel: "" });
   const response = await request.post("/api/tasks", { data: [{ title: "Default" }, { title: "Explicit", priority: "low" }] });
   expect(response.status()).toBe(201);
   expect((await listTasks(request)).map((task) => task.priority)).toEqual(["high", "low"]);
@@ -103,6 +138,16 @@ test("saving one preference preserves changes made in another session", async ({
   await page.getByRole("combobox", { name: "Default priority", exact: true }).selectOption("high");
   await page.getByRole("button", { name: "Save settings", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Settings saved.");
-  expect(await listSettings(request)).toEqual({ locale: "en", defaultPriority: "high", startView: "all", dateFormat: "iso" });
+  expect(await listSettings(request)).toEqual({ locale: "en", defaultPriority: "high", startView: "all", dateFormat: "iso", aiProvider: "anthropic", aiModel: "" });
   await expect(page.getByRole("combobox", { name: "Date format", exact: true })).toHaveValue("iso");
+});
+
+test("provider/model saves stay paired when another session changes the model", async ({ page, request }) => {
+  await page.goto("/settings");
+  await expect(page.getByRole("textbox", { name: "AI model", exact: true })).toHaveValue("");
+  await saveSettings(request, { aiModel: "previous-provider-model" });
+  await page.getByRole("combobox", { name: "AI provider", exact: true }).selectOption("openai");
+  await page.getByRole("button", { name: "Save settings", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("Settings saved.");
+  expect(await listSettings(request)).toMatchObject({ aiProvider: "openai", aiModel: "" });
 });

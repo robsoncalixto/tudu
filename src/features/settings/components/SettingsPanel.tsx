@@ -5,8 +5,9 @@ import { useLocale } from "@/i18n/use-locale";
 import { PRIORITIES } from "@/features/tasks/schema";
 import type { Settings } from "../schema";
 import { useSettings } from "../use-settings";
+import { AI_PROVIDERS, type AiPublicConfiguration } from "@/features/ai/schema";
 
-export function SettingsPanel({ initial, aiEnabled }: { initial: Settings; aiEnabled: boolean }) {
+export function SettingsPanel({ initial, ai }: { initial: Settings; ai: AiPublicConfiguration }) {
   const { saved, draft, change, save, busy, dirty, error, savedNotice } = useSettings(initial);
   const { t } = useLocale(saved.locale);
   return (
@@ -42,6 +43,16 @@ export function SettingsPanel({ initial, aiEnabled }: { initial: Settings; aiEna
               <option value="iso">{t.isoDateFormat}</option>
             </select>
           </label>
+          <label>{t.aiProvider}
+            <select value={draft.aiProvider} onChange={(event) => change({ aiProvider: event.target.value as Settings["aiProvider"], aiModel: "" })}>
+              {AI_PROVIDERS.map((provider) => <option key={provider} value={provider}>{t.aiProviders[provider]}</option>)}
+            </select>
+          </label>
+          <label>{t.aiModel}
+            <input value={draft.aiModel} maxLength={160} placeholder={ai.models[draft.aiProvider]} aria-describedby="ai-model-hint"
+              onChange={(event) => change({ aiModel: event.target.value })} />
+          </label>
+          <p className="hint" id="ai-model-hint">{t.aiModelHint}</p>
           <button className="btn btn-primary" type="submit" disabled={!dirty}>{busy ? t.savingSettings : t.saveSettings}</button>
         </fieldset>
       </form>
@@ -50,7 +61,7 @@ export function SettingsPanel({ initial, aiEnabled }: { initial: Settings; aiEna
       </p>
       <section className="card settings-ai" aria-labelledby="ai-settings-heading">
         <h2 className="section-title" id="ai-settings-heading">{t.aiSettings}</h2>
-        <p>{aiEnabled ? t.aiConfigured : t.aiOff}</p>
+        <p>{ai.available[saved.aiProvider] ? t.aiConfigured : t.aiOff}</p>
       </section>
     </main>
   );

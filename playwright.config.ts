@@ -43,6 +43,11 @@ export default defineConfig({
       // The real AI is never called; the capture endpoints are mocked per test.
       ANTHROPIC_API_KEY: "",
       ANTHROPIC_AUTH_TOKEN: "",
+      OPENAI_API_KEY: "",
+      OPENROUTER_API_KEY: "",
+      TUDU_AI_MODEL: "",
+      TUDU_OPENAI_MODEL: "",
+      TUDU_OPENROUTER_MODEL: "",
       TUDU_MCP_TOKEN: "tudu-e2e-token-not-a-production-secret",
       NEXT_TELEMETRY_DISABLED: "1",
     },

@@ -26,7 +26,10 @@ export function createSettingsRepository(dataDir: string) {
   return {
     getSettings: () => locked(read),
     updateSettings: (patch: SettingsPatch) => locked(async () => {
-      const next = settingsSchema.parse({ ...await read(), ...settingsPatchSchema.parse(patch) });
+      const saved = await read();
+      const changes = settingsPatchSchema.parse(patch);
+      const resetModel = changes.aiProvider !== undefined && changes.aiProvider !== saved.aiProvider;
+      const next = settingsSchema.parse({ ...saved, ...(resetModel ? { aiModel: "" } : {}), ...changes });
       await fs.mkdir(dataDir, { recursive: true });
       const temporary = `${file}.${process.pid}.tmp`;
       await fs.writeFile(temporary, JSON.stringify(next, null, 2), { mode: 0o600 });
