@@ -5,8 +5,8 @@ Guidance for anyone — person or coding agent — changing this repository.
 ## What this is
 
 TUDU is an open source to-do list for managing work tasks. It is a single
-Next.js web app that runs locally in Docker. There is no database: tasks live in
-one JSON file. The app is AI native: a note typed in plain language can be
+Next.js web app that runs locally in Docker. By default tasks live in one JSON
+file; setting `DATABASE_URL` stores them in PostgreSQL instead. The app is AI native: a note typed in plain language can be
 turned into structured tasks. The interface is in English, with Portuguese
 (pt-BR) as a second language.
 
@@ -18,6 +18,8 @@ Prefer the simplest change that fits the structure below over new abstractions.
 | Task | Command |
 | --- | --- |
 | Run in Docker (the normal way) | `docker compose up --build` |
+| Run in Docker with Postgres | `docker compose --profile postgres up --build` (set `DATABASE_URL`) |
+| Unit and e2e tests on Postgres | `npm run test:postgres`, `npm run test:e2e:postgres` |
 | Run without Docker | `npm install`, then `npm run dev` |
 | Unit tests | `npm test` (`npm run test:watch` while working) |
 | End-to-end tests | `npm run test:e2e` (`npm run test:e2e:ui` to debug) |
@@ -54,7 +56,10 @@ src/
       use-tasks.ts        Hook that owns the task list and optimistic updates
       components/         Board (composition), Sidebar, Composer, TaskList, TaskRow
       server/
-        repository.ts     The only code that reads or writes data/tasks.json
+        repository.ts     The data contract; picks the store from DATABASE_URL
+        store.ts          The TaskStore interface every backend implements
+        json-store.ts     Default backend: data/tasks.json
+        postgres-store.ts PostgreSQL backend, schema migrations and pool
     capture/
       api.ts              Browser client for the capture endpoint
       server/capture.ts   Prompt, output schema and the model call
@@ -66,6 +71,7 @@ src/
   lib/                    Feature-agnostic helpers (dates, http, use-today)
 e2e/                      End-to-end tests, one spec per component, plus support.ts
 design.md                 The design system (source of truth for the UI)
+docker/postgres-init.sql  Creates the tudu_test database in the Postgres container
 data/tasks.json           Runtime data, git-ignored
 ```
 
@@ -84,11 +90,16 @@ Imports use the `@/` alias, which points at `src/`.
 3. **`server/` never reaches the browser.** Code under a `server/` folder may
    use Node APIs, the filesystem and secrets. Client components and hooks must
    not import from it; they talk to the server through the feature's `api.ts`.
-4. **One door to the data.** Only `tasks/server/repository.ts` touches
-   `data/tasks.json`. All writes go through its queue so concurrent requests
-   cannot lose changes, and files are written atomically. If storage ever moves
-   to a database, this file is the only one that changes — keep its exported
-   functions (`listTasks`, `addTasks`, `updateTask`, `deleteTask`) as the contract.
+4. **One door to the data.** Everything else reaches tasks through
+   `tasks/server/repository.ts` and its exported functions (`listTasks`,
+   `addTasks`, `updateTask`, `deleteTask`), which are the contract. The
+   repository holds the rules (ids, timestamps, completion) and hands storage to
+   a `TaskStore`: `json-store.ts` (the default) or `postgres-store.ts` when
+   `DATABASE_URL` is set. Only those stores touch `data/tasks.json` or the
+   database. A change to stored data must work on both: the JSON store runs
+   writes through one queue and writes the file atomically; the Postgres store
+   uses transactions with row locks. A schema change is a new entry at the end
+   of `MIGRATIONS`, never an edit to an old one.
 5. **Schemas are the contract.** Define the shape once in `schema.ts` with Zod
    and derive TypeScript types from it with `z.infer`. Never hand-write a type
    that duplicates a schema.
@@ -124,8 +135,14 @@ Run with `npm test`. Files live next to the code they cover as `*.test.ts` and
 run in a Node environment.
 
 - Cover schemas, selectors, date helpers, dictionaries and the repository.
-- Repository tests point `DATA_DIR` at a temporary folder and import a fresh
-  copy of the module; never read or write the real `data/` folder in a test.
+- Repository tests run every case on each backend: the JSON store in a
+  temporary folder and the Postgres store on PGlite (Postgres in WebAssembly,
+  no server needed). Never read or write the real `data/` folder or a real
+  database in a test.
+- `npm run test:postgres` also runs them against the `tudu_test` database of
+  the Docker Postgres (`docker compose --profile postgres up -d db`), and
+  `npm run test:e2e:postgres` runs the end-to-end suite on it. Both wipe that
+  database, so they refuse a database whose name lacks `test` or `e2e`.
 - Dates are fixed strings; do not depend on the current day.
 
 ### End-to-end tests (Playwright)

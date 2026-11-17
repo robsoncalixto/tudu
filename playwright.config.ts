@@ -9,6 +9,13 @@ const PORT = 3100;
 const dataDir = process.env.TUDU_E2E_DATA_DIR ?? mkdtempSync(path.join(tmpdir(), "tudu-e2e-"));
 process.env.TUDU_E2E_DATA_DIR = dataDir;
 
+// Optional: run against Postgres instead of the JSON file. Every test deletes
+// all tasks, so only a database whose name says it is for tests is accepted.
+const databaseUrl = process.env.TUDU_E2E_DATABASE_URL ?? "";
+if (databaseUrl && !/test|e2e/i.test(new URL(databaseUrl).pathname)) {
+  throw new Error("TUDU_E2E_DATABASE_URL must name a throwaway database (its name must contain 'test' or 'e2e').");
+}
+
 export default defineConfig({
   testDir: "./e2e",
   // Every test resets the shared task file, so tests run one at a time.
@@ -31,6 +38,8 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       DATA_DIR: dataDir,
+      // Always set, so a DATABASE_URL in .env never sends tests to real data.
+      DATABASE_URL: databaseUrl,
       // The real AI is never called; the capture endpoints are mocked per test.
       ANTHROPIC_API_KEY: "",
       ANTHROPIC_AUTH_TOKEN: "",

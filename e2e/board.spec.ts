@@ -1,4 +1,4 @@
-import { expect, listTasks, openApp, openSection, doneSection, row, seed, test, TODAY } from "./support";
+import { expect, listTasks, openApp, openSection, doneSection, row, seed, test, TODAY, TOMORROW } from "./support";
 
 test.describe("Board", () => {
   test("shows the app name, today's date and an empty state", async ({ page }) => {
@@ -49,6 +49,25 @@ test.describe("Board", () => {
 
     await expect(row(page, "Survive a reload")).toBeVisible();
     expect((await listTasks(request)).map((task) => task.title)).toEqual(["Survive a reload"]);
+  });
+
+  test("keeps a task's details and done state after a reload", async ({ page, request }) => {
+    await seed(request, [{ title: "Plan Q1", notes: "Ask Ana", priority: "high", due: TOMORROW, tags: ["q1", "work"], plannedFor: TODAY }]);
+    await openApp(page);
+    await row(page, "Plan Q1").getByRole("checkbox", { name: "Mark as done" }).click();
+    await expect(page.getByText("1 done")).toBeVisible();
+
+    await page.reload();
+
+    await expect(page.getByText("1 done")).toBeVisible();
+    await doneSection(page).locator("summary").click();
+    const task = row(doneSection(page), "Plan Q1");
+    await expect(task.getByRole("button", { name: "#q1" })).toBeVisible();
+    await expect(task.getByRole("button", { name: "#work" })).toBeVisible();
+    await expect(task.getByText("Tomorrow")).toBeVisible();
+    expect(await listTasks(request)).toMatchObject([
+      { title: "Plan Q1", notes: "Ask Ana", priority: "high", due: TOMORROW, tags: ["q1", "work"], plannedFor: TODAY, done: true },
+    ]);
   });
 
   test("fits a phone screen without horizontal scrolling", async ({ page, request }) => {
