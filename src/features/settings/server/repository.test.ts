@@ -11,6 +11,12 @@ beforeEach(async () => { dir = await mkdtemp(path.join(tmpdir(), "tudu-test-sett
 afterEach(() => rm(dir, { recursive: true, force: true }));
 
 describe("settings repository", () => {
+  it("clears an old provider's model on provider-only updates and preserves explicit model choices", async () => {
+    await repo.updateSettings({ aiModel: "anthropic-custom" });
+    expect(await repo.updateSettings({ aiProvider: "openai" })).toMatchObject({ aiProvider: "openai", aiModel: "" });
+    expect(await repo.updateSettings({ aiProvider: "openrouter", aiModel: "custom/model" }))
+      .toMatchObject({ aiProvider: "openrouter", aiModel: "custom/model" });
+  });
   it.each(['{broken', '{"locale":"unknown"}', '{"locale":"pt-BR","unknown":true}'])("uses defaults for invalid stored preferences without overwriting %s", async (content) => {
     const file = path.join(dir, "settings.json");
     await writeFile(file, content);
@@ -24,7 +30,7 @@ describe("settings repository", () => {
     expect(await readdir(dir)).toEqual([]);
   });
   it("saves every preference atomically and reads it from a new repository instance", async () => {
-    const settings = { locale: "pt-BR", defaultPriority: "high", startView: "today", dateFormat: "iso" } as const;
+    const settings = { ...DEFAULT_SETTINGS, locale: "pt-BR", defaultPriority: "high", startView: "today", dateFormat: "iso" } as const;
     expect(await repo.updateSettings(settings)).toEqual(settings);
     expect(await createSettingsRepository(dir).getSettings()).toEqual(settings);
     expect(await readdir(dir)).toEqual(["settings.json"]);
