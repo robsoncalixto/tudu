@@ -18,6 +18,8 @@ function task(overrides: Partial<Task> = {}): Task {
     plannedFor: null,
     steps: [],
     projectId: null,
+    repeat: null,
+    nextOccurrenceId: null,
     ...overrides,
   };
 }

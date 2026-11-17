@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
@@ -10,7 +10,7 @@ import { createRepository } from "./repository";
 
 type Repository = ReturnType<typeof createRepository>;
 
-const input = (title: string): TaskInput => ({ title, notes: "", priority: "medium", due: null, tags: [], steps: [], projectId: null });
+const input = (title: string): TaskInput => ({ title, notes: "", priority: "medium", due: null, tags: [], steps: [], projectId: null, repeat: null });
 
 interface Backend {
   name: string;
@@ -80,7 +80,7 @@ describe.each(backends)("repository on $name", (backend) => {
 
   it("stores every field exactly as given", async () => {
     const [created] = await repo.addTasks([
-      { title: "Plan Q1", notes: "Ask Ana", priority: "high", due: "2026-11-30", tags: ["work", "q1"], steps: [], projectId: null },
+      { title: "Plan Q1", notes: "Ask Ana", priority: "high", due: "2026-11-30", tags: ["work", "q1"], steps: [], projectId: null, repeat: null },
     ]);
     expect(await repo.listTasks()).toEqual([created]);
   });
@@ -102,7 +102,7 @@ describe.each(backends)("repository on $name", (backend) => {
     });
     expect(updated).toMatchObject({ title: "b", notes: "n", priority: "low", due: "2026-12-01", tags: ["x"] });
     expect(await repo.listTasks()).toEqual([updated]);
-    expect(await repo.updateTask(task.id, { due: null, tags: [] })).toMatchObject({ due: null, tags: [], steps: [], projectId: null });
+    expect(await repo.updateTask(task.id, { due: null, tags: [] })).toMatchObject({ due: null, tags: [], steps: [], projectId: null, repeat: null });
   });
 
   it("sets and clears completedAt when done changes", async () => {
@@ -189,6 +189,62 @@ describe.each(backends)("repository on $name", (backend) => {
     await repo.updateTask(tasks[0].id, { projectId: null });
     expect((await repo.listTasks())[0].projectId).toBeNull();
   });
+
+  it("completes and creates the next occurrence together, copying details and resetting progress", async () => {
+    const [task] = await repo.addTasks([{
+      ...input("Report"), due: "2026-01-31", repeat: { frequency: "monthly", day: 31 }, notes: "Ask Ana",
+      priority: "high", tags: ["work"], projectId: "00000000-0000-4000-8000-000000000001",
+      steps: [{ id: "draft", title: "Draft", done: true }],
+    }]);
+    await repo.updateTask(task.id, { plannedFor: "2026-11-17" });
+    const result = await repo.updateTaskWithNext(task.id, { done: true });
+    expect(result?.task).toMatchObject({ done: true, nextOccurrenceId: result?.nextTask?.id, plannedFor: "2026-11-17" });
+    expect(result?.nextTask).toEqual({
+      ...task, id: result?.nextTask?.id, due: "2026-02-28", createdAt: result?.task.completedAt,
+      steps: [{ id: "draft", title: "Draft", done: false }],
+    });
+    expect(await repo.listTasks()).toEqual([result?.task, result?.nextTask]);
+    const march = await repo.updateTaskWithNext(result!.nextTask!.id, { done: true });
+    expect(march?.nextTask?.due).toBe("2026-03-31");
+  });
+
+  it("creates only one next occurrence across concurrent requests, retries and reopening", async () => {
+    const [task] = await repo.addTasks([{ ...input("Daily"), due: "2026-11-17", repeat: { frequency: "daily" } }]);
+    const results = await Promise.all(Array.from({ length: 6 }, () => repo.updateTaskWithNext(task.id, { done: true })));
+    expect(new Set(results.map((result) => result?.nextTask?.id)).size).toBe(1);
+    expect(await repo.listTasks()).toHaveLength(2);
+    const next = results[0]!.nextTask!;
+    await repo.updateTask(next.id, { title: "Edited occurrence" });
+    expect((await repo.updateTaskWithNext(task.id, { done: true }))?.nextTask?.title).toBe("Edited occurrence");
+    await repo.updateTask(task.id, { done: false });
+    await repo.updateTask(task.id, { done: true });
+    expect(await repo.listTasks()).toHaveLength(2);
+    await repo.deleteTask(next.id);
+    await repo.updateTask(task.id, { done: false });
+    expect((await repo.updateTaskWithNext(task.id, { done: true }))?.nextTask).toBeNull();
+    expect(await repo.listTasks()).toHaveLength(1);
+  });
+
+  it("uses changed rules and stops repeating after removal without changing existing occurrences", async () => {
+    const [task] = await repo.addTasks([{ ...input("Report"), due: "2026-11-20", repeat: { frequency: "daily" } }]);
+    await repo.updateTask(task.id, { repeat: { frequency: "weekdays" } });
+    const result = await repo.updateTaskWithNext(task.id, { done: true });
+    expect(result?.nextTask?.due).toBe("2026-11-23");
+    await repo.updateTask(result!.nextTask!.id, { repeat: null, due: null });
+    expect((await repo.updateTaskWithNext(result!.nextTask!.id, { done: true }))?.nextTask).toBeNull();
+    expect((await repo.listTasks())[0]).toEqual(result?.task);
+    expect(await repo.listTasks()).toHaveLength(2);
+  });
+
+  it("rolls back invalid repeating dates and batch creation, then accepts a valid retry", async () => {
+    const [task] = await repo.addTasks([{ ...input("Report"), due: "2026-11-17", repeat: { frequency: "daily" } }]);
+    await expect(repo.updateTask(task.id, { due: null, done: true })).rejects.toThrow("invalid_repeat");
+    await expect(repo.updateTask(task.id, { due: "2026-02-30" })).rejects.toThrow("invalid_repeat");
+    await expect(repo.addTasks([input("Valid"), { ...input("Bad"), repeat: { frequency: "daily" } }])).rejects.toThrow("invalid_repeat");
+    expect(await repo.listTasks()).toEqual([task]);
+    await repo.updateTask(task.id, { done: true });
+    expect(await repo.listTasks()).toHaveLength(2);
+  });
 });
 
 describe("default repository", () => {
@@ -216,6 +272,17 @@ describe("default repository", () => {
     expect(stored.map((task: { title: string }) => task.title)).toEqual(["a", "b"]);
     expect(stored[0].plannedFor).toBeNull();
   });
+  it("keeps completion and its next occurrence unsaved together when the atomic write fails", async () => {
+    const repo = await import("./repository");
+    const [created] = await repo.addTasks([{ ...input("Daily"), due: "2026-11-17", repeat: { frequency: "daily" } }]);
+    const blocked = path.join(dir, `tasks.json.${process.pid}.tmp`);
+    await mkdir(blocked);
+    await expect(repo.updateTask(created.id, { done: true })).rejects.toThrow();
+    expect(await repo.listTasks()).toEqual([created]);
+    await rm(blocked, { recursive: true });
+    await repo.updateTask(created.id, { done: true });
+    expect(await repo.listTasks()).toHaveLength(2);
+  });
 
   it("reads legacy tasks with no selection and preserves them when saving", async () => {
     const repo = await import("./repository");
@@ -224,8 +291,8 @@ describe("default repository", () => {
       createdAt: "2026-11-01T12:00:00.000Z", completedAt: null,
     };
     await writeFile(path.join(dir, "tasks.json"), JSON.stringify([legacy]));
-    expect(await repo.listTasks()).toEqual([{ ...legacy, plannedFor: null }]);
+    expect(await repo.listTasks()).toEqual([{ ...legacy, nextOccurrenceId: null, plannedFor: null }]);
     await repo.updateTask("old", { plannedFor: "2026-11-17" });
-    expect(await repo.listTasks()).toEqual([{ ...legacy, plannedFor: "2026-11-17" }]);
+    expect(await repo.listTasks()).toEqual([{ ...legacy, nextOccurrenceId: null, plannedFor: "2026-11-17" }]);
   });
 });

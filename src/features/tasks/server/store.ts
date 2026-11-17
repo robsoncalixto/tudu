@@ -1,4 +1,4 @@
-import type { Task } from "../schema";
+import type { Task, TaskUpdate } from "../schema";
 
 /**
  * Where tasks are kept. The repository holds the rules (ids, timestamps,
@@ -8,8 +8,8 @@ export interface TaskStore {
   /** Every task, oldest first. */
   list(): Promise<Task[]>;
   insert(tasks: Task[]): Promise<void>;
-  /** Applies `change` to the task atomically; null when it does not exist. */
-  modify(id: string, change: (task: Task) => Task): Promise<Task | null>;
+  /** Saves a change and any new occurrence atomically; returns the linked task on retries too. */
+  modify(id: string, change: (task: Task) => TaskUpdate): Promise<TaskUpdate | null>;
   remove(id: string): Promise<boolean>;
   clearProject(id: string): Promise<void>;
 }

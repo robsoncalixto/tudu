@@ -52,9 +52,10 @@ export function createJsonStore(dataDir: string): TaskStore {
         const index = tasks.findIndex((task) => task.id === id);
         if (index === -1) return null;
         const next = change(tasks[index]);
-        tasks[index] = next;
+        tasks[index] = next.task;
+        if (next.nextTask) tasks.push(next.nextTask);
         await write(tasks);
-        return next;
+        return { task: next.task, nextTask: tasks.find((task) => task.id === next.task.nextOccurrenceId) ?? null };
       }),
 
     remove: (id) =>

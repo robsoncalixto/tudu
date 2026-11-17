@@ -30,6 +30,7 @@ const MIGRATIONS = [
    )`,
   `ALTER TABLE tasks ADD COLUMN steps jsonb NOT NULL DEFAULT '[]'`,
   `ALTER TABLE tasks ADD COLUMN project_id text`,
+  `ALTER TABLE tasks ADD COLUMN repeat_rule jsonb, ADD COLUMN next_occurrence_id text`,
 ];
 
 // Any constant works; it only has to be the same for every TUDU process.
@@ -40,6 +41,7 @@ const MIGRATION_LOCK = 7_262_738;
 const ISO = `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`;
 const SELECT = `
   SELECT id, title, notes, priority, tags, done, steps, project_id AS "projectId",
+         repeat_rule AS repeat, next_occurrence_id AS "nextOccurrenceId",
          to_char(due, 'YYYY-MM-DD') AS due,
          to_char(planned_for, 'YYYY-MM-DD') AS "plannedFor",
          to_char(created_at AT TIME ZONE 'UTC', ${ISO}) AS "createdAt",
@@ -48,8 +50,8 @@ const SELECT = `
 
 function insertTask(sql: Queryable, task: Task) {
   return sql.query(
-    `INSERT INTO tasks (id, title, notes, priority, due, tags, done, created_at, completed_at, planned_for, steps, project_id)
-     VALUES ($1, $2, $3, $4, $5::date, $6::jsonb, $7, $8::timestamptz, $9::timestamptz, $10::date, $11::jsonb, $12)
+    `INSERT INTO tasks (id, title, notes, priority, due, tags, done, created_at, completed_at, planned_for, steps, project_id, repeat_rule, next_occurrence_id)
+     VALUES ($1, $2, $3, $4, $5::date, $6::jsonb, $7, $8::timestamptz, $9::timestamptz, $10::date, $11::jsonb, $12, $13::jsonb, $14)
      ON CONFLICT (id) DO NOTHING`,
     [
       task.id,
@@ -64,6 +66,8 @@ function insertTask(sql: Queryable, task: Task) {
       task.plannedFor,
       JSON.stringify(task.steps),
       task.projectId,
+      JSON.stringify(task.repeat),
+      task.nextOccurrenceId,
     ],
   );
 }
@@ -134,11 +138,13 @@ export function createPostgresStore(sql: Sql, options: { seed?: () => Promise<Ta
       return sql.transaction(async (tx) => {
         const { rows } = await tx.query<Task>(`${SELECT} WHERE id = $1 FOR UPDATE`, [id]);
         if (rows.length === 0) return null;
-        const next = change(rows[0]);
+        const result = change(rows[0]);
+        const next = result.task;
         await tx.query(
           `UPDATE tasks
               SET title = $2, notes = $3, priority = $4, due = $5::date, tags = $6::jsonb,
-                  done = $7, completed_at = $8::timestamptz, planned_for = $9::date, steps = $10::jsonb, project_id = $11
+                  done = $7, completed_at = $8::timestamptz, planned_for = $9::date, steps = $10::jsonb, project_id = $11,
+                  repeat_rule = $12::jsonb, next_occurrence_id = $13
             WHERE id = $1`,
           [
             id,
@@ -152,9 +158,14 @@ export function createPostgresStore(sql: Sql, options: { seed?: () => Promise<Ta
             next.plannedFor,
             JSON.stringify(next.steps),
             next.projectId,
+            JSON.stringify(next.repeat),
+            next.nextOccurrenceId,
           ],
         );
-        return next;
+        if (result.nextTask) await insertTask(tx, result.nextTask);
+        const children = next.nextOccurrenceId
+          ? (await tx.query<Task>(`${SELECT} WHERE id = $1`, [next.nextOccurrenceId])).rows : [];
+        return { task: next, nextTask: children[0] ?? null };
       });
     },
 

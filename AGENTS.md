@@ -60,7 +60,8 @@ src/
       api.ts              Browser client for the tasks endpoints
       use-tasks.ts        Hook that owns the task list and optimistic updates
       use-projects.ts     Project registry state and task-assignment callback
-      components/         Board (composition), Sidebar, Composer, TaskList, TaskRow, TaskChecklist, ProjectManager
+      recurrence.ts       Pure next-date logic and repeat-date validation
+      components/         Board (composition), Sidebar, Composer, TaskList, TaskRow, TaskChecklist, TaskRepeat, ProjectManager
       server/
         repository.ts     The data contract; picks the store from DATABASE_URL
         store.ts          The TaskStore interface every backend implements
@@ -69,6 +70,8 @@ src/
     projects/
       schema.ts, api.ts   Project contract and browser client
       server/repository.ts Server-side project registry (data/projects.json)
+    recurrence/
+      schema.ts           Shared daily, weekdays, weekly and monthly rule contract
     settings/
       schema.ts, api.ts   Validated preferences and browser client
       use-settings.ts     Draft preferences, saving and error recovery
@@ -120,6 +123,10 @@ Imports use the `@/` alias, which points at `src/`.
    Routes guard project assignments with `withValidProjectIds` and supply
    `clearTaskProject` to project deletion. This keeps cross-feature server
    coordination in `app` and serializes assignment changes with deletion.
+   `updateTaskWithNext` returns the changed task and its linked next occurrence.
+   Stores save completion and creation together and return the existing linked
+   task on retries. Keep `nextOccurrenceId` even when a task is reopened or its
+   next occurrence is deleted, so a repeated completion cannot create duplicates.
 5. **Schemas are the contract.** Define the shape once in `schema.ts` with Zod
    and derive TypeScript types from it with `z.infer`. Never hand-write a type
    that duplicates a schema.
@@ -169,7 +176,7 @@ run in a Node environment.
 
 Run with `npm run test:e2e` (`npm run test:e2e:ui` to watch and debug). Specs
 live in `e2e/`, one file per component: `board`, `composer`, `sidebar`,
-`task-list`, `task-row`, `task-checklist`, `project-manager`, `settings-panel`.
+`task-list`, `task-row`, `task-checklist`, `task-repeat`, `project-manager`, `settings-panel`.
 Playwright builds the app and serves it on port 3100
 with a throwaway data folder, so it never touches `./data` or a dev server on
 port 3000. First-time setup: `npx playwright install chromium`.
@@ -195,10 +202,11 @@ port 3000. First-time setup: `npx playwright install chromium`.
 ## API conventions
 
 - JSON in, JSON out. Success bodies are wrapped: `{ "tasks": [...] }` or `{ "task": {...} }`.
+  Task PATCH also includes `nextTask` (the linked next occurrence or `null`).
 - Errors are `{ "error": "<code>" }` with a matching HTTP status. The code is a
   stable machine string (`invalid_task`, `not_found`, `ai_disabled`, `ai_auth`,
   `ai_busy`, `ai_failed`, `no_tasks`, `invalid_note`, `invalid_project`,
-  `duplicate_project`, `invalid_settings`), never a sentence.
+  `duplicate_project`, `invalid_settings`, `invalid_repeat`), never a sentence.
 - User-facing error text lives in the `errors` section of the dictionaries,
   keyed by that code. A new code needs an entry in both languages; unknown codes
   fall back to `errors.generic`.

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { dictionaries } from "@/i18n";
-import { dayDiff, dueLabel, longDate, toISODate } from "./dates";
+import { dayDiff, dueLabel, longDate, toISODate, weekdayName } from "./dates";
+
+it("formats weekly day names with Intl in both languages", () => {
+  expect(weekdayName(0, "en")).toBe("Sunday");
+  expect(weekdayName(1, "pt-BR")).toBe("segunda-feira");
+  expect(weekdayName(6, "en")).toBe("Saturday");
+});
 
 const en = dictionaries.en;
 const pt = dictionaries["pt-BR"];

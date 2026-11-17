@@ -3,6 +3,11 @@ import type { Dictionary, Locale } from "@/i18n";
 export const DATE_FORMATS = ["locale", "iso"] as const;
 export type DateFormat = (typeof DATE_FORMATS)[number];
 
+export function weekdayName(day: number, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" })
+    .format(new Date(Date.UTC(2026, 10, 15 + day, 12)));
+}
+
 export function toISODate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
