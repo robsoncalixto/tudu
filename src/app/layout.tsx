@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "TUDU",
+  icons: { icon: { url: "/brand/tudu-icon.svg", type: "image/svg+xml", sizes: "any" } },
   description: "A to-do list that turns your notes into tasks.",
 };
 

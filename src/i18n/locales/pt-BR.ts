@@ -1,6 +1,7 @@
 import type { Dictionary } from "./en";
 
 export const ptBR: Dictionary = {
+  brandName: "TUDU",
   taskResources: {
     estimate: "Estimativa (minutos)", saveEstimate: "Salvar estimativa", links: "Links e arquivos",
     url: "URL do link", linkHint: "Cole um link para uma página ou um arquivo compartilhado.", addLink: "Adicionar link",

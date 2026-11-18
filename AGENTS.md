@@ -322,7 +322,8 @@ variables at the top of `src/app/globals.css`.
   `--error` overdue and failures, `--accent` focus and highlights.
 - Every screen must work at phone width with no horizontal scroll, and
   interactive elements need a visible focus state and an accessible name.
-- The app has no logo; the name TUDU in text is the brand.
+- Two Beats is the TUDU logo. Reuse the SVGs in `public/brand/` for the
+  sidebar wordmark, collapsed sidebar icon and favicon.
 
 ## AI capture
 
