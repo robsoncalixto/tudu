@@ -55,6 +55,7 @@ export default defineConfig({
       TUDU_OPENAI_MODEL: "",
       TUDU_OPENROUTER_MODEL: "",
       TUDU_MCP_TOKEN: "tudu-e2e-token-not-a-production-secret",
+      TUDU_MCP_ALLOWED_ORIGINS: `http://tudu.localhost:${PORT},http://client.localhost:${PORT}`,
       NEXT_TELEMETRY_DISABLED: "1",
     },
   }],
