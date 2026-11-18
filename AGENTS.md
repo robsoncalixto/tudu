@@ -108,7 +108,9 @@ proposal API with that synthetic provider.
 - `/api/mcp` follows MCP JSON-RPC and is disabled without a valid
   `TUDU_MCP_TOKEN`, which never reaches browser code. MCP code goes through the
   same injected server functions and never reads storage directly. Delete
-  requires `confirm: true`.
+  requires `confirm: true`. Every tool declares input and output schemas in
+  `mcp/schema.ts`; failures return `isError` with a stable code and unexpected
+  ones are logged on the server only.
 
 ## Internationalization
 

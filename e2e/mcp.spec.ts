@@ -21,6 +21,8 @@ test("discovers tools with explicit destructive confirmation and reads project i
   expect(deletion.annotations?.destructiveHint).toBe(true);
   expect(deletion.description).toMatch(/PERMANENTLY DELETE.*ask the user.*explicit confirmation/);
   expect(deletion.inputSchema.required).toContain("confirm");
+  for (const tool of tools) expect(tool.outputSchema, tool.name).toMatchObject({ type: "object" });
+  expect(tools.find((tool) => tool.name === "update_task")!.inputSchema.properties).toHaveProperty("expected");
   const projects = await seedProjects(request, ["Acme"]);
   expect((await mcp.callTool({ name: "list_projects", arguments: {} })).structuredContent).toEqual({ projects });
 });
@@ -52,6 +54,33 @@ test("adds, filters, updates, completes and deletes through the real MCP transpo
   expect((await listTasks(request)).map((task) => task.id)).toEqual([created[1].id]);
 });
 
+test("assigns step ids and refuses an update based on a stale read", async ({ mcp, request }) => {
+  await mcp.listTools();
+  const added = await mcp.callTool({ name: "add_tasks", arguments: { tasks: [{ title: "Checklist", steps: [{ title: "Draft" }, { title: "Send" }] }] } });
+  const [created] = z.object({ tasks: z.array(taskSchema) }).parse(added.structuredContent).tasks;
+  const [draft, send] = created.steps;
+  expect(new Set([draft.id, send.id]).size).toBe(2);
+  expect((await listTasks(request))[0].steps).toEqual(created.steps);
+
+  const editedInApp = await request.patch(`/api/tasks/${created.id}`, { data: { steps: [{ ...draft, done: true }, send] } });
+  expect(editedInApp.ok()).toBe(true);
+  const stale = await mcp.callTool({ name: "update_task", arguments: {
+    id: created.id, expected: created, patch: { steps: [draft, send, { title: "Archive" }] },
+  } });
+  expect(stale.isError).toBe(true);
+  expect(stale.structuredContent).toEqual({ error: "task_changed" });
+  expect((await listTasks(request))[0].steps).toEqual([{ ...draft, done: true }, send]);
+
+  const [current] = z.object({ tasks: z.array(taskSchema) }).parse((await mcp.callTool({ name: "list_tasks", arguments: {} })).structuredContent).tasks;
+  const fresh = await mcp.callTool({ name: "update_task", arguments: {
+    id: created.id, expected: current, patch: { steps: [...current.steps, { title: "Archive" }] },
+  } });
+  const steps = taskUpdateSchema.parse(fresh.structuredContent).task.steps;
+  expect(steps).toMatchObject([{ id: draft.id, done: true }, { id: send.id, done: false }, { title: "Archive", done: false }]);
+  expect(steps[2].id).not.toBe("");
+  expect((await listTasks(request))[0].steps).toEqual(steps);
+});
+
 test("completes recurrence atomically, returns the same next task on retries and shares concurrent writes", async ({ mcp, request }) => {
   const [original] = await seed(request, [{ title: "Repeat", due: TODAY, repeat: { frequency: "daily" } }]);
   const first = taskUpdateSchema.parse((await mcp.callTool({ name: "complete_task", arguments: { id: original.id } })).structuredContent);
@@ -59,6 +88,11 @@ test("completes recurrence atomically, returns the same next task on retries and
   expect(first.nextTask).toMatchObject({ due: "2026-11-18", done: false });
   expect(retry.nextTask?.id).toBe(first.nextTask?.id);
   expect(await listTasks(request)).toHaveLength(2);
+  await mcp.listTools();
+  const weekly = await mcp.callTool({ name: "add_tasks", arguments: { tasks: [{ title: "Weekly", due: TODAY, repeat: { frequency: "weekly", days: [5, 1] } }] } });
+  expect(weekly.isError).not.toBe(true);
+  expect(z.object({ tasks: z.array(taskSchema) }).parse(weekly.structuredContent).tasks[0].repeat).toEqual({ frequency: "weekly", days: [1, 5] });
+  await mcp.callTool({ name: "delete_task", arguments: { id: (await listTasks(request)).find((task) => task.title === "Weekly")!.id, confirm: true } });
   await Promise.all([
     mcp.callTool({ name: "add_tasks", arguments: { tasks: [{ title: "From MCP" }] } }),
     request.post("/api/tasks", { data: { title: "From REST" } }),

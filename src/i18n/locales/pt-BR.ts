@@ -226,6 +226,7 @@ export const ptBR: Dictionary = {
     agent_uncertain: "Não foi possível confirmar o salvamento. Verifique o estado antes de outra ação; a mudança não será aplicada novamente de forma automática.",
     mcp_disabled: "O MCP está desligado. Configure TUDU_MCP_TOKEN no servidor.",
     mcp_unauthorized: "O token de acesso ao MCP foi recusado.",
+    task_changed: "Esta tarefa mudou desde a última leitura. Leia-a novamente antes de salvar.",
     invalid_quick_task: "Adicione um título com até 300 caracteres e no máximo 10 etiquetas com até 40 caracteres cada. Seu texto continua aqui.",
     invalid_repeat: "Uma tarefa recorrente precisa de um prazo válido. Defina uma data ou remova a repetição.",
     copy_failed: "A cópia foi bloqueada. Selecione e copie o resumo diário abaixo.",

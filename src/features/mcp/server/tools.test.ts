@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { taskSchema } from "@/features/tasks/schema";
 import { createTaskTools, McpToolError, type TaskOperations } from "./tools";
 
@@ -15,6 +15,7 @@ beforeEach(() => {
   };
   tools = createTaskTools(operations);
 });
+afterEach(() => { vi.restoreAllMocks(); });
 describe("MCP task tools", () => {
   it("lists existing projects through their repository port", async () => {
     expect((await tools.list_projects({})).structuredContent).toEqual({ projects: [] });
@@ -40,7 +41,7 @@ describe("MCP task tools", () => {
   });
   it("updates only the requested fields and reports missing tasks", async () => {
     expect((await tools.update_task({ id: task.id, patch: { priority: "high", plannedFor: "2026-11-17" } })).structuredContent).toEqual({ task, nextTask: null });
-    expect(operations.updateTask).toHaveBeenCalledWith(task.id, { priority: "high", plannedFor: "2026-11-17" });
+    expect(operations.updateTask).toHaveBeenCalledWith(task.id, { priority: "high", plannedFor: "2026-11-17" }, undefined);
     vi.mocked(operations.updateTask).mockResolvedValueOnce(null);
     expect((await tools.update_task({ id: "missing", patch: { title: "New" } })).structuredContent).toEqual({ error: "not_found" });
     expect((await tools.update_task({ id: task.id, patch: {} })).isError).toBe(true);
@@ -61,15 +62,37 @@ describe("MCP task tools", () => {
     vi.mocked(operations.deleteTask).mockResolvedValueOnce(false);
     expect((await tools.delete_task({ id: "missing", confirm: true })).structuredContent).toEqual({ error: "not_found" });
   });
-  it("maps known errors and redacts storage failures", async () => {
+  it("assigns ids to new steps, keeps existing ones and rejects duplicates before writing", async () => {
+    await tools.add_tasks({ tasks: [{ title: "Report", steps: [{ title: "Draft" }, { id: "keep", title: "Send", done: true }] }] });
+    const [[draft]] = vi.mocked(operations.addTasks).mock.calls[0];
+    expect(draft.steps).toEqual([{ id: expect.stringMatching(/^[0-9a-f-]{36}$/), title: "Draft", done: false }, { id: "keep", title: "Send", done: true }]);
+    await tools.update_task({ id: task.id, patch: { steps: [{ id: "keep", title: "Send" }, { title: "Archive" }] } });
+    const [, patch] = vi.mocked(operations.updateTask).mock.calls[0];
+    expect(patch.steps).toEqual([{ id: "keep", title: "Send", done: false }, { id: expect.stringMatching(/^[0-9a-f-]{36}$/), title: "Archive", done: false }]);
+    expect((await tools.update_task({ id: task.id, patch: { steps: [{ id: "same", title: "A" }, { id: "same", title: "B" }] } })).structuredContent).toEqual({ error: "invalid_task" });
+    expect((await tools.add_tasks({ tasks: [{ title: "Report", steps: [{ title: "A", extra: true }] }] })).isError).toBe(true);
+    expect(operations.addTasks).toHaveBeenCalledOnce();
+    expect(operations.updateTask).toHaveBeenCalledOnce();
+  });
+  it("forwards the expected snapshot and reports a task changed since it was read", async () => {
+    await tools.update_task({ id: task.id, patch: { title: "New" }, expected: task });
+    expect(operations.updateTask).toHaveBeenCalledWith(task.id, { title: "New" }, task);
+    vi.mocked(operations.updateTask).mockRejectedValueOnce(new McpToolError("task_changed"));
+    expect((await tools.update_task({ id: task.id, patch: { title: "New" }, expected: task })).structuredContent).toEqual({ error: "task_changed" });
+  });
+  it("maps known errors, redacts storage failures and logs only unexpected ones on the server", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.mocked(operations.addTasks).mockRejectedValueOnce(new McpToolError("invalid_project"));
     expect((await tools.add_tasks({ tasks: [{ title: "Report" }] })).structuredContent).toEqual({ error: "invalid_project" });
     vi.mocked(operations.updateTask).mockRejectedValueOnce(new McpToolError("invalid_repeat"));
     expect((await tools.complete_task({ id: task.id })).structuredContent).toEqual({ error: "invalid_repeat" });
-    vi.mocked(operations.listTasks).mockRejectedValueOnce(new Error("private database credentials"));
+    expect(log).not.toHaveBeenCalled();
+    const failure = new Error("private database credentials");
+    vi.mocked(operations.listTasks).mockRejectedValueOnce(failure);
     const result = await tools.list_tasks({});
     expect(result.structuredContent).toEqual({ error: "generic" });
     expect(JSON.stringify(result)).not.toContain("credentials");
+    expect(log).toHaveBeenCalledWith("MCP tool list_tasks failed", failure);
   });
   it("validates list filters before reading storage", async () => {
     expect((await tools.list_tasks({ limit: -1 })).isError).toBe(true);
