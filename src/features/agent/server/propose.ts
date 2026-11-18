@@ -8,7 +8,7 @@ import { AgentError, proposalDraftSchema, type ProposalDraft } from "../schema";
 
 export async function proposeChanges(generate: GenerateStructured, text: string, today: string, tasks: Task[], projects: Project[], locale: Locale, defaultPriority: Priority): Promise<ProposalDraft[]> {
   const context = { today, projects, tasks: tasks.filter((task) => !task.done)
-    .map(({ estimateMinutes, links, ...promptTask }) => promptTask) };
+    .map(({ estimateHours, realTimeHours, links, ...promptTask }) => promptTask) };
   if (JSON.stringify(context).length > 60_000) throw new AgentError("agent_context_too_large");
   const output = await generate({
     schema: agentPlanSchema, name: "task_proposals", maxTokens: 16000,

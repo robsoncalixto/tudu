@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { taskInputSchema, taskPatchSchema, taskSchema } from "@/features/tasks/schema";
+import { taskInputSchema, taskPatchSchema, storedTaskSchema } from "@/features/tasks/schema";
 import { projectInputSchema, projectSchema } from "@/features/projects/schema";
 import { aiProviderSchema } from "@/features/ai/schema";
 
@@ -17,7 +17,7 @@ export const proposalActionSchema = z.discriminatedUnion("kind", [
 export type ProposalAction = z.infer<typeof proposalActionSchema>;
 export const proposalDraftSchema = z.object({
   action: proposalActionSchema, reason: z.string().trim().min(1).max(21_000),
-  taskBefore: taskSchema.nullable(), projectBefore: projectSchema.nullable(),
+  taskBefore: storedTaskSchema.nullable(), projectBefore: projectSchema.nullable(),
 });
 export type ProposalDraft = z.infer<typeof proposalDraftSchema>;
 export const proposalSourceSchema = z.object({
@@ -25,7 +25,7 @@ export const proposalSourceSchema = z.object({
 });
 export type ProposalSource = z.infer<typeof proposalSourceSchema>;
 const resultSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("task"), task: taskSchema }),
+  z.object({ kind: z.literal("task"), task: storedTaskSchema }),
   z.object({ kind: z.literal("project"), project: projectSchema }),
 ]);
 export type ProposalResult = z.infer<typeof resultSchema>;

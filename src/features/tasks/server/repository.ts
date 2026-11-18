@@ -23,6 +23,7 @@ export function createRepository(store: TaskStore) {
         nextTask = taskSchema.parse({
           ...task, id: randomUUID(), due: nextDueDate(task.due, task.repeat),
           done: false, completedAt: null, createdAt: task.completedAt, plannedFor: null,
+          realTimeHours: null,
           steps: task.steps.map((step) => ({ ...step, done: false })), nextOccurrenceId: null,
         });
         task.nextOccurrenceId = nextTask.id;

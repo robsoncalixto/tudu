@@ -19,7 +19,8 @@ export interface SeedTask {
   tags?: string[];
   plannedFor?: string | null;
   steps?: Step[];
-  estimateMinutes?: number | null;
+  estimateHours?: number | null;
+  realTimeHours?: number | null;
   links?: string[];
   projectId?: string | null;
   repeat?: RepeatRule | null;

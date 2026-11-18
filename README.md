@@ -111,7 +111,13 @@ it for today.
 
 Open the task panel (the icon at the right of a row, or `i`) to edit the title,
 notes, subtasks, priority, project, tags, planned day, due date, repeat rule,
-time estimate and links.
+time estimate, real execution time and links. Both time fields offer a unit selector
+before the value: Minutes, Hours or Days. Fractional hours are supported, and
+**1 day equals 12 hours**. Clear a field to remove its value. Changing units
+converts the duration; both values are stored as decimal hours (`estimateHours`
+and `realTimeHours` in the API). Existing minute estimates are converted to hours
+automatically. New repeating occurrences keep the estimate and start with no real
+execution time.
 
 Repeating tasks can be daily, on weekdays, weekly on selected days, or monthly.
 Completing one creates the next occurrence.
