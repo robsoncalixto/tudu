@@ -130,7 +130,8 @@ proposal API with that synthetic provider.
   themes.
 - Plus Jakarta Sans for headings, labels and navigation; Inter for body text.
 - Flat surfaces with thin borders: no shadows or gradients.
-- The brand is the name TUDU in text; there is no logo.
+- Two Beats is the TUDU logo. Reuse the SVGs in `public/brand/` for the
+  sidebar wordmark, collapsed sidebar icon and favicon.
 - Reuse `.btn`, `.btn-primary`, `.btn-secondary`, `.card`, `.chip`,
   `.section-title` and `.nav-item` before adding classes.
 - Color carries meaning: `--success` done, `--warning` high priority, `--error`

@@ -8,7 +8,9 @@ description: Design system for TUDU's task board and settings.
 
 The board helps people find a task, plan it for today and finish it. Keep these
 actions visible in the list. Show subtasks directly under their parent. Keep
-project assignment and repeat settings in task details. Use the text **TUDU** as the brand.
+project assignment and repeat settings in task details. The charcoal sidebar uses
+the Two Beats logo with white lettering in both themes. Use its two indigo strokes
+alone for the collapsed sidebar and browser tab.
 
 ## Color
 

@@ -14,6 +14,10 @@ describe("dictionaries", () => {
     }
   });
 
+  it.each(LOCALES)("keeps the logo's accessible name in %s", (locale) => {
+    expect(dictionaries[locale].brandName).toBe("TUDU");
+  });
+
   it("handles singular and plural counts", () => {
     expect(dictionaries.en.added(1)).toBe("1 task added");
     expect(dictionaries.en.added(3)).toBe("3 tasks added");

@@ -3,6 +3,19 @@ import { composer, expect, listProjects, openApp, openSection, row, rowTitles, s
 
 for (const locale of ["en", "pt-BR"] as const) {
   const t = dictionaries[locale];
+  for (const theme of ["light", "dark"] as const) {
+    test(`displays the Two Beats wordmark on the ${theme} board in ${locale}`, async ({ page, request }) => {
+      await saveSettings(request, { locale, theme });
+      await page.goto("/");
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      const logo = sidebar(page).getByRole("img", { name: "TUDU", exact: true });
+      await expect(logo).toBeInViewport();
+      await expect(logo).toHaveAttribute("src", "/brand/tudu-logo-on-dark.svg");
+      await expect(logo).toHaveJSProperty("complete", true);
+      expect(await logo.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+    });
+  }
+
   test(`project and tag groups collapse independently and survive reload in ${locale}`, async ({ page, request }) => {
     const [project] = await seedProjects(request, ["Acme"]);
     await seed(request, [{ title: "Prepare report", projectId: project.id, tags: ["work"] }]);
@@ -40,6 +53,11 @@ for (const locale of ["en", "pt-BR"] as const) {
     const width = (await rail.boundingBox())!.width;
     await shrink.click();
     await expect(grow).toBeFocused();
+    await expect(rail.locator('img[src="/brand/tudu-icon.svg"]')).toBeInViewport();
+    await grow.press("Enter");
+    await expect(shrink).toBeFocused();
+    await expect(rail.getByRole("img", { name: "TUDU", exact: true })).toHaveAttribute("src", "/brand/tudu-logo-on-dark.svg");
+    await shrink.press("Space");
     await expect(projects).toHaveAttribute("aria-expanded", "false");
     expect((await rail.boundingBox())!.width).toBeLessThan(width);
     await page.reload();
@@ -51,6 +69,9 @@ for (const locale of ["en", "pt-BR"] as const) {
     await expect(acme).toHaveAttribute("aria-current", "page");
     await shrink.click();
     await page.setViewportSize({ width: 320, height: 800 });
+    const wordmark = rail.getByRole("img", { name: "TUDU", exact: true });
+    await expect(wordmark).toBeInViewport();
+    await expect(wordmark).toHaveAttribute("src", "/brand/tudu-logo-on-dark.svg");
     const more = rail.getByRole("button", { name: t.moreViews, exact: true });
     await more.click();
     await expect(grow).toBeHidden();
@@ -154,12 +175,20 @@ for (const language of [
 }
 
 test.describe("Sidebar", () => {
-  test("shows the name without a logo and the open-task count", async ({ page, request }) => {
+  test("uses the Two Beats icon as the browser favicon", async ({ page, request }) => {
+    await openApp(page);
+    const icon = page.locator('head link[rel~="icon"][href="/brand/tudu-icon.svg"]');
+    await expect(icon).toHaveAttribute("type", "image/svg+xml");
+    const response = await request.get("/brand/tudu-icon.svg");
+    expect(response.ok()).toBe(true);
+    expect(response.headers()["content-type"]).toContain("image/svg+xml");
+    expect(await response.text()).toContain("<svg");
+  });
+
+  test("shows the open-task count", async ({ page, request }) => {
     await seed(request, [{ title: "One" }, { title: "Two" }]);
     await openApp(page);
 
-    await expect(sidebar(page).getByText("TUDU", { exact: true })).toBeVisible();
-    await expect(sidebar(page).locator(".brand img, .brand svg")).toHaveCount(0);
     const all = sidebar(page).getByRole("button", { name: /All tasks/ });
     await expect(all).toHaveText("All tasks2");
     await expect(all).toHaveAttribute("aria-current", "page");
