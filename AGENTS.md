@@ -177,6 +177,19 @@ proposal API with that synthetic provider.
 - Commit messages are short and imperative, with no tool or assistant
   attribution in commits, pull requests, comments or documents.
 
+## Branches
+
+Branch from `master` and name the branch `<type>/<short-description>` in
+kebab-case, for example `feature/work-log-export` or `fix/overdue-badge-count`.
+The type is one of:
+
+| Type | Use for |
+| --- | --- |
+| `feature` | A new capability or a change in behaviour |
+| `fix` | A bug fix |
+| `refact` | Restructuring code without changing behaviour |
+| `remove` | Removing a feature, code or a dependency |
+
 ## Before finishing a change
 
 1. The change has unit tests and at least one end-to-end test.
