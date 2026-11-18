@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { taskSchema, type Task } from "../schema";
+import { storedTaskSchema, type Task } from "../schema";
 import type { TaskStore } from "./store";
 
 // Every read-modify-write goes through one queue so concurrent requests
@@ -21,7 +21,7 @@ export function createJsonStore(dataDir: string): TaskStore {
 
   async function read(): Promise<Task[]> {
     try {
-      return z.array(taskSchema).parse(JSON.parse(await fs.readFile(file, "utf8")));
+      return z.array(storedTaskSchema).parse(JSON.parse(await fs.readFile(file, "utf8")));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
       throw error;

@@ -1,18 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { taskCreationSchema, taskInputSchema, taskPatchSchema, taskSchema } from "./schema";
+import { storedTaskSchema, taskCreationSchema, taskInputSchema, taskPatchSchema, taskSchema } from "./schema";
 
 describe("task estimates and reference links", () => {
-  const valid = { estimateMinutes: 45, links: ["https://example.org/brief", "http://localhost:3001/file.pdf"] };
+  const valid = { estimateHours: 0.75, realTimeHours: 1 / 60, links: ["https://example.org/brief", "http://localhost:3001/file.pdf"] };
 
   it("accepts the same resources on creation and partial update, including explicit clears", () => {
     expect(taskCreationSchema("low").parse({ title: "Review", ...valid })).toMatchObject(valid);
     expect(taskPatchSchema.parse(valid)).toEqual(valid);
-    expect(taskPatchSchema.parse({ estimateMinutes: null, links: [] })).toEqual({ estimateMinutes: null, links: [] });
+    expect(taskPatchSchema.parse({ estimateHours: null, realTimeHours: null, links: [] })).toEqual({ estimateHours: null, realTimeHours: null, links: [] });
     expect(taskPatchSchema.parse({ title: "Edit" })).toEqual({ title: "Edit" });
   });
 
   it.each([
-    { estimateMinutes: -1 }, { estimateMinutes: 0 }, { estimateMinutes: 1.5 }, { estimateMinutes: 525601 },
+    { estimateHours: -1 }, { estimateHours: 0 }, { estimateHours: Infinity }, { estimateHours: 8760.1 },
+    { realTimeHours: -1 }, { realTimeHours: 0 }, { realTimeHours: Infinity }, { realTimeHours: 8760.1 },
     { links: ["javascript:alert(1)"] }, { links: ["data:text/plain,hi"] }, { links: ["https:example.org"] },
     { links: ["/local/file"] }, { links: ["https://"] }, { links: ["https://example.org/a b"] },
     { links: ["https://example.org", " https://example.org "] }, { links: ["https://example.org/" + "a".repeat(2048)] },
@@ -77,6 +78,18 @@ describe("taskPatchSchema", () => {
 });
 
 describe("taskSchema", () => {
+  it("normalizes legacy estimates in stored tasks and journal snapshots without retaining minutes", () => {
+    const task = { title: "Existing task", id: "old", done: false, createdAt: "2026-11-01T12:00:00.000Z", completedAt: null };
+    for (const minutes of [1, 90, 525600]) {
+      const migrated = storedTaskSchema.parse({ ...task, estimateMinutes: minutes });
+      expect(migrated).toMatchObject({ estimateHours: minutes / 60, realTimeHours: null });
+      expect(migrated).not.toHaveProperty("estimateMinutes");
+    }
+    expect(storedTaskSchema.parse({ ...task, estimateMinutes: null }).estimateHours).toBeNull();
+    expect(storedTaskSchema.parse({ ...task, estimateHours: null, estimateMinutes: 90 }).estimateHours).toBeNull();
+    expect(storedTaskSchema.safeParse({ ...task, estimateMinutes: -1 }).success).toBe(false);
+  });
+
   it("normalizes tasks saved before daily selections existed", () => {
     const task = taskSchema.parse({
       title: "Existing task", id: "old", done: false,

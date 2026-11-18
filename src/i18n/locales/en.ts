@@ -1,11 +1,15 @@
 export const en = {
   brandName: "TUDU",
   taskResources: {
-    estimate: "Estimate (minutes)", saveEstimate: "Save estimate", links: "Links & files",
+    estimate: "Estimate", saveEstimate: "Save estimate",
+    realTime: "Real time execution", saveRealTime: "Save real time execution",
+    durationUnit: (label: string) => `${label} unit`,
+    units: { minutes: "Minutes", hours: "Hours", days: "Days" },
+    durationHint: "1 day = 12 hours. Fractional hours are supported.", links: "Links & files",
     url: "Link URL", linkHint: "Paste a link to a page or shared file.", addLink: "Add link",
     removeLink: (url: string) => `Remove link: ${url}`,
     invalidUrl: "Enter a full http:// or https:// URL.", duplicateLink: "This link is already attached.",
-    invalidEstimate: "Enter a whole number from 1 to 525600, or clear the field.",
+    invalidDuration: "Enter a time greater than 0 and up to 8760 hours, or clear the field.",
     linkLimit: "A task can have up to 20 links.", linkTooLong: "Use a URL of 2048 characters or fewer.",
     saved: "Saved.", saveFailed: "Couldn’t save. Try again.",
   },

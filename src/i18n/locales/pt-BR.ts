@@ -3,11 +3,15 @@ import type { Dictionary } from "./en";
 export const ptBR: Dictionary = {
   brandName: "TUDU",
   taskResources: {
-    estimate: "Estimativa (minutos)", saveEstimate: "Salvar estimativa", links: "Links e arquivos",
+    estimate: "Estimativa", saveEstimate: "Salvar estimativa",
+    realTime: "Tempo real de execução", saveRealTime: "Salvar tempo real de execução",
+    durationUnit: (label: string) => `Unidade de ${label.toLocaleLowerCase("pt-BR")}`,
+    units: { minutes: "Minutos", hours: "Horas", days: "Dias" },
+    durationHint: "1 dia = 12 horas. Aceita horas fracionadas.", links: "Links e arquivos",
     url: "URL do link", linkHint: "Cole um link para uma página ou um arquivo compartilhado.", addLink: "Adicionar link",
     removeLink: (url: string) => `Remover link: ${url}`,
     invalidUrl: "Insira uma URL completa com http:// ou https://.", duplicateLink: "Este link já foi adicionado.",
-    invalidEstimate: "Insira um número inteiro de 1 a 525600 ou deixe o campo vazio.",
+    invalidDuration: "Insira um tempo maior que 0 e de até 8760 horas ou deixe o campo vazio.",
     linkLimit: "Cada tarefa pode ter até 20 links.", linkTooLong: "Use uma URL com até 2048 caracteres.",
     saved: "Salvo.", saveFailed: "Não foi possível salvar. Tente novamente.",
   },

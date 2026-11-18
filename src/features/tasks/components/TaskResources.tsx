@@ -1,87 +1,20 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useRef } from "react";
 import type { Dictionary } from "@/i18n";
 import { Icon } from "@/lib/Icon";
-import { estimateMinutesSchema, MAX_ESTIMATE_MINUTES, MAX_TASK_LINK_LENGTH, MAX_TASK_LINKS, taskLinkSchema, type Task, type TaskPatch } from "../schema";
+import { MAX_TASK_LINK_LENGTH, MAX_TASK_LINKS, taskLinkSchema } from "../schema";
+import { useResourceForm, type ResourceMessage, type ResourceProps } from "../use-resource-form";
 import "./task-resources.css";
 
-interface Props {
-  task: Task;
-  t: Dictionary;
-  onPatch: (id: string, changes: TaskPatch) => Promise<boolean>;
-  draft?: string;
-  onDraftChange?: (draft: string | undefined) => void;
-}
-
-type Message = "saved" | "saveFailed" | "invalidUrl" | "duplicateLink" | "linkLimit" | "linkTooLong" | "invalidEstimate";
-
-function useResourceForm({ task, onPatch, draft, onDraftChange }: Props) {
-  const [localDraft, setLocalDraft] = useState<string>();
-  const [message, setMessage] = useState<Message | null>(null);
-  const [saving, setSaving] = useState(false);
-  const edit = onDraftChange ?? setLocalDraft;
-  async function save(patch: TaskPatch) {
-    setMessage(null);
-    setSaving(true);
-    try {
-      const ok = await onPatch(task.id, patch);
-      setMessage(ok ? "saved" : "saveFailed");
-      return ok;
-    } catch {
-      setMessage("saveFailed");
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }
-  return { draft: onDraftChange ? draft : localDraft, edit, save, saving, message, setMessage };
-}
-
-function Feedback({ id, message, t }: { id: string; message: Message | null; t: Dictionary }) {
+export function ResourceFeedback({ id, message, t }: { id: string; message: ResourceMessage | null; t: Dictionary }) {
   if (!message) return null;
   return <p id={id} role="status" className={`resource-feedback${message !== "saved" ? " is-error" : ""}`}>
     {t.taskResources[message]}
   </p>;
 }
 
-export function TaskEstimate(props: Props) {
-  const { task, t } = props;
-  const form = useResourceForm(props);
-  const input = useRef<HTMLInputElement>(null);
-  const id = useId();
-  const saved = task.estimateMinutes?.toString() ?? "";
-  const value = form.draft ?? saved;
-  return <form className="task-estimate" aria-label={t.taskResources.estimate} noValidate onSubmit={async (event) => {
-    event.preventDefault();
-    if (form.saving) return;
-    const minutes = estimateMinutesSchema.safeParse(value === "" ? null : Number(value));
-    if (input.current?.validity.badInput || !minutes.success) {
-      form.setMessage("invalidEstimate");
-      return;
-    }
-    if (await form.save({ estimateMinutes: minutes.data })) form.edit(undefined);
-    if (document.activeElement === document.body) input.current?.focus();
-  }}>
-    <div className="inspector-property">
-      <label htmlFor={id} className="inspector-label"><Icon name="clock" size={17} />{t.taskResources.estimate}</label>
-      <div className="resource-input-row">
-        <input ref={input} id={id} className="form-control estimate-input" type="number" inputMode="numeric"
-          min="1" max={MAX_ESTIMATE_MINUTES} step="1" value={value} readOnly={form.saving}
-          aria-describedby={form.message ? `${id}-feedback` : undefined} aria-invalid={form.message === "invalidEstimate" || undefined} onChange={(event) => {
-            form.edit(event.target.value); form.setMessage(null);
-          }} />
-        {(form.draft !== undefined || form.saving) && <button type="submit" className="icon-btn resource-confirm"
-          disabled={form.saving} aria-label={t.taskResources.saveEstimate} title={t.taskResources.saveEstimate}>
-          <Icon name="check" size={17} />
-        </button>}
-      </div>
-    </div>
-    <Feedback id={`${id}-feedback`} message={form.message} t={t} />
-  </form>;
-}
-
-export function TaskLinks(props: Props) {
+export function TaskLinks(props: ResourceProps<string>) {
   const { task, t } = props;
   const form = useResourceForm(props);
   const id = useId();
@@ -122,6 +55,6 @@ export function TaskLinks(props: Props) {
       </div>
       <p className="hint" id={`${id}-hint`}>{full ? t.taskResources.linkLimit : t.taskResources.linkHint}</p>
     </form>
-    <Feedback id={`${id}-feedback`} message={form.message} t={t} />
+    <ResourceFeedback id={`${id}-feedback`} message={form.message} t={t} />
   </section>;
 }

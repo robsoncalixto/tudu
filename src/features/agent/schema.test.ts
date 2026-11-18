@@ -9,6 +9,18 @@ const pending = {
   status: "pending", approved: null, result: null, decidedAt: null, appliedAt: null,
 };
 describe("agent contracts", () => {
+  it("preserves minute estimates as hours in legacy proposal baselines and results", () => {
+    const before = { title: "Existing task", id: "task", done: false, createdAt: "2026-11-01T12:00:00.000Z", completedAt: null, estimateMinutes: 90 };
+    const action = { kind: "update_task", taskId: "task", patch: { priority: "high" } };
+    const proposal = { ...pending, action, taskBefore: before };
+    expect(proposalSchema.parse(proposal).taskBefore).toMatchObject({ estimateHours: 1.5, realTimeHours: null });
+    const accepted = proposalSchema.parse({ ...proposal, status: "accepted", approved: action,
+      decidedAt: pending.createdAt, appliedAt: pending.createdAt, result: { kind: "task", task: { ...before, priority: "high" } } });
+    expect(accepted.result).toMatchObject({ kind: "task", task: { estimateHours: 1.5, realTimeHours: null } });
+    expect(accepted.taskBefore).not.toHaveProperty("estimateMinutes");
+    expect(proposalSchema.safeParse({ ...proposal, taskBefore: { ...before, estimateMinutes: -1 } }).success).toBe(false);
+  });
+
   it("requires an explicit decision and rejects hidden task fields or unsupported operations", () => {
     expect(proposalDecisionSchema.parse({ decision: "accept", action: pending.action })).toMatchObject({ decision: "accept" });
     for (const input of [{ action: pending.action }, { decision: "accept" }, { decision: "reject", action: pending.action }]) {
@@ -18,7 +30,7 @@ describe("agent contracts", () => {
       { kind: "delete_task", taskId: "task" }, { kind: "update_task", taskId: "task", patch: { done: true } },
       { kind: "update_task", taskId: "task", patch: { nextOccurrenceId: "forged" } },
       { kind: "update_task", taskId: "task", patch: { links: ["https://example.org/private"] } },
-      { ...pending.action, task: { ...task, estimateMinutes: 45 } },
+      { ...pending.action, task: { ...task, estimateHours: 0.75 } },
       { kind: "update_task", taskId: "task", patch: {} },
       { ...pending.action, task: { ...task, id: "injected" } },
       { ...pending.action, task: { ...task, due: "2026-02-30" } },

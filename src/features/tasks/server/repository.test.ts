@@ -95,6 +95,25 @@ describe.each(backends)("repository on $name", (backend) => {
     expect(await repo.listTasks()).toEqual([]);
   });
 
+  it("persists fractional hours for both time fields independently and clears them", async () => {
+    const [created] = await repo.addTasks([{ ...input("Timed task"), estimateHours: 1.5, realTimeHours: 1 / 60 }]);
+    expect(await repo.listTasks()).toEqual([created]);
+    expect(created).toMatchObject({ estimateHours: 1.5, realTimeHours: 1 / 60 });
+    await repo.updateTask(created.id, { realTimeHours: 12 });
+    expect((await repo.listTasks())[0]).toMatchObject({ estimateHours: 1.5, realTimeHours: 12 });
+    await repo.updateTask(created.id, { estimateHours: null, realTimeHours: null });
+    expect((await repo.listTasks())[0]).toMatchObject({ estimateHours: null, realTimeHours: null });
+  });
+
+  it("keeps the estimate and resets real execution time for the next occurrence", async () => {
+    const [created] = await repo.addTasks([{ ...input("Daily report"), due: "2026-11-17", repeat: { frequency: "daily" }, estimateHours: 1.5, realTimeHours: 2 }]);
+    const updated = await repo.updateTaskWithNext(created.id, { done: true });
+    expect(updated?.task).toMatchObject({ estimateHours: 1.5, realTimeHours: 2 });
+    expect(updated?.nextTask).toMatchObject({ estimateHours: 1.5, realTimeHours: null });
+    await repo.updateTask(created.id, { done: false });
+    expect((await repo.updateTaskWithNext(created.id, { done: true }))?.nextTask?.id).toBe(updated?.nextTask?.id);
+  });
+
   it("creates tasks with an id, open state and timestamps", async () => {
     const [created] = await repo.addTasks([input("Write report")]);
     expect(created).toMatchObject({ title: "Write report", done: false, completedAt: null });
@@ -124,14 +143,14 @@ describe.each(backends)("repository on $name", (backend) => {
       priority: "low",
       due: "2026-12-01",
       tags: ["x"],
-      estimateMinutes: 90,
+      estimateHours: 1.5,
       links: ["https://example.org/brief"],
     });
-    expect(updated).toMatchObject({ title: "b", notes: "n", priority: "low", due: "2026-12-01", tags: ["x"], estimateMinutes: 90, links: ["https://example.org/brief"] });
+    expect(updated).toMatchObject({ title: "b", notes: "n", priority: "low", due: "2026-12-01", tags: ["x"], estimateHours: 1.5, links: ["https://example.org/brief"] });
     expect(await repo.listTasks()).toEqual([updated]);
     expect(await repo.updateTask(task.id, { due: null, tags: [] })).toMatchObject({ due: null, tags: [], steps: [], projectId: null, repeat: null });
-    await repo.updateTask(task.id, { links: [], estimateMinutes: null });
-    expect((await repo.listTasks())[0]).toMatchObject({ estimateMinutes: null, links: [] });
+    await repo.updateTask(task.id, { links: [], estimateHours: null });
+    expect((await repo.listTasks())[0]).toMatchObject({ estimateHours: null, realTimeHours: null, links: [] });
   });
 
   it("sets and clears completedAt when done changes", async () => {
@@ -224,7 +243,7 @@ describe.each(backends)("repository on $name", (backend) => {
       ...input("Report"), due: "2026-01-31", repeat: { frequency: "monthly", day: 31 }, notes: "Ask Ana",
       priority: "high", tags: ["work"], projectId: "00000000-0000-4000-8000-000000000001",
       steps: [{ id: "draft", title: "Draft", done: true }],
-      estimateMinutes: 90, links: ["https://example.org/report"],
+      estimateHours: 1.5, links: ["https://example.org/report"],
     }]);
     await repo.updateTask(task.id, { plannedFor: "2026-11-17" });
     const result = await repo.updateTaskWithNext(task.id, { done: true });
@@ -321,8 +340,20 @@ describe("default repository", () => {
       createdAt: "2026-11-01T12:00:00.000Z", completedAt: null,
     };
     await writeFile(path.join(dir, "tasks.json"), JSON.stringify([legacy]));
-    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateMinutes: null, links: [], nextOccurrenceId: null, plannedFor: null }]);
+    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateHours: null, realTimeHours: null, links: [], nextOccurrenceId: null, plannedFor: null }]);
     await repo.updateTask("old", { plannedFor: "2026-11-17" });
-    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateMinutes: null, links: [], nextOccurrenceId: null, plannedFor: "2026-11-17" }]);
+    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateHours: null, realTimeHours: null, links: [], nextOccurrenceId: null, plannedFor: "2026-11-17" }]);
+  });
+
+  it("converts JSON minute estimates on read and writes only hours on the next edit", async () => {
+    const repo = await import("./repository");
+    const legacy = { ...input("Existing estimate"), id: "old", done: false, createdAt: "2026-11-01T12:00:00.000Z", completedAt: null, estimateMinutes: 90 };
+    await writeFile(path.join(dir, "tasks.json"), JSON.stringify([legacy]));
+    expect((await repo.listTasks())[0]).toMatchObject({ estimateHours: 1.5, realTimeHours: null });
+    await repo.updateTask("old", { realTimeHours: 0.25 });
+    const [stored] = JSON.parse(await readFile(path.join(dir, "tasks.json"), "utf8"));
+    expect(stored).toMatchObject({ estimateHours: 1.5, realTimeHours: 0.25 });
+    expect(stored).not.toHaveProperty("estimateMinutes");
+    expect((await repo.listTasks())[0].estimateHours).toBe(1.5);
   });
 });

@@ -32,6 +32,11 @@ const MIGRATIONS = [
   `ALTER TABLE tasks ADD COLUMN project_id text`,
   `ALTER TABLE tasks ADD COLUMN repeat_rule jsonb, ADD COLUMN next_occurrence_id text`,
   `ALTER TABLE tasks ADD COLUMN estimate_minutes integer, ADD COLUMN links jsonb NOT NULL DEFAULT '[]'`,
+  [
+    `ALTER TABLE tasks ADD COLUMN estimate_hours double precision, ADD COLUMN real_time_hours double precision`,
+    `UPDATE tasks SET estimate_hours = estimate_minutes / 60.0`,
+    `ALTER TABLE tasks DROP COLUMN estimate_minutes`,
+  ],
 ];
 
 // Any constant works; it only has to be the same for every TUDU process.
@@ -42,7 +47,7 @@ const MIGRATION_LOCK = 7_262_738;
 const ISO = `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`;
 const SELECT = `
   SELECT id, title, notes, priority, tags, done, steps, project_id AS "projectId",
-         repeat_rule AS repeat, next_occurrence_id AS "nextOccurrenceId", estimate_minutes AS "estimateMinutes", links,
+         repeat_rule AS repeat, next_occurrence_id AS "nextOccurrenceId", estimate_hours AS "estimateHours", real_time_hours AS "realTimeHours", links,
          to_char(due, 'YYYY-MM-DD') AS due,
          to_char(planned_for, 'YYYY-MM-DD') AS "plannedFor",
          to_char(created_at AT TIME ZONE 'UTC', ${ISO}) AS "createdAt",
@@ -51,8 +56,8 @@ const SELECT = `
 
 function insertTask(sql: Queryable, task: Task) {
   return sql.query(
-    `INSERT INTO tasks (id, title, notes, priority, due, tags, done, created_at, completed_at, planned_for, steps, project_id, repeat_rule, next_occurrence_id, estimate_minutes, links)
-     VALUES ($1, $2, $3, $4, $5::date, $6::jsonb, $7, $8::timestamptz, $9::timestamptz, $10::date, $11::jsonb, $12, $13::jsonb, $14, $15, $16::jsonb)
+    `INSERT INTO tasks (id, title, notes, priority, due, tags, done, created_at, completed_at, planned_for, steps, project_id, repeat_rule, next_occurrence_id, estimate_hours, links, real_time_hours)
+     VALUES ($1, $2, $3, $4, $5::date, $6::jsonb, $7, $8::timestamptz, $9::timestamptz, $10::date, $11::jsonb, $12, $13::jsonb, $14, $15, $16::jsonb, $17)
      ON CONFLICT (id) DO NOTHING`,
     [
       task.id,
@@ -69,8 +74,9 @@ function insertTask(sql: Queryable, task: Task) {
       task.projectId,
       JSON.stringify(task.repeat),
       task.nextOccurrenceId,
-      task.estimateMinutes,
+      task.estimateHours,
       JSON.stringify(task.links),
+      task.realTimeHours,
     ],
   );
 }
@@ -90,7 +96,8 @@ async function migrate(sql: Sql, seed?: () => Promise<Task[]>): Promise<void> {
     );
     const current = rows[0].version;
     for (let version = current + 1; version <= MIGRATIONS.length; version++) {
-      await tx.query(MIGRATIONS[version - 1]);
+      const migration = MIGRATIONS[version - 1];
+      for (const statement of typeof migration === "string" ? [migration] : migration) await tx.query(statement);
       await tx.query("INSERT INTO tudu_migrations (version) VALUES ($1)", [version]);
     }
     // Only a brand-new database is seeded, so switching to Postgres keeps the
@@ -147,7 +154,7 @@ export function createPostgresStore(sql: Sql, options: { seed?: () => Promise<Ta
           `UPDATE tasks
               SET title = $2, notes = $3, priority = $4, due = $5::date, tags = $6::jsonb,
                   done = $7, completed_at = $8::timestamptz, planned_for = $9::date, steps = $10::jsonb, project_id = $11,
-                  repeat_rule = $12::jsonb, next_occurrence_id = $13, estimate_minutes = $14, links = $15::jsonb
+                  repeat_rule = $12::jsonb, next_occurrence_id = $13, estimate_hours = $14, links = $15::jsonb, real_time_hours = $16
             WHERE id = $1`,
           [
             id,
@@ -163,8 +170,9 @@ export function createPostgresStore(sql: Sql, options: { seed?: () => Promise<Ta
             next.projectId,
             JSON.stringify(next.repeat),
             next.nextOccurrenceId,
-            next.estimateMinutes,
+            next.estimateHours,
             JSON.stringify(next.links),
+            next.realTimeHours,
           ],
         );
         if (result.nextTask) await insertTask(tx, result.nextTask);

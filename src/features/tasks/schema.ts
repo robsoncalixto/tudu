@@ -5,10 +5,17 @@ import { repeatRuleSchema } from "@/features/recurrence/schema";
 export const PRIORITIES = ["low", "medium", "high"] as const;
 export type Priority = (typeof PRIORITIES)[number];
 
-export const MAX_ESTIMATE_MINUTES = 525600;
+export const MAX_DURATION_HOURS = 8760;
+export const DURATION_UNITS = ["minutes", "hours", "days"] as const;
+export const durationUnitSchema = z.enum(DURATION_UNITS);
+export type DurationUnit = z.infer<typeof durationUnitSchema>;
+export const durationHoursSchema = z.number().positive().max(MAX_DURATION_HOURS).nullable();
+export const durationDraftSchema = z.object({
+  value: z.string(), unit: durationUnitSchema, hours: durationHoursSchema.optional(),
+});
+export type DurationDraft = z.infer<typeof durationDraftSchema>;
 export const MAX_TASK_LINKS = 20;
 export const MAX_TASK_LINK_LENGTH = 2048;
-export const estimateMinutesSchema = z.number().int().min(1).max(MAX_ESTIMATE_MINUTES).nullable();
 export const taskLinkSchema = z.string().trim().max(MAX_TASK_LINK_LENGTH)
   .regex(/^https?:\/\/[^/\s\\?#]+(?:[/?#][^\s\\]*)?$/i).pipe(z.url({ protocol: /^https?$/ }));
 const linksSchema = z.array(taskLinkSchema).max(MAX_TASK_LINKS)
@@ -56,7 +63,8 @@ export const taskPatchSchema = z
     steps: stepsSchema,
     projectId: projectIdSchema,
     repeat: repeatRuleSchema.nullable(),
-    estimateMinutes: estimateMinutesSchema,
+    estimateHours: durationHoursSchema.describe("Estimated effort in hours. One day is 12 hours."),
+    realTimeHours: durationHoursSchema.describe("Actual execution time in hours. One day is 12 hours."),
     links: linksSchema,
   })
   .partial();
@@ -64,7 +72,8 @@ export const taskPatchSchema = z
 export type TaskInput = z.infer<typeof taskInputSchema>;
 const taskCreationInputSchema = taskInputSchema.extend({
   plannedFor: plannedDay.optional(),
-  estimateMinutes: estimateMinutesSchema.optional(),
+  estimateHours: taskPatchSchema.shape.estimateHours,
+  realTimeHours: taskPatchSchema.shape.realTimeHours,
   links: linksSchema.optional(),
 });
 export type TaskCreationInput = z.infer<typeof taskCreationInputSchema>;
@@ -84,11 +93,22 @@ export const taskSchema = taskInputSchema.extend({
   completedAt: z.iso.datetime().nullable(),
   plannedFor: plannedDay.default(null),
   nextOccurrenceId: z.string().nullable().default(null),
-  estimateMinutes: estimateMinutesSchema.default(null),
+  estimateHours: durationHoursSchema.default(null),
+  realTimeHours: durationHoursSchema.default(null),
   links: linksSchema.default([]),
 });
 
 export type Task = z.infer<typeof taskSchema>;
+
+// Old JSON files and proposal snapshots used minutes; never reinterpret them as hours.
+export const storedTaskSchema = z.object({
+  estimateMinutes: z.number().int().min(1).max(525600).nullable().optional(),
+  estimateHours: durationHoursSchema.optional(),
+}).passthrough().transform(({ estimateMinutes, ...task }) => ({
+  ...task,
+  ...(task.estimateHours === undefined && estimateMinutes !== undefined
+    ? { estimateHours: estimateMinutes === null ? null : estimateMinutes / 60 } : {}),
+})).pipe(taskSchema);
 
 export const taskListSchema = z.object({ tasks: z.array(taskSchema) });
 export const taskUpdateSchema = z.object({ task: taskSchema, nextTask: taskSchema.nullable().default(null) });

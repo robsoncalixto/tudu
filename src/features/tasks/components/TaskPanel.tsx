@@ -5,12 +5,13 @@ import type { Project } from "@/features/projects/schema";
 import type { Dictionary, Locale } from "@/i18n";
 import { dueLabel, formatTimestamp, toISODate, type DateFormat } from "@/lib/dates";
 import { Icon, type IconName } from "@/lib/Icon";
-import { PRIORITIES, type Task, type TaskPatch } from "../schema";
+import { PRIORITIES, type DurationDraft, type Task, type TaskPatch } from "../schema";
 import { useTaskDraft } from "../use-task-draft";
 import { TaskPanelSubtasks } from "./TaskChecklist";
 import { TaskPanelText } from "./TaskPanelText";
 import { TaskRepeat } from "./TaskRepeat";
-import { TaskEstimate, TaskLinks } from "./TaskResources";
+import { TaskLinks } from "./TaskResources";
+import { TaskDuration } from "./TaskDuration";
 import "./task-panel.css";
 
 interface Props {
@@ -29,7 +30,8 @@ export function TaskPanel({ task, projects, today, locale, dateFormat, t, onPatc
   const title = useTaskDraft<string>(task.id);
   const notes = useTaskDraft<string>(task.id);
   const tags = useTaskDraft<string>(task.id);
-  const estimate = useTaskDraft<string>(task.id);
+  const estimate = useTaskDraft<DurationDraft>(task.id);
+  const realTime = useTaskDraft<DurationDraft>(task.id);
   const links = useTaskDraft<string>(task.id);
   const [failed, setFailed] = useState<{ id: string; changes?: TaskPatch } | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -63,7 +65,8 @@ export function TaskPanel({ task, projects, today, locale, dateFormat, t, onPatc
     </header>
     <div className="inspector-content">
       <TaskPanelSubtasks taskId={task.id} t={t} steps={task.steps} onChange={(steps) => patch(task.id, { steps }, false)} />
-      <TaskEstimate key={`estimate-${task.id}`} {...textProps} {...estimate} />
+      <TaskDuration key={`estimate-${task.id}`} field="estimateHours" {...textProps} {...estimate} />
+      <TaskDuration key={`real-time-${task.id}`} field="realTimeHours" {...textProps} {...realTime} />
       {dateField("plannedFor", t.agentPlannedFor, "calendar")}
       {dateField("due", t.setDate, "flag")}
       <label className="inspector-property">
