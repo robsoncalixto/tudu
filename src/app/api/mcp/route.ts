@@ -5,6 +5,7 @@ import { taskCreationSchema } from "@/features/tasks/schema";
 import { getSettings } from "@/features/settings/server/repository";
 import { createTuduMcpHandler } from "@/features/mcp/server/handler";
 import { checkMcpAccess } from "@/features/mcp/server/access";
+import { mcpCorsResponse, mcpPreflightResponse } from "@/features/mcp/server/cors";
 import { McpToolError } from "@/features/mcp/server/tools";
 
 export const runtime = "nodejs";
@@ -32,10 +33,11 @@ const handler = createTuduMcpHandler({
 });
 
 async function serve(request: Request): Promise<Response> {
-  const response = checkMcpAccess(request) ?? await handler.fetch(request);
+  const response = checkMcpAccess(request) ?? (request.method === "OPTIONS" ? mcpPreflightResponse() : await handler.fetch(request));
   response.headers.set("Cache-Control", "no-store");
-  return response;
+  return mcpCorsResponse(request, response);
 }
 export const POST = serve;
 export const GET = serve;
 export const DELETE = serve;
+export const OPTIONS = serve;

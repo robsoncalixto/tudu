@@ -141,3 +141,31 @@ test("HTTP access rejects missing credentials and untrusted origins, and limits 
   expect((await request.post("/api/mcp", { headers, data: { jsonrpc: "2.0", id: 1, method: "tools/list", params: { padding: "a".repeat(1_048_577) } } })).status()).toBe(413);
   expect(await listTasks(request)).toEqual([]);
 });
+
+test("allows an authenticated browser client from a configured origin and rejects other ports", async ({ page, request, baseURL }) => {
+  const address = new URL(baseURL!);
+  // Chromium resolves *.localhost locally; the two names exercise browser CORS against the real server.
+  address.hostname = "tudu.localhost";
+  const client = new URL(address);
+  client.hostname = "client.localhost";
+  await page.goto(client.href);
+  const data = { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} };
+  const endpoint = new URL("/api/mcp", address).href;
+  const responses = await page.evaluate(async ({ endpoint, headers, data }) => {
+    const options = { method: "POST", body: JSON.stringify(data) };
+    const standard = { Accept: headers.Accept, "Content-Type": "application/json", "MCP-Protocol-Version": "2025-11-25" };
+    const denied = await fetch(endpoint, { ...options, headers: standard });
+    const allowed = await fetch(endpoint, { ...options, headers: { ...standard, Authorization: headers.Authorization } });
+    return { denied: denied.status, allowed: allowed.status, body: await allowed.text() };
+  }, { endpoint, headers, data });
+  expect(responses.denied).toBe(401);
+  expect(responses.allowed).toBe(200);
+  expect(responses.body).toMatch(/"name"\s*:\s*"list_tasks"/);
+
+  const otherPort = new URL(address);
+  otherPort.port = String(Number(address.port) + 1);
+  const wrongHost = await request.post("/api/mcp", { headers: { ...headers, Host: otherPort.host, Origin: address.origin }, data });
+  const wrongOrigin = await request.post("/api/mcp", { headers: { ...headers, Host: address.host, Origin: otherPort.origin }, data });
+  expect(wrongHost.status()).toBe(403);
+  expect(wrongOrigin.status()).toBe(403);
+});

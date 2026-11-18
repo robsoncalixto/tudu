@@ -69,6 +69,7 @@ All configuration lives in `.env`; see [.env.example](.env.example).
 | `OPENAI_BASE_URL` | Trusted OpenAI-compatible gateway (the OpenAI key is sent to it) |
 | `DATABASE_URL` | Store tasks in PostgreSQL |
 | `TUDU_MCP_TOKEN` | Enable the MCP endpoint |
+| `TUDU_MCP_ALLOWED_ORIGINS` | Comma-separated HTTP(S) origins allowed to reach MCP in addition to loopback |
 
 Restart the app after changing `.env`.
 
@@ -182,18 +183,42 @@ claude mcp add --transport http tudu http://localhost:3000/api/mcp \
 Every tool declares an output schema. New subtasks may omit their `id`; the
 server assigns one.
 
-The endpoint accepts loopback hosts only. To reach it from another machine, use
-an SSH tunnel:
+### Remote access
+
+The default configuration accepts loopback hosts only. To connect through SSH,
+run this command on the client machine and point the MCP client at
+`http://localhost:3001/api/mcp`.
 
 ```bash
 ssh -N -L 3001:localhost:3000 user@server
 ```
 
+For direct access on a trusted LAN, add the exact origin used by the client to
+the server's `.env`. For example, a client connecting to
+`http://tudu.home.arpa:3000/api/mcp` needs this setting.
+
+```dotenv
+TUDU_MCP_ALLOWED_ORIGINS=http://tudu.home.arpa:3000
+```
+
+Separate multiple origins with commas. Each entry includes the scheme, host
+and any non-default port. Omit paths such as `/api/mcp`. TUDU checks the
+request's `Host` and, when present, its `Origin`. For a browser client served
+from a different origin, list both the TUDU address and the browser app's
+origin. An approved browser can send a CORS preflight without a token. The
+MCP request itself requires the bearer token.
+
+The default Compose port binding accepts only local connections. For direct
+LAN access, publish the web port on the server's trusted LAN address and
+recreate the web service with `docker compose up -d web` to load the settings.
+
 ## Security
 
-The web interface and REST API have no authentication. Docker Compose
-publishes port 3000 on this machine only (`127.0.0.1`). Do not expose it
-publicly; use an SSH tunnel for remote access.
+The web interface and REST API have no authentication. Publishing TUDU's web
+port on a LAN gives anyone who can reach that port access to both. Keep the
+port off the public internet. Plain HTTP also sends the MCP bearer token
+unencrypted. Use the SSH tunnel above or an HTTPS reverse proxy when the
+network is untrusted.
 
 ## Development
 
