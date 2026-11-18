@@ -1,4 +1,4 @@
-import { expect, listTasks, openApp, openSection, doneSection, row, seed, test, TODAY, TOMORROW, setLanguage } from "./support";
+import { sidebar, expect, listTasks, openApp, openSection, taskRows, doneSection, row, seed, saveSettings, test, TODAY, TOMORROW, setLanguage } from "./support";
 
 test.describe("Board", () => {
   test("shows the app name, today's date and an empty state", async ({ page }) => {
@@ -6,7 +6,8 @@ test.describe("Board", () => {
 
     await expect(page).toHaveTitle("TUDU");
     await expect(page.getByText("Tuesday", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("November 17");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("All tasks");
+    await expect(page.locator("header time")).toContainText("November 17");
     await expect(page.getByText("0 open")).toBeVisible();
     await expect(page.getByText("0 done")).toBeVisible();
     await expect(page.getByText("Nothing open.")).toBeVisible();
@@ -77,7 +78,7 @@ test.describe("Board", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await openApp(page);
 
-    await expect(row(page, "A task with a fairly long title")).toBeVisible();
+    await expect(row(page, "A task with a fairly long title that has to wrap on a narrow screen")).toBeVisible();
     const overflows = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(overflows).toBe(false);
     await expect(page.getByRole("button", { name: "Add", exact: true })).toBeInViewport();
@@ -94,8 +95,8 @@ for (const language of [
       await page.setViewportSize({ width, height: 812 });
       await openApp(page);
       await setLanguage(page, language.code);
-      await page.getByRole("complementary").getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
-      const task = row(page, "A longer task title");
+      await sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
+      const task = row(page, "A longer task title for the daily plan");
       const control = task.getByRole("button", { name: language.add });
       await expect(control).toBeInViewport();
       await control.focus();
@@ -103,7 +104,7 @@ for (const language of [
       await control.press("Enter");
       await expect(task.getByRole("button", { name: language.remove })).toBeInViewport();
       await expect.poll(async () => (await listTasks(request))[0].plannedFor).toBe(TODAY);
-      const priority = task.getByRole("button", { name: /Priority:|Prioridade:/ });
+      const priority = task.getByRole("combobox", { name: /^(Priority|Prioridade)$/ });
       expect(await priority.evaluate((element) => {
         const bounds = element.getBoundingClientRect();
         const card = element.closest(".card")!.getBoundingClientRect();
@@ -123,10 +124,10 @@ test("refreshes Today at local midnight without reloading", async ({ page, reque
   await page.clock.install();
   await page.clock.setSystemTime(new Date("2026-11-17T23:59:59-03:00"));
   await openApp(page);
-  await page.getByRole("complementary").getByRole("button", { name: /^Today/ }).click();
-  await expect(openSection(page).getByRole("listitem")).toHaveCount(2);
+  await sidebar(page).getByRole("button", { name: /^Today/ }).click();
+  await expect(taskRows(openSection(page))).toHaveCount(2);
   await page.clock.fastForward(2000);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("November 18");
+  await expect(page.locator("header time")).toContainText("November 18");
   await expect(row(openSection(page), "Yesterday's selection")).toHaveCount(0);
   await expect(row(openSection(page), "Deadline")).toBeVisible();
   await expect(row(openSection(page), "Next day")).toBeVisible();
@@ -136,11 +137,33 @@ test("refreshes Today at local midnight without reloading", async ({ page, reque
 test("refreshes Today when returning to a suspended tab", async ({ page, request }) => {
   await seed(request, [{ title: "Old selection", plannedFor: TODAY }]);
   await openApp(page);
-  await page.getByRole("complementary").getByRole("button", { name: /^Today/ }).click();
+  await sidebar(page).getByRole("button", { name: /^Today/ }).click();
   await expect(row(page, "Old selection")).toBeVisible();
   await page.clock.setFixedTime(new Date("2026-11-18T10:00:00-03:00"));
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("November 18");
+  await expect(page.locator("header time")).toContainText("November 18");
   await expect(row(page, "Old selection")).toHaveCount(0);
-  await expect(page.getByRole("complementary").getByRole("button", { name: /^Today/ })).toHaveText("Today0");
+  await expect(sidebar(page).getByRole("button", { name: /^Today/ })).toHaveText("Today0");
 });
+
+for (const l of [
+  { locale: "en", failed: "Couldn’t load your tasks.", retry: "Retry" },
+  { locale: "pt-BR", failed: "Não foi possível carregar suas tarefas.", retry: "Tentar novamente" },
+] as const) {
+  test(`recovers a failed task list without showing an empty board in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    const [saved] = await seed(request, [{ title: "Previously saved task" }]);
+    await page.route("**/api/tasks", (route) => route.fulfill({ status: 503, json: { error: "unavailable" } }));
+    await page.goto("/");
+
+    await expect(page.getByText(l.failed, { exact: true })).toBeVisible();
+    await expect(openSection(page)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: l.retry, exact: true })).toBeEnabled();
+
+    await page.unroute("**/api/tasks");
+    await page.getByRole("button", { name: l.retry, exact: true }).click();
+    await expect(row(openSection(page), saved.title)).toBeVisible();
+    await expect(page.getByText(l.failed, { exact: true })).toHaveCount(0);
+    expect((await listTasks(request)).map((task) => task.id)).toEqual([saved.id]);
+  });
+}

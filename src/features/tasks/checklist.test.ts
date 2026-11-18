@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createStep, stepProgress } from "./checklist";
+import { createStep, nextSubtaskVisibility, stepProgress } from "./checklist";
 import { taskInputSchema, taskPatchSchema, taskSchema } from "./schema";
 
 describe("checklists", () => {
@@ -34,5 +34,16 @@ describe("checklists", () => {
     expect(stepProgress(steps)).toEqual({ done: 1, total: 2 });
     expect(stepProgress([])).toEqual({ done: 0, total: 0 });
     expect(steps[1].done).toBe(false);
+  });
+
+  it("cycles through open subtasks only when that would show a different list", () => {
+    const mixed = { done: 1, total: 2 };
+    expect(nextSubtaskVisibility("all", mixed)).toBe("open");
+    expect(nextSubtaskVisibility("open", mixed)).toBe("collapsed");
+    expect(nextSubtaskVisibility("collapsed", mixed)).toBe("all");
+    for (const done of [0, 2]) {
+      expect(nextSubtaskVisibility("all", { done, total: 2 })).toBe("collapsed");
+    }
+    expect(nextSubtaskVisibility("open", { done: 2, total: 2 })).toBe("all");
   });
 });

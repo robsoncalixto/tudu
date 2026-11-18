@@ -29,17 +29,19 @@ test("adds, filters, updates, completes and deletes through the real MCP transpo
   const [project] = await seedProjects(request, ["Acme"]);
   await saveSettings(request, { defaultPriority: "high" });
   const added = await mcp.callTool({ name: "add_tasks", arguments: { tasks: [
-    { title: "MCP report", tags: ["work"], projectId: project.id, due: TODAY },
+    { title: "MCP report", tags: ["work"], projectId: project.id, due: TODAY, estimateMinutes: 30, links: ["https://example.org/report.pdf"] },
     { title: "Second task", priority: "low" },
   ] } });
   expect(added.isError).not.toBe(true);
   const created = z.object({ tasks: z.array(taskSchema) }).parse(added.structuredContent).tasks;
-  expect(created).toMatchObject([{ title: "MCP report", priority: "high", projectId: project.id }, { title: "Second task", priority: "low" }]);
+  expect(created).toMatchObject([{ title: "MCP report", priority: "high", projectId: project.id, estimateMinutes: 30, links: ["https://example.org/report.pdf"] },
+    { title: "Second task", priority: "low", estimateMinutes: null, links: [] }]);
   expect(await listTasks(request)).toEqual(created);
   const filtered = await mcp.callTool({ name: "list_tasks", arguments: { state: "open", tag: "work", projectId: project.id, today: TODAY, limit: 1 } });
   expect(filtered.structuredContent).toEqual({ tasks: [created[0]], total: 1, nextOffset: null });
-  const update = await mcp.callTool({ name: "update_task", arguments: { id: created[0].id, patch: { title: "Updated report", notes: "Ask Ana", plannedFor: TODAY } } });
-  expect(taskUpdateSchema.parse(update.structuredContent).task).toMatchObject({ title: "Updated report", notes: "Ask Ana", plannedFor: TODAY });
+  const patch = { title: "Updated report", notes: "Ask Ana", plannedFor: TODAY, estimateMinutes: 45, links: [] };
+  const update = await mcp.callTool({ name: "update_task", arguments: { id: created[0].id, patch } });
+  expect(taskUpdateSchema.parse(update.structuredContent).task).toMatchObject(patch);
   const done = await mcp.callTool({ name: "complete_task", arguments: { id: created[0].id } });
   expect(taskUpdateSchema.parse(done.structuredContent).task.done).toBe(true);
   expect((await listTasks(request))[0].done).toBe(true);

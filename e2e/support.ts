@@ -19,6 +19,8 @@ export interface SeedTask {
   tags?: string[];
   plannedFor?: string | null;
   steps?: Step[];
+  estimateMinutes?: number | null;
+  links?: string[];
   projectId?: string | null;
   repeat?: RepeatRule | null;
 }
@@ -110,16 +112,22 @@ export { expect };
 
 export async function openApp(page: Page) {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("November 17");
+  await expect(page.locator("header time")).toContainText("November 17");
   await expect(page.getByText("Loading…")).toHaveCount(0);
 }
 
 export const composer = (page: Page) => page.getByRole("textbox", { name: /Write a task|Escreva uma tarefa/ });
-export const sidebar = (page: Page) => page.getByRole("complementary");
+export const sidebar = (page: Page) => page.getByRole("complementary").filter({
+  has: page.getByRole("navigation", { name: /^(Task views|Visualizações de tarefas)$/ }),
+});
+export const taskPanel = (page: Page) => page.getByRole("complementary", { name: /^(Task details|Detalhes da tarefa)$/ });
+export const closeTaskPanel = (page: Page) => taskPanel(page).getByRole("button", { name: /^(Close task details|Fechar detalhes da tarefa)$/ });
 export const openSection = (page: Page) => page.locator("section[aria-labelledby='open-heading']");
 export const doneSection = (page: Page) => page.locator("details.done");
 export const row = (scope: Page | Locator, title: string) =>
-  scope.getByRole("listitem").filter({ hasText: title });
+  scope.getByRole("listitem", { name: title, exact: true });
+export const taskRows = (scope: Locator) => scope.locator(".tasks > li");
+export const taskDetails = (task: Locator) => task.getByRole("button", { name: /^(Task details|Detalhes da tarefa)$/ });
 export const rowTitles = (scope: Locator) => scope.locator(".task-title").allTextContents();
 
 export async function addTask(page: Page, title: string) {

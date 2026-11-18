@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { dayDiff, dueLabel, type DateFormat } from "@/lib/dates";
+import { Icon } from "@/lib/Icon";
 import type { Dictionary, Locale } from "@/i18n";
-import { PRIORITIES, type Task, type TaskPatch } from "../schema";
-import { TaskChecklist } from "./TaskChecklist";
-import { TaskRepeat } from "./TaskRepeat";
 import type { Project } from "@/features/projects/schema";
+import { PRIORITIES, type Priority, type Task } from "../schema";
+import { nextSubtaskVisibility, stepProgress, type SubtaskVisibility } from "../checklist";
+import { repeatDescription } from "../recurrence";
+import type { TaskActions } from "./TaskList";
+import { TaskChecklist } from "./TaskChecklist";
 
-interface Props {
+interface Props extends TaskActions {
   task: Task;
   projects: Project[];
   fresh?: boolean;
@@ -16,126 +19,110 @@ interface Props {
   locale: Locale;
   dateFormat: DateFormat;
   t: Dictionary;
-  onPatch: (id: string, patch: TaskPatch) => Promise<boolean>;
-  onDelete: (id: string) => void;
-  onTag: (tag: string) => void;
 }
 
-export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, onPatch, onDelete, onTag }: Props) {
+export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, onPatch, selectedId, onShowPanel, onTag }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.title);
-
+  const selected = selectedId === task.id;
+  const [visibility, setVisibility] = useState<SubtaskVisibility>("all");
+  const [adding, setAdding] = useState(false);
+  const subtasksId = useId();
+  const addButton = useRef<HTMLButtonElement>(null);
+  const subtaskInput = useRef<HTMLInputElement>(null);
+  const titleButton = useRef<HTMLButtonElement>(null);
   const overdue = !task.done && task.due !== null && dayDiff(task.due, today) < 0;
-  const nextPriority = PRIORITIES[(PRIORITIES.indexOf(task.priority) + 1) % PRIORITIES.length];
+  const project = projects.find((item) => item.id === task.projectId);
+  const steps = stepProgress(task.steps);
+  const nextVisibility = nextSubtaskVisibility(visibility, steps);
+  const visibilityLabel = { all: t.showSubtasks, open: t.hideDoneSubtasks, collapsed: t.hideSubtasks }[nextVisibility];
+  const planned = Boolean(today) && task.plannedFor === today;
+  const planLabel = planned ? t.removeFromToday : t.addToToday;
+  const hasMetadata = project || task.tags.length > 0 || steps.total > 0 || task.repeat;
 
   function commit() {
     const title = draft.trim();
     setEditing(false);
-    if (title && title !== task.title) onPatch(task.id, { title });
-    else setDraft(task.title);
+    if (title && title !== task.title) void onPatch(task.id, { title });
   }
 
   return (
     <li className={`task${task.done ? " is-done" : ""}${fresh ? " is-new" : ""}`} data-priority={task.priority}
-      data-task-id={task.id} tabIndex={-1} aria-label={task.title}>
-      <button
-        type="button"
-        className="check"
-        role="checkbox"
-        aria-checked={task.done}
-        aria-label={task.done ? t.markOpen : t.markDone}
-        onClick={() => onPatch(task.id, { done: !task.done })}
-      />
-
+      data-task-id={task.id} data-inspected={selected || undefined} tabIndex={-1} aria-label={task.title}>
+      <button type="button" className="check" role="checkbox" aria-checked={task.done}
+        aria-label={task.done ? t.markOpen : t.markDone} onClick={() => onPatch(task.id, { done: !task.done })}>
+        {task.done && <Icon name="check" size={14} />}
+      </button>
       <div className="task-body">
         {editing ? (
-          <input
-            className="task-edit"
-            value={draft}
-            autoFocus
-            aria-label={t.editTitle}
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={commit}
+          <input className="form-control task-edit" value={draft} autoFocus maxLength={300} aria-label={t.editTitle}
+            onChange={(event) => setDraft(event.target.value)} onBlur={commit}
             onKeyDown={(event) => {
-              if (event.key === "Enter") commit();
-              if (event.key === "Escape") {
-                setDraft(task.title);
-                setEditing(false);
-              }
-            }}
-          />
+              if (event.key !== "Enter" && event.key !== "Escape") return;
+              event.preventDefault();
+              if (event.key === "Enter") event.currentTarget.blur();
+              else setEditing(false);
+              requestAnimationFrame(() => {
+                if (document.activeElement === document.body) titleButton.current?.focus();
+              });
+            }} />
         ) : (
-          <button
-            type="button"
-            className="task-title"
-            title={t.editTitle}
-            onClick={() => {
-              setDraft(task.title);
-              setEditing(true);
-            }}
-          >
-            {task.title}
-          </button>
+          <button type="button" className="task-title" ref={titleButton} title={t.editTitle}
+            onClick={() => { setDraft(task.title); setEditing(true); }}>{task.title}</button>
         )}
-
-        {task.notes && <p className="task-notes">{task.notes}</p>}
-
-        <div className="task-tags">
-          {projects.length > 0 && (
-            <select className="chip project-select" aria-label={t.project} value={task.projectId ?? ""}
-              onChange={(event) => { void onPatch(task.id, { projectId: event.target.value || null }); }}>
-              <option value="">{t.noProject}</option>
-              {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-            </select>
-          )}
-          {!task.done && (
-            <button
-              type="button"
-              className="chip chip-tag plan-today"
-              aria-pressed={task.plannedFor === today}
-              disabled={!today}
-              onClick={() => onPatch(task.id, { plannedFor: task.plannedFor === today ? null : today })}
-            >
-              {task.plannedFor === today ? t.removeFromToday : t.addToToday}
-            </button>
-          )}
-          {task.tags.map((tag) => (
-            <button type="button" key={tag} className="chip chip-tag" onClick={() => onTag(tag)}>
-              #{tag}
-            </button>
-          ))}
-        </div>
-        <TaskChecklist steps={task.steps ?? []} t={t} onChange={(steps) => onPatch(task.id, { steps })} />
-        <TaskRepeat task={task} today={today} locale={locale} t={t} onChange={(patch) => onPatch(task.id, patch)} />
+        {task.notes && <p className="task-notes is-preview">{task.notes}</p>}
+        {hasMetadata && <div className="task-metadata">
+          {project && <span><Icon name="folder" size={13} />{project.name}</span>}
+          {task.tags.map((tag) => <button type="button" key={tag} onClick={() => onTag(tag)}>#{tag}</button>)}
+          {steps.total > 0 && <button type="button" className="subtask-count" id={`${subtasksId}-toggle`} aria-label={visibilityLabel}
+            title={visibilityLabel} aria-controls={subtasksId} aria-describedby={`${subtasksId}-count`}
+            aria-expanded={nextVisibility !== "all"} onClick={() => setVisibility(nextVisibility)}>
+            <Icon name={nextVisibility === "all" ? "chevron-right" : "chevron-down"} size={14} />
+            <span id={`${subtasksId}-count`}>{t.stepCount(steps.done, steps.total)}</span>
+          </button>}
+          {task.repeat && <span title={repeatDescription(task.repeat, locale, t)}><Icon name="repeat" size={13} />{t.repeatFrequencies[task.repeat.frequency]}</span>}
+        </div>}
       </div>
 
-      <label className={`chip due${overdue ? " is-overdue" : ""}${task.due ? "" : " is-empty"}`}>
-        <span>
-          {task.due ? dueLabel(task.due, today, locale, t, dateFormat) : t.noDate}
-          {overdue && ` · ${t.overdue}`}
-        </span>
-        <input
-          type="date"
-          value={task.due ?? ""}
-          aria-label={t.setDate}
-          onChange={(event) => onPatch(task.id, { due: event.target.value || null })}
-        />
-      </label>
+      <div className="task-schedule">
+        <label className={`task-date${overdue ? " is-overdue" : ""}`}>
+          <Icon name="calendar" size={14} />
+          <span>{task.due ? dueLabel(task.due, today, locale, t, dateFormat) : t.noDate}{overdue && ` · ${t.overdue}`}</span>
+          <input type="date" value={task.due ?? ""} aria-label={t.setDate}
+            onChange={(event) => onPatch(task.id, { due: event.target.value || null })} />
+        </label>
+        <div className="task-priority">
+          <span className="priority-mark" aria-hidden />
+          <select className="select-control" aria-label={t.priority} value={task.priority}
+            onChange={(event) => onPatch(task.id, { priority: event.target.value as Priority })}>
+            {PRIORITIES.map((value) => <option key={value} value={value}>{t[value]}</option>)}
+          </select>
+        </div>
+      </div>
 
-      <button
-        type="button"
-        className="chip priority"
-        title={`${t.priority}: ${t[task.priority]}`}
-        aria-label={`${t.priority}: ${t[task.priority]}`}
-        onClick={() => onPatch(task.id, { priority: nextPriority })}
-      >
-        <span className="priority-mark" aria-hidden />
-        {t[task.priority]}
-      </button>
+      <div className="task-tools">
+        <button type="button" className="subtask-add" data-add-subtask aria-label={t.addStep}
+          title={steps.total >= 100 ? t.stepLimit : t.addStep} ref={addButton} disabled={steps.total >= 100}
+          aria-controls={subtasksId} onClick={() => {
+            setVisibility("all"); setAdding(true);
+            requestAnimationFrame(() => subtaskInput.current?.focus());
+          }}><Icon name="subtask-add" size={18} /></button>
+        {!task.done && <button type="button" className="plan-today" aria-pressed={planned}
+          aria-label={planLabel} title={planLabel} disabled={!today}
+          onClick={() => onPatch(task.id, { plannedFor: planned ? null : today })}><Icon name="sun" size={16} /></button>}
+        <button type="button" className="task-disclosure" title={`${t.taskDetails} (I)`} aria-label={t.taskDetails}
+          data-open-panel aria-keyshortcuts="I" aria-expanded={selected} aria-controls={selected ? "task-inspector" : undefined}
+          onClick={(event) => onShowPanel(task.id, event.currentTarget)}>
+          <Icon name={selected ? "x" : "panel-right"} size={18} />
+        </button>
+      </div>
 
-      <button type="button" className="remove" aria-label={t.delete} title={t.delete} onClick={() => onDelete(task.id)}>
-        ×
-      </button>
+      <TaskChecklist id={subtasksId} steps={task.steps} t={t} visibility={visibility} adding={adding}
+        inputRef={subtaskInput} addButton={addButton} onCloseAdd={() => {
+          setAdding(false);
+          (addButton.current?.disabled ? document.getElementById(`${subtasksId}-toggle`) : addButton.current)?.focus();
+        }}
+        onChange={(steps) => onPatch(task.id, { steps })} />
     </li>
   );
 }

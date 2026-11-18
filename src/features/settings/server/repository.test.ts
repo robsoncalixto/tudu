@@ -30,7 +30,7 @@ describe("settings repository", () => {
     expect(await readdir(dir)).toEqual([]);
   });
   it("saves every preference atomically and reads it from a new repository instance", async () => {
-    const settings = { ...DEFAULT_SETTINGS, locale: "pt-BR", defaultPriority: "high", startView: "today", dateFormat: "iso" } as const;
+    const settings = { ...DEFAULT_SETTINGS, locale: "pt-BR", theme: "dark", defaultPriority: "high", startView: "today", dateFormat: "iso" } as const;
     expect(await repo.updateSettings(settings)).toEqual(settings);
     expect(await createSettingsRepository(dir).getSettings()).toEqual(settings);
     expect(await readdir(dir)).toEqual(["settings.json"]);

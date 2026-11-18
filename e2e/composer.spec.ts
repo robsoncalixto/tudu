@@ -1,4 +1,4 @@
-import { addTask, composer, expect, listTasks, openApp, openSection, row, rowTitles, saveSettings, seedProjects, test, TODAY, setLanguage } from "./support";
+import { sidebar, addTask, composer, expect, listTasks, openApp, openSection, taskRows, row, rowTitles, saveSettings, seedProjects, taskDetails, taskPanel, test, TODAY, setLanguage } from "./support";
 
 test.describe("Composer", () => {
   test("Portuguese ordinals stay in ordinary task titles without adding a due date", async ({ page, request }) => {
@@ -27,20 +27,20 @@ test.describe("Composer", () => {
   test("adds a task with the Add button", async ({ page }) => {
     await openApp(page);
     await composer(page).fill("Review the budget");
-    await page.getByRole("button", { name: "Add" }).click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
 
     await expect(row(openSection(page), "Review the budget")).toBeVisible();
   });
 
   test("does not add an empty task", async ({ page, request }) => {
     await openApp(page);
-    await expect(page.getByRole("button", { name: "Add" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Add", exact: true })).toBeDisabled();
 
     await composer(page).fill("   ");
-    await expect(page.getByRole("button", { name: "Add" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Add", exact: true })).toBeDisabled();
     await composer(page).press("Enter");
 
-    await expect(page.getByText("Nothing open.")).toBeVisible();
+    await expect(taskRows(openSection(page))).toHaveCount(0);
     expect(await listTasks(request)).toEqual([]);
   });
 
@@ -57,7 +57,7 @@ test.describe("Composer", () => {
   test("collapses line breaks into a single-line title", async ({ page }) => {
     await openApp(page);
     await composer(page).fill("first line\nsecond line");
-    await page.getByRole("button", { name: "Add" }).click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
 
     await expect(row(openSection(page), "first line second line")).toBeVisible();
   });
@@ -75,14 +75,18 @@ test.describe("Composer", () => {
 
     await expect(page.getByRole("status")).toHaveText("Something went wrong. Try again.");
     await expect(composer(page)).toHaveValue("Will not save");
-    await expect(page.getByText("Nothing open.")).toBeVisible();
+    await expect(taskRows(openSection(page))).toHaveCount(0);
   });
 
   test("explains how to turn AI on when there is no key", async ({ page }) => {
     await openApp(page);
 
-    await expect(page.getByText("AI is off. Configure the selected provider's API key in the server's .env file.")).toBeVisible();
     await composer(page).fill("some note");
+    await page.getByRole("button", { name: "Set up AI capture" }).click();
+    await expect(page.getByText("AI is off. Configure the selected provider's API key in the server's .env file.")).toBeVisible();
+    const guide = page.getByRole("region", { name: "Set up AI capture" });
+    await expect(guide.getByRole("link", { name: "Settings", exact: true })).toHaveAttribute("href", "/settings?from=tasks#ai-settings-heading");
+    await expect(composer(page)).toHaveValue("some note");
     await expect(page.getByRole("button", { name: "Create with AI" })).toBeDisabled();
   });
 
@@ -126,7 +130,7 @@ test.describe("Composer", () => {
 
     test("turns a note into several tasks with the button", async ({ page }) => {
       await openApp(page);
-      await expect(page.getByText(/Enter adds one task/)).toBeVisible();
+      await expect(page.getByRole("button", { name: "Create with AI" })).toHaveAttribute("title", /Enter adds one task/);
 
       await composer(page).fill("Send Ana the draft by tomorrow and book a room");
       await page.getByRole("button", { name: "Create with AI" }).click();
@@ -135,7 +139,7 @@ test.describe("Composer", () => {
       expect(await rowTitles(openSection(page))).toEqual(["Send Ana the draft", "Book a room"]);
       const first = row(openSection(page), "Send Ana the draft");
       await expect(first.getByText("Tomorrow")).toBeVisible();
-      await expect(first.getByRole("button", { name: "Priority: High" })).toBeVisible();
+      await expect(first.getByRole("combobox", { name: "Priority", exact: true })).toHaveValue("high");
       await expect(first.getByRole("button", { name: "#ana" })).toBeVisible();
       await expect(row(openSection(page), "Book a room").getByText("For the review")).toBeVisible();
       await expect(composer(page)).toHaveValue("");
@@ -143,7 +147,7 @@ test.describe("Composer", () => {
 
     test("turns a note into tasks with Ctrl+Enter", async ({ page }) => {
       await openApp(page);
-      await expect(page.getByText(/Enter adds one task/)).toBeVisible();
+      await expect(page.getByRole("button", { name: "Create with AI" })).toHaveAttribute("title", /Enter adds one task/);
       await composer(page).fill("Send Ana the draft by tomorrow and book a room");
       await composer(page).press("Control+Enter");
 
@@ -159,7 +163,7 @@ test.describe("Composer", () => {
         : route.fulfill({ status: 422, json: { error: "no_tasks" } }),
     );
     await openApp(page);
-    await expect(page.getByText(/Enter adds one task/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create with AI" })).toHaveAttribute("title", /Enter adds one task/);
 
     await composer(page).fill("just thinking out loud");
     await page.getByRole("button", { name: "Create with AI" }).click();
@@ -168,15 +172,18 @@ test.describe("Composer", () => {
     await expect(composer(page)).toHaveValue("just thinking out loud");
   });
 
-  test("a new task clears the active tag filter so it is visible", async ({ page, request }) => {
+  test("a new task inherits the active tag and stays in view", async ({ page, request }) => {
     await request.post("/api/tasks", { data: [{ title: "Tagged", tags: ["work"] }] });
     await openApp(page);
-    await page.getByRole("complementary").getByRole("button", { name: "#work" }).click();
-    await expect(page.locator("#open-heading")).toHaveText("#work 1");
+    await sidebar(page).getByRole("button", { name: "#work" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("#work");
+    await expect(page.locator("#open-heading")).toHaveText("Open 1");
 
-    await addTask(page, "Untagged newcomer");
+    await addTask(page, "New assignment");
 
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("#work");
     await expect(page.locator("#open-heading")).toHaveText("Open 2");
+    expect((await listTasks(request)).find((task) => task.title === "New assignment")?.tags).toEqual(["work"]);
   });
 });
 
@@ -192,22 +199,30 @@ for (const code of ["EN", "PT"]) {
     await setLanguage(page, code);
     await composer(page).fill("Write the report for Acme");
     await page.getByRole("button", { name: code === "EN" ? "Create with AI" : "Criar com IA", exact: true }).click();
-    await expect(row(page, "Acme report").getByRole("combobox")).toHaveValue(project.id);
+    const report = row(page, "Acme report");
+    await taskDetails(report).click();
+    await expect(taskPanel(page).getByRole("combobox", { name: code === "EN" ? "Project" : "Projeto", exact: true })).toHaveValue(project.id);
     await expect.poll(async () => (await listTasks(request))[0].projectId).toBe(project.id);
   });
 }
 
 for (const l of [
-  { code: "en", add: "Add", ai: "Create with AI", hint: "Quick-add shortcuts", raw: "Fix login #BUG !high tomorrow", title: "Fix login", tomorrow: "tomorrow", today: "today", weekday: "Tuesday", invalid: "Add a title of up to 300 characters, with at most 10 tags of up to 40 characters each. Your text is still here.", error: "Something went wrong. Try again." },
-  { code: "pt-BR", add: "Adicionar", ai: "Criar com IA", hint: "Atalhos para adicionar tarefas", raw: "Corrigir login #BUG !high amanhã", title: "Corrigir login", tomorrow: "amanhã", today: "hoje", weekday: "terça-feira", invalid: "Adicione um título com até 300 caracteres e no máximo 10 etiquetas com até 40 caracteres cada. Seu texto continua aqui.", error: "Algo deu errado. Tente novamente." },
+  { code: "en", add: "Add", ai: "Create with AI", hint: "Quick-add shortcuts", preview: "Quick-add preview", high: "High", raw: "Fix login #BUG !high tomorrow", title: "Fix login", tomorrow: "tomorrow", today: "today", weekday: "Tuesday", invalid: "Add a title of up to 300 characters, with at most 10 tags of up to 40 characters each. Your text is still here.", error: "Something went wrong. Try again." },
+  { code: "pt-BR", add: "Adicionar", ai: "Criar com IA", hint: "Atalhos de criação", preview: "Prévia da tarefa", high: "Alta", raw: "Corrigir login #BUG !high amanhã", title: "Corrigir login", tomorrow: "amanhã", today: "hoje", weekday: "terça-feira", invalid: "Adicione um título com até 300 caracteres e no máximo 10 etiquetas com até 40 caracteres cada. Seu texto continua aqui.", error: "Algo deu errado. Tente novamente." },
 ]) {
   test(`quick-add parses tags, priority and date without AI in ${l.code}`, async ({ page, request }) => {
     await openApp(page);
     await setLanguage(page, l.code);
     await expect(page.getByRole("button", { name: l.ai, exact: true })).toBeDisabled();
     await composer(page).fill(l.raw);
+    const preview = page.getByRole("list", { name: l.preview });
+    await expect(preview).toContainText("#bug");
+    await expect(preview).toContainText(l.high);
+    await expect(preview).toContainText(new RegExp(l.tomorrow, "i"));
+    expect(await listTasks(request)).toEqual([]);
     await composer(page).press("Enter");
     await expect(row(openSection(page), l.title)).toBeVisible();
+    await expect(preview).toHaveCount(0);
     expect((await listTasks(request))[0]).toMatchObject({ title: l.title, tags: ["bug"], priority: "high", due: "2026-11-18" });
     await page.reload();
     await expect(row(openSection(page), l.title).getByRole("button", { name: "#bug", exact: true })).toBeVisible();
@@ -267,9 +282,18 @@ for (const l of [
     await page.setViewportSize({ width: 320, height: 812 });
     await openApp(page);
     await setLanguage(page, l.code);
-    const hint = page.getByText(l.hint, { exact: true });
+    const input = composer(page);
+    const field = await input.boundingBox();
+    expect(field).not.toBeNull();
+    // The inset beside the writing area also focuses the field on a phone.
+    await page.mouse.click(field!.x - 4, field!.y + field!.height / 2);
+    await expect(input).toBeFocused();
+    const hint = page.getByRole("button", { name: l.hint, exact: true });
+    expect((await hint.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    expect((await page.getByRole("button", { name: l.add, exact: true }).boundingBox())?.height).toBeGreaterThanOrEqual(44);
     await hint.focus(); await hint.press("Enter");
     await expect(page.getByText(/Fix login #bug !high tomorrow|Corrigir login #bug !high amanhã/)).toBeVisible();
+    await expect(hint).toHaveAttribute("aria-expanded", "true");
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     await composer(page).fill(String.raw`Discuss \#bug \!high \tomorrow`);
     await page.getByRole("button", { name: l.add, exact: true }).click();

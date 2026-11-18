@@ -19,7 +19,7 @@ function task(overrides: Partial<Task> = {}): Task {
     steps: [],
     projectId: null,
     repeat: null,
-    nextOccurrenceId: null,
+    nextOccurrenceId: null, estimateMinutes: null, links: [],
     ...overrides,
   };
 }
@@ -193,5 +193,35 @@ describe("project views", () => {
     const view = buildTaskView([], { kind: "project", id: empty.id }, "2026-11-17", [empty]);
     expect(view.open).toEqual([]);
     expect(view.projectCounts).toEqual([[empty, 0]]);
+  });
+});
+
+describe("searching and sorting a task view", () => {
+  const client = { id: "client", name: "São Paulo" };
+  const records = [
+    task({ title: "Draft", notes: "Reunião", projectId: client.id, due: "2026-11-17", priority: "low" }),
+    task({ title: "Follow up", tags: ["revisão"], priority: "high", steps: [{ id: "s", title: "Read minutes", done: false }] }),
+    task({ title: "Archive", projectId: client.id, done: true }),
+  ];
+
+  it("matches accent-insensitive words across title, notes, tags, project and steps", () => {
+    const search = (query: string) => buildTaskView(records, { kind: "all" }, "", [client], query);
+    expect(titles(search("sao  REUNIAO").open)).toEqual(["Draft"]);
+    expect(titles(search("#revisao minutes").open)).toEqual(["Follow up"]);
+    expect(titles(search("archive").done)).toEqual(["Archive"]);
+    expect(search("missing")).toMatchObject({ open: [], done: [], scopeOpen: 2, scopeDone: 1, openCount: 2 });
+  });
+
+  it("searches only the current scope and leaves navigation counts intact", () => {
+    const view = buildTaskView(records, { kind: "project", id: client.id }, "", [client], "minutes");
+    expect(view).toMatchObject({ open: [], done: [], scopeOpen: 1, scopeDone: 1, openCount: 2 });
+  });
+
+  it("sorts by due date, priority or creation time without reordering the original tasks", () => {
+    const order = (sort: "due" | "priority" | "newest") => titles(buildTaskView(records, { kind: "all" }, "", [], "", sort).open);
+    expect(order("due")).toEqual(["Draft", "Follow up"]);
+    expect(order("priority")).toEqual(["Follow up", "Draft"]);
+    expect(order("newest")).toEqual(["Follow up", "Draft"]);
+    expect(titles(records)).toEqual(["Draft", "Follow up", "Archive"]);
   });
 });

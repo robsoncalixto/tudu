@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { Icon } from "@/lib/Icon";
 import type { Dictionary } from "@/i18n";
 import type { ShortcutDialog } from "../shortcut-schema";
 
@@ -44,7 +45,9 @@ export function TaskShortcuts({ dialog, deleting, deleteFailed, t, onClose, onCl
         {deleteFailed && <p className="shortcut-error" role="alert">{t.errors.generic}</p>}
         <div className="shortcut-actions">
           <button type="button" className="btn btn-secondary" autoFocus disabled={deleting} onClick={onClose}>{t.cancel}</button>
-          <button type="button" className="btn btn-primary" disabled={deleting} onClick={() => { void onDelete(); }}>{deleting ? t.deletingTask : t.delete}</button>
+          <button type="button" className="btn shortcut-danger" disabled={deleting} onClick={() => { void onDelete(); }}>
+            <Icon name="trash" size={17} />{deleting ? t.deletingTask : t.delete}
+          </button>
         </div>
       </> : <>
         <dl>{t.shortcutHelp.map(({ keys, description }) => <div key={keys}>

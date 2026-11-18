@@ -27,6 +27,7 @@ function matches(proposal: Proposal, action: ProposalAction, result: ProposalRes
   if (action.kind === "create_task" && result.kind === "task") {
     const { plannedFor, ...input } = action.task;
     return result.task.id === proposal.id && !result.task.done && result.task.completedAt === null
+      && result.task.estimateMinutes === null && result.task.links.length === 0
       && result.task.plannedFor === plannedFor && same(taskInputSchema.parse(result.task), input);
   }
   if (action.kind === "update_task" && result.kind === "task" && proposal.taskBefore) {
