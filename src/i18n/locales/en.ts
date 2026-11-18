@@ -1,4 +1,5 @@
 export const en = {
+  brandName: "TUDU",
   taskResources: {
     estimate: "Estimate (minutes)", saveEstimate: "Save estimate", links: "Links & files",
     url: "Link URL", linkHint: "Paste a link to a page or shared file.", addLink: "Add link",

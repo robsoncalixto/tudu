@@ -47,7 +47,8 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, onShortcuts
       }
     }}>
     <div className="sidebar-heading">
-      <div className="brand"><span className="brand-name">TUDU</span></div>
+      <img className="sidebar-brand" alt={t.brandName} width={compact ? 30 : 114} height={30}
+        src={compact ? "/brand/tudu-icon.svg" : "/brand/tudu-logo-on-dark.svg"} />
       <button type="button" className="nav-item sidebar-width" aria-label={sizeLabel} title={sizeLabel}
         aria-expanded={!compact} aria-controls="task-navigation" onClick={() => update({ compact: !compact })}>
         <Icon name="chevron-right" size={17} />
