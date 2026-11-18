@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 import type { CallToolResult } from "@modelcontextprotocol/server";
-import type { Task, TaskDraft, TaskPatch, TaskUpdate } from "@/features/tasks/schema";
+import { taskDraftSchema, taskPatchSchema, type Task, type TaskDraft, type TaskPatch, type TaskUpdate } from "@/features/tasks/schema";
 import type { Project } from "@/features/projects/schema";
 import { addTasksToolSchema, completeTaskToolSchema, deleteTaskToolSchema, listTasksToolSchema, listProjectsToolSchema, updateTaskToolSchema } from "../schema";
 import { filterTasks } from "../selectors";
@@ -9,47 +10,56 @@ export interface TaskOperations {
   listTasks(): Promise<Task[]>;
   listProjects(): Promise<Project[]>;
   addTasks(inputs: TaskDraft[]): Promise<Task[]>;
-  updateTask(id: string, patch: TaskPatch): Promise<TaskUpdate | null>;
+  updateTask(id: string, patch: TaskPatch, expected?: Task): Promise<TaskUpdate | null>;
   deleteTask(id: string): Promise<boolean>;
 }
 export class McpToolError extends Error {
-  constructor(public readonly code: "not_found" | "invalid_project" | "invalid_repeat") { super(code); }
+  constructor(public readonly code: "not_found" | "invalid_project" | "invalid_repeat" | "task_changed") { super(code); }
 }
 
-async function result(operation: () => Promise<Record<string, unknown>>): Promise<CallToolResult> {
+async function result(name: string, operation: () => Promise<Record<string, unknown>>): Promise<CallToolResult> {
   try {
     const output = await operation();
     return { content: [{ type: "text", text: JSON.stringify(output) }], structuredContent: output };
   } catch (error) {
     const code = error instanceof McpToolError ? error.code : error instanceof ZodError ? "invalid_task" : "generic";
+    // The client only sees the code; the server log keeps the cause so failures can be diagnosed.
+    if (code === "generic") console.error(`MCP tool ${name} failed`, error);
     return { isError: true, content: [{ type: "text", text: JSON.stringify({ error: code }) }], structuredContent: { error: code } };
   }
 }
 
+function withStepIds<T extends { steps?: { id?: string }[] }>(fields: T): T {
+  return fields.steps ? { ...fields, steps: fields.steps.map((step) => ({ ...step, id: step.id ?? randomUUID() })) } : fields;
+}
+
 export function createTaskTools(operations: TaskOperations) {
   return {
-    list_projects: (raw: unknown) => result(async () => {
+    list_projects: (raw: unknown) => result("list_projects", async () => {
       listProjectsToolSchema.parse(raw);
       return { projects: await operations.listProjects() };
     }),
-    list_tasks: (raw: unknown) => result(async () => {
+    list_tasks: (raw: unknown) => result("list_tasks", async () => {
       const filters = listTasksToolSchema.parse(raw);
       return filterTasks(await operations.listTasks(), filters);
     }),
-    add_tasks: (raw: unknown) => result(async () => ({ tasks: await operations.addTasks(addTasksToolSchema.parse(raw).tasks) })),
-    update_task: (raw: unknown) => result(async () => {
-      const { id, patch } = updateTaskToolSchema.parse(raw);
-      const updated = await operations.updateTask(id, patch);
+    add_tasks: (raw: unknown) => result("add_tasks", async () => {
+      const drafts = addTasksToolSchema.parse(raw).tasks.map((draft) => taskDraftSchema.strict().parse(withStepIds(draft)));
+      return { tasks: await operations.addTasks(drafts) };
+    }),
+    update_task: (raw: unknown) => result("update_task", async () => {
+      const { id, patch, expected } = updateTaskToolSchema.parse(raw);
+      const updated = await operations.updateTask(id, taskPatchSchema.strict().parse(withStepIds(patch)), expected);
       if (!updated) throw new McpToolError("not_found");
       return updated;
     }),
-    complete_task: (raw: unknown) => result(async () => {
+    complete_task: (raw: unknown) => result("complete_task", async () => {
       const { id } = completeTaskToolSchema.parse(raw);
       const updated = await operations.updateTask(id, { done: true });
       if (!updated) throw new McpToolError("not_found");
       return updated;
     }),
-    delete_task: (raw: unknown) => result(async () => {
+    delete_task: (raw: unknown) => result("delete_task", async () => {
       const { id } = deleteTaskToolSchema.parse(raw);
       if (!await operations.deleteTask(id)) throw new McpToolError("not_found");
       return { deleted: true, id };

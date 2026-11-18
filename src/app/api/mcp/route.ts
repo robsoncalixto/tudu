@@ -1,4 +1,4 @@
-import { listTasks, addTasks, updateTaskWithNext, deleteTask } from "@/features/tasks/server/repository";
+import { listTasks, addTasks, updateTaskWithNext, deleteTask, TaskChangedError } from "@/features/tasks/server/repository";
 import { listProjects, ProjectError, withValidProjectIds } from "@/features/projects/server/repository";
 import { InvalidRepeatError } from "@/features/tasks/recurrence";
 import { taskCreationSchema } from "@/features/tasks/schema";
@@ -15,6 +15,7 @@ async function guarded<T>(operation: () => Promise<T>): Promise<T> {
   catch (error) {
     if (error instanceof ProjectError) throw new McpToolError("invalid_project");
     if (error instanceof InvalidRepeatError) throw new McpToolError("invalid_repeat");
+    if (error instanceof TaskChangedError) throw new McpToolError("task_changed");
     throw error;
   }
 }
@@ -26,7 +27,7 @@ const handler = createTuduMcpHandler({
     const inputs = Array.isArray(parsed) ? parsed : [parsed];
     return withValidProjectIds(inputs.map((input) => input.projectId), () => addTasks(inputs));
   }),
-  updateTask: (id, patch) => guarded(() => withValidProjectIds([patch.projectId], () => updateTaskWithNext(id, patch))),
+  updateTask: (id, patch, expected) => guarded(() => withValidProjectIds([patch.projectId], () => updateTaskWithNext(id, patch, expected))),
   deleteTask,
 });
 

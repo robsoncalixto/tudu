@@ -7,7 +7,7 @@ export const repeatRuleSchema = z.discriminatedUnion("frequency", [
     frequency: z.literal("weekly"),
     days: z.array(z.number().int().min(0).max(6)).min(1).max(7)
       .refine((days) => new Set(days).size === days.length)
-      .transform((days) => [...days].sort((a, b) => a - b)),
+      .overwrite((days) => [...days].sort((a, b) => a - b)),
   }),
   z.object({ frequency: z.literal("monthly"), day: z.number().int().min(1).max(31) }),
 ]);

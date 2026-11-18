@@ -175,9 +175,12 @@ claude mcp add --transport http tudu http://localhost:3000/api/mcp \
 | `list_projects` | List project names and IDs |
 | `list_tasks` | Filter and paginate tasks |
 | `add_tasks` | Add 1–50 tasks |
-| `update_task` | Update task fields, or reopen a task |
+| `update_task` | Update task fields, or reopen a task; pass `expected` to refuse changes made since the last read |
 | `complete_task` | Complete a task and return its next occurrence, if any |
 | `delete_task` | Delete a task; requires `confirm: true` |
+
+Every tool declares an output schema. New subtasks may omit their `id`; the
+server assigns one.
 
 The endpoint accepts loopback hosts only. To reach it from another machine, use
 an SSH tunnel:
@@ -188,9 +191,9 @@ ssh -N -L 3001:localhost:3000 user@server
 
 ## Security
 
-The web interface and REST API have no authentication. Run TUDU on a trusted
-network and do not expose its port publicly; use an SSH tunnel for remote
-access.
+The web interface and REST API have no authentication. Docker Compose
+publishes port 3000 on this machine only (`127.0.0.1`). Do not expose it
+publicly; use an SSH tunnel for remote access.
 
 ## Development
 

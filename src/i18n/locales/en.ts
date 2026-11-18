@@ -224,6 +224,7 @@ export const en = {
     agent_uncertain: "The save could not be confirmed. Check its status before taking another action; it will not be applied again automatically.",
     mcp_disabled: "MCP is off. Configure TUDU_MCP_TOKEN on the server.",
     mcp_unauthorized: "The MCP access token was rejected.",
+    task_changed: "This task changed since it was read. Read it again before saving.",
     invalid_quick_task: "Add a title of up to 300 characters, with at most 10 tags of up to 40 characters each. Your text is still here.",
     invalid_repeat: "A repeating task needs a valid due date. Set a date or remove its repeat rule.",
     copy_failed: "Copying was blocked. Select and copy the work log below.",
