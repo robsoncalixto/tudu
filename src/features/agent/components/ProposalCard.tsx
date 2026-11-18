@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { errorMessage, type Dictionary, type Locale } from "@/i18n";
+import { Icon } from "@/lib/Icon";
 import { formatTimestamp } from "@/lib/dates";
 import type { Project } from "@/features/projects/schema";
 import type { Proposal, ProposalDecision } from "../schema";
@@ -44,11 +45,11 @@ export function ProposalCard({ proposal, projects, locale, t, busy, saving, erro
           <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => { void onDecision(proposal.id, { decision: "dismiss" }); }}>{t.agentDismiss}</button>
         </div>
       </>}
-      <details><summary>{t.agentOriginal}</summary>{values(proposal.action)}</details>
+      <details><summary><Icon name="chevron-right" size={16} />{t.agentOriginal}</summary>{values(proposal.action)}</details>
       {proposal.decidedAt && <p className="hint">{formatTimestamp(proposal.decidedAt, locale)}</p>}
     </>}
     {error && <p className="notice is-error" role="alert">{errorMessage(t, error)}</p>}
-    <details className="proposal-source"><summary>{t.agentSource}</summary><p>{proposal.source.note}</p>
+    <details className="proposal-source"><summary><Icon name="chevron-right" size={16} />{t.agentSource}</summary><p>{proposal.source.note}</p>
       <p className="hint">{t.aiProviders[proposal.source.provider]} · {proposal.source.model} · {formatTimestamp(proposal.createdAt, locale)}</p>
     </details>
   </article>;

@@ -3,7 +3,7 @@ import type { ShortcutAction } from "./shortcut-schema";
 type KeyStroke = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey" | "repeat" | "defaultPrevented" | "isComposing">;
 const KEY_ACTIONS: Record<string, ShortcutAction> = {
   n: "composer", "/": "composer", j: "next", arrowdown: "next", k: "previous", arrowup: "previous",
-  x: "toggle", delete: "delete", backspace: "delete", "?": "help",
+  i: "task-panel", a: "add-subtask", x: "toggle", delete: "delete", backspace: "delete", "?": "help",
 };
 
 export function taskShortcut(event: KeyStroke, typing: boolean | "composer", modal: boolean): ShortcutAction | null {

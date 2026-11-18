@@ -3,10 +3,12 @@ import type { Task, TaskPatch } from "../schema";
 import { TaskRow } from "./TaskRow";
 import type { Project } from "@/features/projects/schema";
 import type { DateFormat } from "@/lib/dates";
+import "./task-list.css";
 
 export interface TaskActions {
   onPatch: (id: string, patch: TaskPatch) => Promise<boolean>;
-  onDelete: (id: string) => void;
+  selectedId: string | null;
+  onShowPanel: (id: string, trigger: HTMLButtonElement) => void;
   onTag: (tag: string) => void;
 }
 

@@ -7,6 +7,8 @@ import { errorCode } from "@/lib/http";
 
 export function useProjects(onError: (code: string) => void, onDeleted: (id: string) => void) {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectError, setProjectError] = useState<string | null>(null);
+  const clearProjectError = () => setProjectError(null);
   const report = useRef(onError);
   report.current = onError;
   useEffect(() => {
@@ -17,14 +19,14 @@ export function useProjects(onError: (code: string) => void, onDeleted: (id: str
       const project = await projectsApi.create(name);
       setProjects((current) => [...current, project]);
       return true;
-    } catch (error) { report.current(errorCode(error)); return false; }
+    } catch (error) { setProjectError(errorCode(error)); return false; }
   }, []);
   const renameProject = useCallback(async (id: string, name: string) => {
     try {
       const project = await projectsApi.rename(id, name);
       setProjects((current) => current.map((item) => item.id === id ? project : item));
       return true;
-    } catch (error) { report.current(errorCode(error)); return false; }
+    } catch (error) { setProjectError(errorCode(error)); return false; }
   }, []);
   const deleteProject = useCallback(async (id: string) => {
     try {
@@ -32,7 +34,7 @@ export function useProjects(onError: (code: string) => void, onDeleted: (id: str
       setProjects((current) => current.filter((project) => project.id !== id));
       onDeleted(id);
       return true;
-    } catch (error) { report.current(errorCode(error)); return false; }
+    } catch (error) { setProjectError(errorCode(error)); return false; }
   }, [onDeleted]);
-  return { projects, createProject, renameProject, deleteProject };
+  return { projects, projectError, clearProjectError, createProject, renameProject, deleteProject };
 }

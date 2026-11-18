@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { errorCode } from "@/lib/http";
 import { settingsApi } from "./api";
 import { settingsChanges, settingsSchema, type Settings, type SettingsPatch } from "./schema";
@@ -11,6 +11,12 @@ export function useSettings(initial: Settings) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedNotice, setSavedNotice] = useState(false);
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.theme = draft.theme;
+    return () => { root.dataset.theme = saved.theme; };
+  }, [draft.theme, saved.theme]);
+
   const dirty = Object.entries(draft).some(([key, value]) => value !== saved[key as keyof Settings]);
   function change(patch: SettingsPatch) {
     setDraft((current) => ({ ...current, ...patch }));

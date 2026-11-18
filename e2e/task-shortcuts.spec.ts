@@ -1,8 +1,8 @@
-import { composer, doneSection, expect, listTasks, openApp, openSection, seed, seedProjects, setLanguage, sidebar, test, TODAY } from "./support";
+import { taskDetails, taskPanel, closeTaskPanel, composer, doneSection, expect, listTasks, openApp, openSection, taskRows, seed, seedProjects, setLanguage, sidebar, test, TODAY } from "./support";
 
 const languages = [
-  { code: "en", help: "Keyboard shortcuts", close: "Close shortcuts", confirm: "Delete this task?", cancel: "Cancel", delete: "Delete task", markDone: "Mark as done", edit: "Edit title", project: "Project", checklist: "Checklist 0/0", step: "New step", error: "Something went wrong. Try again.", all: "All tasks", today: "Today" },
-  { code: "pt-BR", help: "Atalhos de teclado", close: "Fechar atalhos", confirm: "Excluir esta tarefa?", cancel: "Cancelar", delete: "Excluir tarefa", markDone: "Marcar como concluída", edit: "Editar título", project: "Projeto", checklist: "Etapas 0/0", step: "Nova etapa", error: "Algo deu errado. Tente novamente.", all: "Todas as tarefas", today: "Hoje" },
+  { code: "en", help: "Keyboard shortcuts", close: "Close shortcuts", confirm: "Delete this task?", cancel: "Cancel", delete: "Delete task", markDone: "Mark as done", edit: "Edit title", project: "Project", add: "Add subtask", step: "New subtask", error: "Something went wrong. Try again.", all: "All tasks", today: "Today" },
+  { code: "pt-BR", help: "Atalhos de teclado", close: "Fechar atalhos", confirm: "Excluir esta tarefa?", cancel: "Cancelar", delete: "Excluir tarefa", markDone: "Marcar como concluída", edit: "Editar título", project: "Projeto", add: "Adicionar subtarefa", step: "Nova subtarefa", error: "Algo deu errado. Tente novamente.", all: "Todas as tarefas", today: "Hoje" },
 ];
 
 for (const l of languages) {
@@ -107,6 +107,29 @@ for (const l of languages) {
     expect(await listTasks(request)).toEqual([]);
   });
 
+  test(`A opens the focused task’s subtask editor and Escape restores its add button in ${l.code}`, async ({ page, request }) => {
+    await seed(request, [{ title: "First task" }, { title: "Second task" }]);
+    await openApp(page);
+    await setLanguage(page, l.code);
+    const first = page.getByRole("listitem", { name: "First task", exact: true });
+    const second = page.getByRole("listitem", { name: "Second task", exact: true });
+    const input = second.getByRole("textbox", { name: l.step, exact: true });
+    await second.focus();
+    await second.press("a");
+    await expect(input).toBeFocused();
+    await expect(first.getByRole("textbox", { name: l.step, exact: true })).toBeHidden();
+    await input.pressSequentially("a draft");
+    await expect(input).toHaveValue("a draft");
+    await input.press("Escape");
+    await expect(input).toBeHidden();
+    await expect(second.getByRole("button", { name: l.add, exact: true })).toBeFocused();
+    await composer(page).focus();
+    await composer(page).press("a");
+    await expect(composer(page)).toHaveValue("a");
+    await expect(input).toBeHidden();
+    expect((await listTasks(request)).map((task) => task.steps)).toEqual([[], []]);
+  });
+
   test(`help is modal, localized and fits a phone in ${l.code}`, async ({ page, request }) => {
     await seed(request, [{ title: "Task" }]);
     await page.setViewportSize({ width: 320, height: 812 });
@@ -135,27 +158,37 @@ for (const l of languages) {
     const [project] = await seedProjects(request, ["Acme"]);
     await seed(request, [{ title: "Task", due: TODAY, projectId: project.id }]);
     await openApp(page); await setLanguage(page, l.code);
-    await composer(page).fill("draft"); await composer(page).pressSequentially("xjkn/?");
-    await expect(composer(page)).toHaveValue("draftxjkn/?");
+    await composer(page).fill("draft"); await composer(page).pressSequentially("axjkn/?");
+    await expect(composer(page)).toHaveValue("draftaxjkn/?");
     const task = page.getByRole("listitem", { name: "Task", exact: true });
     await task.getByRole("button", { name: "Task", exact: true }).click();
     const title = task.getByRole("textbox", { name: l.edit, exact: true });
     await title.fill("Draft"); await title.press("x"); await title.press("Delete");
     await expect(title).toHaveValue("Draftx"); await title.press("Escape");
-    await task.getByRole("combobox", { name: l.project, exact: true }).focus();
+    const priority = task.getByRole("combobox", { name: l.code === "en" ? "Priority" : "Prioridade", exact: true });
+    await priority.focus(); await priority.press("ArrowDown");
+    await expect(priority.getByRole("option", { name: l.code === "en" ? "Medium" : "Média", exact: true })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(priority.getByRole("option", { name: l.code === "en" ? "High" : "Alta", exact: true })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(priority).toBeFocused();
+    await expect(priority).toHaveValue("medium");
+    await taskDetails(task).click();
+    await taskPanel(page).getByRole("combobox", { name: l.project, exact: true }).focus();
     await page.keyboard.press("x"); await page.keyboard.press("/");
-    await task.getByLabel(l.code === "en" ? "Due date" : "Prazo", { exact: true }).focus();
+    await taskPanel(page).getByLabel(l.code === "en" ? "Due date" : "Prazo", { exact: true }).focus();
     await page.keyboard.press("x");
-    await task.getByText(l.checklist, { exact: true }).click();
+    await closeTaskPanel(page).click();
+    await task.getByRole("button", { name: l.add, exact: true }).click();
     await task.getByRole("textbox", { name: l.step, exact: true }).fill("draft");
-    await task.getByRole("textbox", { name: l.step, exact: true }).pressSequentially("xjkn/?");
-    await expect(task.getByRole("textbox", { name: l.step, exact: true })).toHaveValue("draftxjkn/?");
+    await task.getByRole("textbox", { name: l.step, exact: true }).pressSequentially("axjkn/?");
+    await expect(task.getByRole("textbox", { name: l.step, exact: true })).toHaveValue("draftaxjkn/?");
     await page.evaluate(() => {
       const editor = document.createElement("div"); editor.contentEditable = "true"; editor.setAttribute("aria-label", "Scratch area");
       editor.setAttribute("role", "textbox"); document.body.append(editor); editor.focus();
     });
-    await page.keyboard.type("xjkn/?");
-    await expect(page.getByRole("textbox", { name: "Scratch area", exact: true })).toHaveText("xjkn/?");
+    await page.keyboard.type("axjkn/?");
+    await expect(page.getByRole("textbox", { name: "Scratch area", exact: true })).toHaveText("axjkn/?");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     expect((await listTasks(request))[0]).toMatchObject({ title: "Task", done: false });
   });
@@ -218,3 +251,36 @@ for (const action of ["complete", "delete"]) {
     expect(saved).toHaveLength(action === "complete" ? 2 : 1);
   });
 }
+
+test("Space on a checkbox moves focus to the next row while saving and respects later navigation", async ({ page, request }) => {
+  const [first] = await seed(request, [{ title: "First", due: TODAY }, { title: "Second", due: "2026-11-18" }]);
+  await openApp(page);
+  let release = () => {};
+  const wait = new Promise<void>((resolve) => { release = resolve; });
+  await page.route(`**/api/tasks/${first.id}`, async (route) => {
+    await wait;
+    await route.continue();
+  });
+  const checkbox = page.getByRole("listitem", { name: "First", exact: true }).getByRole("checkbox");
+  await checkbox.focus();
+  await checkbox.press("Space");
+  try {
+    await expect(page.getByRole("listitem", { name: "Second", exact: true })).toBeFocused();
+    await page.getByRole("searchbox").focus();
+  } finally { release(); }
+  await expect.poll(async () => (await listTasks(request)).find((task) => task.id === first.id)?.done).toBe(true);
+  await expect(page.getByRole("searchbox")).toBeFocused();
+});
+
+test("renaming the final search match keeps keyboard focus on the board", async ({ page, request }) => {
+  const [first] = await seed(request, [{ title: "Searchable title" }, { title: "Other title" }]);
+  await openApp(page);
+  await page.getByRole("searchbox").fill("Searchable");
+  await page.getByRole("button", { name: "Searchable title", exact: true }).click();
+  const edit = page.getByRole("textbox", { name: "Edit title" });
+  await edit.fill("Renamed task");
+  await edit.press("Enter");
+  await expect(composer(page)).toBeFocused();
+  await expect(taskRows(openSection(page))).toHaveCount(0);
+  await expect.poll(async () => (await listTasks(request)).find((task) => task.id === first.id)?.title).toBe("Renamed task");
+});

@@ -120,41 +120,63 @@ Paste something like:
 
 and it becomes three tasks, each with its own due date, priority and tags. The
 tasks stay in the language you wrote them in. When a note explicitly breaks an
-action into steps, AI capture can keep those steps as a checklist on the task.
+action into steps, AI capture can create subtasks under the parent task.
 
 ## Using it
 
+Choose **All tasks**, **Today**, a project or a tag to open its list. The
+heading shows the current view and its open and completed totals. Use the
+**Projects** and **Tags** headings to fold their lists. On desktop, the sidebar
+can collapse to icons. On a phone, **More views** opens projects, tags, Work log
+and Assistant.
+
 | Action | How |
 | --- | --- |
-| Add one task | Type and press `Enter` |
+| Add one task | Type and press `Enter`. In a project or tag view, the new task inherits that project or tag. In Today, it is planned for the current day |
 | Turn a note into tasks | `Ctrl`/`⌘` + `Enter`, or the **Create with AI** button |
+| Find a task | Use **Search this list** to match titles, notes, tags, project names or subtasks. Matching completed tasks appear under **Done** |
+| Sort open tasks | Choose **Due date**, **Priority** or **Newest first** above the list. Due date sorts the earliest dates first and puts undated tasks last |
 | Complete a task | Click its checkbox — it moves to **Done** |
 | Rename a task | Click the title |
-| Break a task into steps | Open **Checklist** on its row, then add steps |
-| Update a checklist | Check steps, rename them with **Edit**, or remove them with **×** |
-| Change priority | Click the priority label to cycle low → medium → high |
+| Add a subtask | Choose **Add subtask** on the parent row or its right-click menu, or focus the parent and press `A`. Type the title and press Enter |
+| Update a subtask | Use its checkbox to mark it done, click its title to rename it, or use its delete button |
+| Fold subtasks | Use the progress control on the parent to hide completed subtasks, collapse the list, or show all subtasks again |
+| Open the task panel | Hover over or focus a task and choose the panel icon at the right, or press `I` on the focused row. On touchscreens the icon is always visible |
+| Change priority | Select **Low**, **Medium** or **High** from the priority control |
 | Set a due date | Click the date label |
-| Plan today | Click **Add to today** on a task, then **Today** in the sidebar |
-| Remove a daily selection | Click **Remove from today**; tasks due today or overdue remain visible |
+| Plan today | Use the sun button (**Add to today**) on a task, then open **Today** |
+| Remove a daily selection | Use the selected sun button (**Remove from today**). Tasks due today or overdue remain visible |
 | Filter by tag | Click a `#tag` |
-| Manage projects | Open **Manage projects** to create, rename or delete a project |
-| Assign a project | Choose a project or **No project** on a task row |
+| Manage projects | Use the plus beside **Projects** to create one, or open **Manage projects** to rename or delete one |
+| Assign a project | Open **Task details** and choose a project or **No project** |
 | Filter by project | Click its name in the sidebar |
 | Change preferences | Open **Settings** from the sidebar, choose values, then **Save settings** |
-| Repeat a task | Open **Repeat** on a task, choose a schedule and due date, then **Save repeat rule** |
+| Repeat a task | Open **Task details**, expand **Repeat**, choose a schedule and due date, then **Save repeat rule** |
+| Delete a task | Open **Task details**, choose **Delete task** and confirm |
 | Report completed work | Open **Work log**, choose a day and grouping, then copy plain text or Markdown |
 | Review suggestions | Open **Assistant**, ask for changes, then edit and accept or reject each proposal |
 
-**Today** includes tasks picked for the current local calendar day, plus tasks
-due today or overdue. Its badge counts open tasks. Selections are saved with the
-task and expire when the day changes; they never change the due date. Completed
-tasks stay in the collapsed **Done** section when they match the selected view.
+The task panel opens beside the board on desktop. Select another row’s panel
+icon to switch tasks. On a phone it opens as a full-height sheet. Close it
+with the header button or Escape to return to the task.
+
+Use **Planned day** to schedule work and **Due date** for its deadline. The
+panel also lets you edit the title, notes, subtasks, priority, project, tags and
+repeat rule, set a time estimate in minutes and save links to websites or
+shared files.
+
+**Today** includes tasks picked for the current local day and tasks due today
+or overdue. Its badge counts open tasks. The sun button saves the planned day
+independently of the due date. Completed tasks appear in **Done**, most recent
+completion first. Searching opens that section when it has matches. The
+header’s completion totals still refer to the whole selected view.
 
 ## Quick-add shortcuts
 
 When adding one task, use shortcuts as separate words:
 `Fix login #bug !high tomorrow` saves **Fix login**, tagged **bug**, with high
-priority and tomorrow's due date. Tags are lowercase and deduplicated.
+priority and tomorrow's due date. The composer previews those fields as you
+type. Tags are lowercase and deduplicated.
 `!low`, `!medium` and `!high` work in either interface language. Without a
 priority token, the server applies the saved default priority at save time.
 
@@ -177,44 +199,50 @@ shortcuts.
 
 ## Keyboard shortcuts
 
-Use the **?** button or press `?` outside a field for help in the current
-language. Press Escape to leave the composer without losing your draft: focus
-moves to the first visible task, or the help button when the view is empty.
+Use **Keyboard shortcuts** in the navigation or press `?` outside a field to
+open help. Press Escape in the composer to keep the draft and move focus to
+the first visible task, or to the help button when the view is empty.
 
 | Key | Action |
 | --- | --- |
 | `n` or `/` | Focus the composer |
 | `j` or `↓` | Focus the next visible task |
 | `k` or `↑` | Focus the previous visible task |
+| `a` | Add a subtask to the focused task |
+| `i` | Open or close the task panel |
 | `x` | Complete or reopen the focused task |
 | Delete or Backspace | Ask to delete the focused task |
 | `?` | Open shortcut help |
-| Escape | Leave the composer, close help or cancel deletion |
+| Escape | Leave the composer, clear the focused search, close help or cancel deletion |
 
-Focus visibly selects the task. Navigation follows the current filter and sort
-order; completed tasks join it only while **Done** is expanded. Confirmation
-starts on Cancel for both the row's × button and the keyboard, and pending
-deletion cannot be submitted twice. After a
-successful change focus moves to a neighboring task, or the composer if none
-remain. A failed change restores the task and offers a retry. Shortcuts are off
-in inputs, selects, editable content and dialogs; modified browser shortcuts
-and normal Tab/Enter behavior remain available.
+Focus visibly selects the task. Navigation follows the search, filter and sort
+order and includes completed tasks when **Done** is expanded. Both **Delete
+task** in Task details and the keyboard shortcut open the same confirmation
+with Cancel focused. After a keyboard change, focus moves to a neighboring
+task or to the composer when the list is empty. A failed deletion leaves the
+task available for retry. Inputs, selects and dialogs retain their own keys.
 
 ## Settings
 
-Choose English or Portuguese, the default priority for new tasks, the initial
-view (All tasks or Today), and language-based or ISO (`YYYY-MM-DD`) dates.
-ISO mode uses exact dates in due chips, including today, tomorrow and yesterday.
-If a hand-edited preferences file is invalid, the app uses defaults until you
-save valid settings; reading it leaves the original file untouched.
-Preferences are shared by browsers using this installation and saved on the
-server. They take effect when saved and when you return to the task board;
-browser-only language settings are no longer used.
+The back arrow returns to the screen where you opened Settings. From the task
+board it restores your list, search, sort order and unfinished task text in
+the same tab. Saving a different initial view opens that view on return.
 
-The default priority applies to title-only API requests and is supplied to AI
-capture. Explicit task priorities are preserved. The AI section shows whether
-the saved provider has a server credential. Provider/model choices are shared
-preferences; credentials remain on the server.
+Choose **System**, **Light** or **Dark** under **Appearance**. The selection
+previews immediately. Choose **Save settings** to use it throughout TUDU and on
+your next visit. System is the default and follows each device’s appearance.
+
+Settings also controls the language (English or Portuguese), initial view (All
+tasks or Today), default task priority and date format. ISO dates show the
+exact date (`YYYY-MM-DD`), including on tasks due today. The default priority
+applies to title-only API requests and is supplied to AI capture. Explicit
+priorities take precedence.
+
+The AI section shows whether the selected provider has a server credential and
+lets you choose a model. Preferences are saved on the server and shared by
+browsers using this installation. Credentials stay on the server. If a
+hand-edited preferences file is invalid, TUDU uses defaults and preserves the
+file until you save valid settings.
 
 ## Repeating tasks
 
@@ -226,7 +254,7 @@ last day of a shorter month while preserving the chosen day (January 31 →
 February 28 → March 31).
 
 New occurrences keep the title, notes, priority, project, tags and rule; they
-start open with unchecked steps and no manual Today selection. Change or remove
+start open with unchecked subtasks and no manual Today selection. Change or remove
 the rule on the open occurrence to affect what comes next. Tasks already created
 are independent. Reopening and completing the same occurrence, retrying its
 request, or deleting its next task does not generate a second copy. Both storage
@@ -252,9 +280,9 @@ data: reopened or deleted tasks no longer appear as completed work.
 
 ## Plan with the assistant
 
-Open **Assistant** from the sidebar (on phones, use **More views** / **⋯**).
+Open **Assistant** from the sidebar (on phones, use **More views**).
 Describe new work or ask for priorities,
-due dates, checklist steps, project organization or a plan for the day. The
+due dates, subtasks, project organization or a plan for the day. The
 selected provider receives the note plus saved open tasks and project names.
 The assistant generates pending proposals; it has no tools that execute changes.
 Task and project text stays in its original language. New explanations use
@@ -264,7 +292,7 @@ Review each proposal, edit its fields and deliberately activate **Accept and
 save**, or choose **Reject proposal**. Enter while editing a field does not
 approve it. Related changes to one task are grouped into one proposal so they
 can be saved together. Planning a day does not change the due date. Existing
-checklist progress is retained when adding steps. To use a newly suggested
+subtask progress is retained when adding more subtasks. To use a newly suggested
 project, approve the project first, then select it while reviewing a task.
 
 The decision history keeps the original suggestion, the exact edited values
@@ -376,6 +404,7 @@ browser/API writes and authentication against an isolated running app.
 src/
   app/                 Routes: page, layout, API endpoints
   features/tasks/      Task schema, storage, hooks and components
+  features/quick-add/  Local shortcut parsing, field previews and task creation
   features/capture/    Turning a note into tasks with AI
   features/ai/         Provider selection contract and shared structured generation
   features/agent/      Reviewed proposals, explicit decisions and durable audit history

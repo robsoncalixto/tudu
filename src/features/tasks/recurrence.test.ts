@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { repeatRuleSchema, type RepeatRule } from "@/features/recurrence/schema";
 import { taskInputSchema, taskPatchSchema, taskSchema } from "./schema";
-import { nextDueDate, validateRepeat } from "./recurrence";
+import { nextDueDate, repeatDescription, validateRepeat } from "./recurrence";
 import { dictionaries } from "@/i18n";
 
 describe("repeat rules", () => {
+  it("describes active schedules with their actual weekdays or month day in the board language", () => {
+    expect(repeatDescription(null, "en", dictionaries.en)).toBe("Never");
+    expect(repeatDescription({ frequency: "weekly", days: [1, 5] }, "en", dictionaries.en)).toBe("Weekly: Monday, Friday");
+    expect(repeatDescription({ frequency: "monthly", day: 25 }, "pt-BR", dictionaries["pt-BR"])).toBe("Mensalmente, dia 25");
+    expect(repeatDescription({ frequency: "weekdays" }, "pt-BR", dictionaries["pt-BR"])).toBe("Dias úteis");
+  });
   it("ends next-occurrence notices with one period even when Intl abbreviates a month", () => {
     expect(dictionaries["pt-BR"].nextOccurrence("23 de nov.")).toBe("Próxima tarefa programada para 23 de nov.");
     expect(dictionaries.en.nextOccurrence("Nov 23")).toBe("Next task scheduled for Nov 23.");

@@ -5,6 +5,17 @@ import { repeatRuleSchema } from "@/features/recurrence/schema";
 export const PRIORITIES = ["low", "medium", "high"] as const;
 export type Priority = (typeof PRIORITIES)[number];
 
+export const MAX_ESTIMATE_MINUTES = 525600;
+export const MAX_TASK_LINKS = 20;
+export const MAX_TASK_LINK_LENGTH = 2048;
+export const estimateMinutesSchema = z.number().int().min(1).max(MAX_ESTIMATE_MINUTES).nullable();
+export const taskLinkSchema = z.string().trim().max(MAX_TASK_LINK_LENGTH)
+  .regex(/^https?:\/\/[^/\s\\?#]+(?:[/?#][^\s\\]*)?$/i).pipe(z.url({ protocol: /^https?$/ }));
+const linksSchema = z.array(taskLinkSchema).max(MAX_TASK_LINKS)
+  .refine((links) => new Set(links).size === links.length);
+
+const plannedDay = z.iso.date().nullable();
+
 const dueDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -41,20 +52,28 @@ export const taskPatchSchema = z
     due: dueDate,
     tags: z.array(z.string().trim().min(1).max(40)).max(10),
     done: z.boolean(),
-    plannedFor: z.iso.date().nullable(),
+    plannedFor: plannedDay,
     steps: stepsSchema,
     projectId: projectIdSchema,
     repeat: repeatRuleSchema.nullable(),
+    estimateMinutes: estimateMinutesSchema,
+    links: linksSchema,
   })
   .partial();
 
 export type TaskInput = z.infer<typeof taskInputSchema>;
-export const taskDraftSchema = taskInputSchema.extend({ priority: z.enum(PRIORITIES).optional() });
+const taskCreationInputSchema = taskInputSchema.extend({
+  plannedFor: plannedDay.optional(),
+  estimateMinutes: estimateMinutesSchema.optional(),
+  links: linksSchema.optional(),
+});
+export type TaskCreationInput = z.infer<typeof taskCreationInputSchema>;
+export const taskDraftSchema = taskCreationInputSchema.extend({ priority: z.enum(PRIORITIES).optional() });
 export type TaskDraft = z.input<typeof taskDraftSchema>;
 export type TaskPatch = z.infer<typeof taskPatchSchema>;
 
 export function taskCreationSchema(defaultPriority: Priority) {
-  const input = taskInputSchema.extend({ priority: z.enum(PRIORITIES).default(defaultPriority) });
+  const input = taskDraftSchema.extend({ priority: z.enum(PRIORITIES).default(defaultPriority) });
   return z.union([input, z.array(input).min(1).max(50)]);
 }
 
@@ -63,11 +82,14 @@ export const taskSchema = taskInputSchema.extend({
   done: z.boolean(),
   createdAt: z.iso.datetime(),
   completedAt: z.iso.datetime().nullable(),
-  plannedFor: z.iso.date().nullable().default(null),
+  plannedFor: plannedDay.default(null),
   nextOccurrenceId: z.string().nullable().default(null),
+  estimateMinutes: estimateMinutesSchema.default(null),
+  links: linksSchema.default([]),
 });
 
 export type Task = z.infer<typeof taskSchema>;
 
+export const taskListSchema = z.object({ tasks: z.array(taskSchema) });
 export const taskUpdateSchema = z.object({ task: taskSchema, nextTask: taskSchema.nullable().default(null) });
 export type TaskUpdate = z.infer<typeof taskUpdateSchema>;

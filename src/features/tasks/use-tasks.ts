@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { captureApi } from "@/features/capture/api";
 import { quickAddApi } from "@/features/quick-add/api";
 import { errorCode } from "@/lib/http";
+import type { TaskFilter } from "./selectors";
 import { tasksApi } from "./api";
+import { applyTaskMutations, type PendingTaskMutation } from "./optimistic-tasks";
 import type { Task, TaskPatch } from "./schema";
 
 /**
@@ -13,7 +15,12 @@ import type { Task, TaskPatch } from "./schema";
  * roll back on failure and report the error code through `onError`.
  */
 export function useTasks(onError: (code: string) => void, onNext?: (task: Task) => void) {
-  const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [confirmed, setConfirmed] = useState<Task[] | null>(null);
+  const [pending, setPending] = useState<PendingTaskMutation[]>([]);
+  const lastWrite = useRef(new Map<string, Promise<boolean>>());
+  const tasks = useMemo(() => confirmed && applyTaskMutations(confirmed, pending), [confirmed, pending]);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [aiEnabled, setAiEnabled] = useState(false);
   const report = useRef(onError);
   report.current = onError;
@@ -21,10 +28,19 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   scheduled.current = onNext;
 
   useEffect(() => {
-    tasksApi
-      .list()
-      .then(setTasks)
-      .catch(() => setTasks([]));
+    let active = true;
+    tasksApi.list()
+      .then((saved) => { if (active) setConfirmed(saved); })
+      .catch(() => { if (active) setLoadFailed(true); });
+    return () => { active = false; };
+  }, [loadAttempt]);
+
+  const retryLoad = useCallback(() => {
+    setLoadFailed(false);
+    setLoadAttempt((attempt) => attempt + 1);
+  }, []);
+
+  useEffect(() => {
     captureApi
       .status()
       .then(setAiEnabled)
@@ -32,61 +48,62 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   }, []);
 
   const append = useCallback((created: Task[]) => {
-    setTasks((current) => [...(current ?? []), ...created]);
+    setConfirmed((current) => [...(current ?? []), ...created]);
     return created;
   }, []);
 
-  const add = useCallback((text: string, today: string) => quickAddApi.create(text, today).then(append), [append]);
+  const add = useCallback((text: string, today: string, filter: TaskFilter) => {
+    const context = filter.kind === "today" ? { plannedFor: today }
+      : filter.kind === "project" ? { projectId: filter.id }
+      : filter.kind === "tag" ? { tag: filter.tag } : {};
+    return quickAddApi.create(text, today, context).then(append);
+  }, [append]);
 
   const capture = useCallback(
     (text: string, today: string) => captureApi.capture(text, today).then(append),
     [append],
   );
 
-  const patch = useCallback((id: string, changes: TaskPatch) => {
-    let before: Task | undefined;
-    setTasks((current) => {
-      before = current?.find((task) => task.id === id);
-      return current?.map((task) => (task.id === id ? { ...task, ...changes } : task)) ?? null;
-    });
-    return tasksApi
-      .update(id, changes)
-      .then((saved) => {
-        setTasks((current) => {
-          if (!current) return null;
-          const next = current.map((task) => task.id === id ? saved.task : task);
-          // Retries may return an occurrence already displayed or being edited.
-          if (saved.nextTask && !next.some((task) => task.id === saved.nextTask!.id)) next.push(saved.nextTask);
-          return next;
-        });
-        if (changes.done && saved.nextTask && !saved.nextTask.done) scheduled.current?.(saved.nextTask);
-        return true;
-      })
-      .catch((error) => {
-        const previous = before;
-        if (previous) {
-          setTasks((current) => current?.map((task) => (task.id === id ? previous : task)) ?? null);
+  const mutate = useCallback((id: string, changes: TaskPatch | null) => {
+    const mutation = { id, patch: changes };
+    setPending((current) => [...current, mutation]);
+
+    // Order writes to the same task while other tasks remain independent.
+    const previous = lastWrite.current.get(id) ?? Promise.resolve();
+    const request: Promise<boolean> = previous.then(async () => {
+      try {
+        if (changes === null) {
+          await tasksApi.remove(id);
+          setConfirmed((current) => current?.filter((task) => task.id !== id) ?? null);
+        } else {
+          const { task, nextTask } = await tasksApi.update(id, changes);
+          setConfirmed((current) => {
+            if (!current) return null;
+            const next = current.map((item) => item.id === id ? task : item);
+            // Retried completions can return an occurrence already on the board.
+            if (nextTask && !next.some((item) => item.id === nextTask.id)) next.push(nextTask);
+            return next;
+          });
+          if (changes.done && nextTask && !nextTask.done) scheduled.current?.(nextTask);
         }
+        return true;
+      } catch (error) {
         report.current(errorCode(error));
         return false;
-      });
+      } finally {
+        setPending((current) => current.filter((item) => item !== mutation));
+        if (lastWrite.current.get(id) === request) lastWrite.current.delete(id);
+      }
+    });
+    lastWrite.current.set(id, request);
+    return request;
   }, []);
 
-  const remove = useCallback((id: string) => {
-    let snapshot: Task[] | null = null;
-    setTasks((current) => {
-      snapshot = current;
-      return current?.filter((task) => task.id !== id) ?? null;
-    });
-    return tasksApi.remove(id).then(() => true).catch((error) => {
-      setTasks(snapshot);
-      report.current(errorCode(error));
-      return false;
-    });
-  }, []);
+  const patch = useCallback((id: string, changes: TaskPatch) => mutate(id, changes), [mutate]);
+  const remove = useCallback((id: string) => mutate(id, null), [mutate]);
 
   const clearProject = useCallback((id: string) => {
-    setTasks((current) => current?.map((task) => task.projectId === id ? { ...task, projectId: null } : task) ?? null);
+    setConfirmed((current) => current?.map((task) => task.projectId === id ? { ...task, projectId: null } : task) ?? null);
   }, []);
-  return { tasks, aiEnabled, add, capture, patch, remove, clearProject };
+  return { tasks, aiEnabled, loadFailed, retryLoad, add, capture, patch, remove, clearProject };
 }

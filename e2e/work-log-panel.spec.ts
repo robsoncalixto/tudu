@@ -115,6 +115,14 @@ for (const l of languages) {
     await page.goto("/work-log");
     await expect(page.getByRole("heading", { name: l.count, exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: l.ai, exact: true })).toBeDisabled();
+    for (const control of [
+      page.getByRole("link", { name: l.back, exact: true }),
+      page.getByLabel(l.day, { exact: true }),
+      page.getByRole("combobox", { name: l.group, exact: true }),
+      page.getByRole("button", { name: l.refresh, exact: true }),
+    ]) {
+      expect((await control.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    }
     await page.getByRole("combobox", { name: l.group, exact: true }).focus();
     expect(await page.getByRole("combobox", { name: l.group, exact: true }).evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe("none");
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);

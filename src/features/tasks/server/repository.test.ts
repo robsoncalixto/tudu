@@ -66,6 +66,12 @@ describe.each(backends)("repository on $name", (backend) => {
 
   afterEach(() => close());
 
+  it("persists a planned day on creation independently of the deadline", async () => {
+    const [task] = await repo.addTasks([{ ...input("Review"), plannedFor: "2026-11-17", due: "2026-11-23" }]);
+    expect(task).toMatchObject({ plannedFor: "2026-11-17", due: "2026-11-23" });
+    expect(await repo.listTasks()).toEqual([task]);
+  });
+
   it("creates an approved id once, preserving an existing task on concurrent retries", async () => {
     const id = "00000000-0000-4000-8000-000000000001";
     const results = await Promise.all(Array.from({ length: 4 }, () => repo.addApprovedTask(id, input("Approved"), "2026-11-17")));
@@ -118,10 +124,14 @@ describe.each(backends)("repository on $name", (backend) => {
       priority: "low",
       due: "2026-12-01",
       tags: ["x"],
+      estimateMinutes: 90,
+      links: ["https://example.org/brief"],
     });
-    expect(updated).toMatchObject({ title: "b", notes: "n", priority: "low", due: "2026-12-01", tags: ["x"] });
+    expect(updated).toMatchObject({ title: "b", notes: "n", priority: "low", due: "2026-12-01", tags: ["x"], estimateMinutes: 90, links: ["https://example.org/brief"] });
     expect(await repo.listTasks()).toEqual([updated]);
     expect(await repo.updateTask(task.id, { due: null, tags: [] })).toMatchObject({ due: null, tags: [], steps: [], projectId: null, repeat: null });
+    await repo.updateTask(task.id, { links: [], estimateMinutes: null });
+    expect((await repo.listTasks())[0]).toMatchObject({ estimateMinutes: null, links: [] });
   });
 
   it("sets and clears completedAt when done changes", async () => {
@@ -214,6 +224,7 @@ describe.each(backends)("repository on $name", (backend) => {
       ...input("Report"), due: "2026-01-31", repeat: { frequency: "monthly", day: 31 }, notes: "Ask Ana",
       priority: "high", tags: ["work"], projectId: "00000000-0000-4000-8000-000000000001",
       steps: [{ id: "draft", title: "Draft", done: true }],
+      estimateMinutes: 90, links: ["https://example.org/report"],
     }]);
     await repo.updateTask(task.id, { plannedFor: "2026-11-17" });
     const result = await repo.updateTaskWithNext(task.id, { done: true });
@@ -310,8 +321,8 @@ describe("default repository", () => {
       createdAt: "2026-11-01T12:00:00.000Z", completedAt: null,
     };
     await writeFile(path.join(dir, "tasks.json"), JSON.stringify([legacy]));
-    expect(await repo.listTasks()).toEqual([{ ...legacy, nextOccurrenceId: null, plannedFor: null }]);
+    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateMinutes: null, links: [], nextOccurrenceId: null, plannedFor: null }]);
     await repo.updateTask("old", { plannedFor: "2026-11-17" });
-    expect(await repo.listTasks()).toEqual([{ ...legacy, nextOccurrenceId: null, plannedFor: "2026-11-17" }]);
+    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateMinutes: null, links: [], nextOccurrenceId: null, plannedFor: "2026-11-17" }]);
   });
 });

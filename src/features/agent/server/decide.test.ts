@@ -124,6 +124,11 @@ describe("proposal approval and audit history", () => {
     await expect(decideProposal(repo, proposal.id, { decision: "accept", action: proposal.action }, operations)).rejects.toMatchObject({ code: "agent_uncertain" });
     expect((await repo.listProposals())[0].status).toBe("applying");
     await rm(blocked, { recursive: true });
+    // A matching id with new human edits cannot establish the saved proposal's exact outcome.
+    const saved = tasks.find((item) => item.id === proposal.id)!;
+    saved.links = ["https://example.org/review"];
+    await expect(decideProposal(repo, proposal.id, { decision: "recheck" }, operations)).rejects.toMatchObject({ code: "agent_uncertain" });
+    saved.links = [];
     const recovered = await decideProposal(createProposalRepository(dir), proposal.id, { decision: "recheck" }, operations);
     expect(recovered.status).toBe("accepted"); expect(operations.createTask).toHaveBeenCalledOnce();
     expect(tasks).toHaveLength(2);

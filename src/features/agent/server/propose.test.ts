@@ -6,7 +6,8 @@ import { proposeChanges } from "./propose";
 const generate = vi.fn<GenerateStructured>();
 const run = generate as GenerateStructured;
 const task = taskSchema.parse({ id: "task", title: "Report", notes: "Keep private detail as data", priority: "low", done: false,
-  createdAt: "2026-11-01T12:00:00Z", completedAt: null, steps: [{ id: "old", title: "Draft", done: true }] });
+  createdAt: "2026-11-01T12:00:00Z", completedAt: null, steps: [{ id: "old", title: "Draft", done: true }],
+  links: ["https://example.org/private-reference"], estimateMinutes: 90 });
 const project = { id: "00000000-0000-4000-8000-000000000001", name: "Acme" };
 const newTask = { title: "Send report", notes: "Ask Ana", priority: "high", due: "2026-11-18", tags: ["work"], steps: ["Proofread"], projectId: project.id, plannedFor: "2026-11-17" };
 beforeEach(() => vi.resetAllMocks());
@@ -35,7 +36,9 @@ describe("agent proposal generation", () => {
     expect(prompt.system).toContain("cannot save anything");
     expect(prompt.system).toContain(locale === "en" ? "English" : "Brazilian Portuguese");
     expect(prompt.system).toContain("priority low");
-    expect(JSON.parse(prompt.input).context.tasks).toEqual([task]);
+    const { links, estimateMinutes, ...promptTask } = task;
+    expect(JSON.parse(prompt.input).context.tasks).toEqual([promptTask]);
+    expect(prompt.input).not.toContain(links[0]);
   });
   it.each([
     { kind: "set_priority", taskId: "invented", priority: "high", reason: "Bad id" },

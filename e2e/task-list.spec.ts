@@ -40,9 +40,9 @@ test.describe("TaskList", () => {
     await openApp(page);
     expect(await rowTitles(openSection(page))).toEqual(["Older", "Newer"]);
 
-    await row(page, "Newer").getByRole("button", { name: "Priority: Medium" }).click();
+    await row(page, "Newer").getByRole("combobox", { name: "Priority" }).selectOption("high");
 
-    await expect(row(page, "Newer").getByRole("button", { name: "Priority: High" })).toBeVisible();
+    await expect(row(page, "Newer").getByRole("combobox", { name: "Priority" })).toHaveValue("high");
     expect(await rowTitles(openSection(page))).toEqual(["Newer", "Older"]);
   });
 

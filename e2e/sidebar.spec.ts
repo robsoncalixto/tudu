@@ -1,4 +1,117 @@
-import { expect, openApp, openSection, row, rowTitles, seed, seedProjects, sidebar, test, setLanguage } from "./support";
+import { dictionaries } from "../src/i18n";
+import { composer, expect, listProjects, openApp, openSection, row, rowTitles, saveSettings, seed, seedProjects, sidebar, taskRows, test, setLanguage } from "./support";
+
+for (const locale of ["en", "pt-BR"] as const) {
+  const t = dictionaries[locale];
+  test(`project and tag groups collapse independently and survive reload in ${locale}`, async ({ page, request }) => {
+    const [project] = await seedProjects(request, ["Acme"]);
+    await seed(request, [{ title: "Prepare report", projectId: project.id, tags: ["work"] }]);
+    await saveSettings(request, { locale });
+    await page.goto("/");
+    const rail = sidebar(page);
+    const projects = rail.getByRole("button", { name: t.projects, exact: true });
+    const tags = rail.getByRole("button", { name: t.tags, exact: true });
+    const acme = rail.getByRole("button", { name: `${t.project}: Acme, ${t.countOpen(1)}` });
+    const work = rail.getByRole("button", { name: "#work" });
+    await acme.click();
+    await projects.press("Space");
+    await expect(acme).toBeHidden();
+    await expect(projects).toHaveAttribute("aria-current", "true");
+    await expect(projects).toHaveAccessibleDescription("Acme");
+    await expect(work).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Acme");
+    await page.reload();
+    await expect(projects).toHaveAttribute("aria-expanded", "false");
+    await tags.click();
+    await expect(work).toBeHidden();
+    await projects.press("Enter");
+    await expect(acme).toBeVisible();
+    await expect(tags).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test(`compact navigation keeps projects accessible and expands at phone width in ${locale}`, async ({ page, request }) => {
+    await seedProjects(request, ["Acme"]);
+    await saveSettings(request, { locale });
+    await page.goto("/");
+    const rail = sidebar(page);
+    const projects = rail.getByRole("button", { name: t.projects, exact: true });
+    const shrink = rail.getByRole("button", { name: t.collapseSidebar, exact: true });
+    const grow = rail.getByRole("button", { name: t.expandSidebar, exact: true });
+    const width = (await rail.boundingBox())!.width;
+    await shrink.click();
+    await expect(grow).toBeFocused();
+    await expect(projects).toHaveAttribute("aria-expanded", "false");
+    expect((await rail.boundingBox())!.width).toBeLessThan(width);
+    await page.reload();
+    await expect(grow).toBeVisible();
+    await projects.press("Enter");
+    await expect(projects).toHaveAttribute("aria-expanded", "true");
+    const acme = rail.getByRole("button", { name: new RegExp(`^${t.project}: Acme,`) });
+    await acme.click();
+    await expect(acme).toHaveAttribute("aria-current", "page");
+    await shrink.click();
+    await page.setViewportSize({ width: 320, height: 800 });
+    const more = rail.getByRole("button", { name: t.moreViews, exact: true });
+    await more.click();
+    await expect(grow).toBeHidden();
+    await expect(acme).toBeVisible();
+    await acme.click();
+    await expect(more).toBeFocused();
+    await expect(more).toHaveAttribute("aria-expanded", "false");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  });
+
+  test(`the Projects plus creates directly from a collapsed group in ${locale}`, async ({ page, request }) => {
+    await seedProjects(request, ["Existing"]);
+    await saveSettings(request, { locale });
+    await page.goto("/");
+    const rail = sidebar(page);
+    const projects = rail.getByRole("button", { name: t.projects, exact: true });
+    await projects.click();
+    const create = rail.getByRole("button", { name: t.newProject, exact: true });
+    await create.click();
+    const dialog = page.getByRole("dialog", { name: t.newProject, exact: true });
+    const field = dialog.getByRole("textbox", { name: t.newProject, exact: true });
+    await expect(field).toBeFocused();
+    await field.fill("Existing");
+    await field.press("Enter");
+    await expect(dialog.getByRole("status")).toHaveText(t.errors.duplicate_project);
+    await expect(field).toHaveValue("Existing");
+    await expect(field).toBeFocused();
+    await field.fill("Launch");
+    await field.press("Enter");
+    await expect(dialog).toBeHidden();
+    await expect(create).toBeFocused();
+    await expect(projects).toHaveAttribute("aria-expanded", "true");
+    const link = rail.getByRole("button", { name: new RegExp(`^${t.project}: Launch,`) });
+    await link.click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Launch");
+    expect((await listProjects(request)).map((project) => project.name)).toEqual(["Existing", "Launch"]);
+  });
+}
+
+for (const language of [
+  { code: "en", settings: "Settings", back: "Back to tasks", today: "Today" },
+  { code: "pt-BR", settings: "Configurações", back: "Voltar às tarefas", today: "Hoje" },
+]) {
+  test(`Settings returns to the active list, search, sort and draft in ${language.code}`, async ({ page, request }) => {
+    await seed(request, [{ title: "Review agenda", due: "2026-11-17" }]);
+    await openApp(page);
+    await setLanguage(page, language.code);
+    await sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
+    await page.getByRole("searchbox").fill("agenda");
+    const sort = page.getByRole("combobox", { name: /Sort open tasks|Ordenar tarefas abertas/ });
+    await sort.selectOption("priority");
+    await composer(page).fill("Private draft");
+    await sidebar(page).getByRole("link", { name: language.settings }).click();
+    await page.getByRole("link", { name: language.back }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(language.today);
+    await expect(page.getByRole("searchbox")).toHaveValue("agenda");
+    await expect(sort).toHaveValue("priority");
+    await expect(composer(page)).toHaveValue("Private draft");
+    await expect(page).toHaveURL("/");
+  });
+}
 
 for (const language of [
   { code: "en", all: "All tasks", today: "Today", settings: "Settings", agent: "Assistant", workLog: "Work log", more: "More views" },
@@ -46,7 +159,7 @@ test.describe("Sidebar", () => {
     await openApp(page);
 
     await expect(sidebar(page).getByText("TUDU", { exact: true })).toBeVisible();
-    await expect(sidebar(page).locator("img, svg")).toHaveCount(0);
+    await expect(sidebar(page).locator(".brand img, .brand svg")).toHaveCount(0);
     const all = sidebar(page).getByRole("button", { name: /All tasks/ });
     await expect(all).toHaveText("All tasks2");
     await expect(all).toHaveAttribute("aria-current", "page");
@@ -80,10 +193,11 @@ test.describe("Sidebar", () => {
 
     await sidebar(page).getByRole("button", { name: "#work" }).click();
 
-    await expect(page.locator("#open-heading")).toHaveText("#work 1");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("#work");
+    await expect(page.locator("#open-heading")).toHaveText("Open 1");
     expect(await rowTitles(openSection(page))).toEqual(["Work task"]);
     await expect(sidebar(page).getByRole("button", { name: "#work" })).toHaveAttribute("aria-current", "page");
-    await expect(page.getByText("3 open")).toBeVisible();
+    await expect(page.getByText("1 open")).toBeVisible();
 
     await sidebar(page).getByRole("button", { name: /All tasks/ }).click();
     await expect(page.locator("#open-heading")).toHaveText("Open 3");
@@ -125,7 +239,7 @@ test.describe("Sidebar", () => {
 
     await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");
     await expect(page.getByText("terça-feira", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("17 de novembro");
+    await expect(page.locator("header time")).toContainText("17 de novembro");
     await expect(page.getByText("1 aberta", { exact: true })).toBeVisible();
     await expect(page.getByText("0 concluídas")).toBeVisible();
     await expect(sidebar(page).getByRole("button", { name: /Todas as tarefas/ })).toBeVisible();
@@ -136,7 +250,7 @@ test.describe("Sidebar", () => {
     await expect(page.locator("#open-heading")).toHaveText("Abertas 1");
     const task = row(page, "Conteúdo do usuário");
     await expect(task.getByText("Amanhã")).toBeVisible();
-    await expect(task.getByRole("button", { name: "Prioridade: Média" })).toBeVisible();
+    await expect(task.getByRole("combobox", { name: "Prioridade", exact: true })).toHaveValue("medium");
     await expect(task.getByRole("checkbox", { name: "Marcar como concluída" })).toBeVisible();
     await expect(sidebar(page).getByRole("link", { name: "Configurações", exact: true })).toBeVisible();
     await expect(sidebar(page).getByRole("button", { name: "PT", exact: true })).toHaveCount(0);
@@ -184,7 +298,7 @@ for (const language of [
     await expect(sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) })).toHaveText(`${language.all}6`);
     await todayButton.click();
     await expect(todayButton).toHaveAttribute("aria-current", "page");
-    await expect(page.getByRole("heading", { name: `${language.today} 4`, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: language.today, level: 1, exact: true })).toBeVisible();
     expect(await rowTitles(openSection(page))).toEqual(["Late", "Due now", "Future picked", "Picked"]);
     await expect(page.getByText(`${language.done} 1`, { exact: true })).toBeVisible();
     await expect(row(page, "Finished")).toBeHidden();
@@ -193,7 +307,7 @@ for (const language of [
     expect(await rowTitles(openSection(page))).toEqual(["Later", "Picked"]);
     await expect(todayButton).toHaveText(`${language.today}4`);
     await sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) }).click();
-    await expect(openSection(page).getByRole("listitem")).toHaveCount(6);
+    await expect(taskRows(openSection(page))).toHaveCount(6);
   });
 
   test(`Today empty state in ${language.code}`, async ({ page, request }) => {
@@ -202,7 +316,7 @@ for (const language of [
     await setLanguage(page, language.code);
     await sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
     await expect(page.getByText(language.empty, { exact: true })).toBeVisible();
-    await expect(openSection(page).getByRole("listitem")).toHaveCount(0);
+    await expect(taskRows(openSection(page))).toHaveCount(0);
   });
 }
 

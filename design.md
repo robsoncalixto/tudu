@@ -1,217 +1,95 @@
 ---
 version: alpha
-name: ClickUp Modern Workspace
-description: A bright, productivity-first SaaS system with crisp contrast, soft surfaces, and a confident accent.
-colors:
-  primary: "#202020"
-  primary-accent: "#5f55ee"
-  secondary: "#f0f0f0"
-  tertiary: "#646464"
-  neutral: "#ffffff"
-  surface: "#ffffff"
-  surface-muted: "#f8f8f8"
-  border: "#e8e8e8"
-  text: "#202020"
-  text-muted: "#646464"
-  on-surface: "#292d34"
-  success: "#26b36a"
-  warning: "#ff7a45"
-  error: "#d83a3a"
-typography:
-  headline-display:
-    fontFamily: "Plus Jakarta Sans"
-    fontSize: 60px
-    fontWeight: 700
-    lineHeight: 66px
-    letterSpacing: -0.035em
-  headline-lg:
-    fontFamily: "Plus Jakarta Sans"
-    fontSize: 47px
-    fontWeight: 650
-    lineHeight: 60px
-    letterSpacing: -0.03em
-  headline-md:
-    fontFamily: "Plus Jakarta Sans"
-    fontSize: 36px
-    fontWeight: 650
-    lineHeight: 43px
-    letterSpacing: -0.025em
-  headline-sm:
-    fontFamily: "Plus Jakarta Sans"
-    fontSize: 28px
-    fontWeight: 650
-    lineHeight: 34px
-    letterSpacing: 0em
-  body-xl:
-    fontFamily: "Inter"
-    fontSize: 22px
-    fontWeight: 400
-    lineHeight: 33px
-    letterSpacing: -0.02em
-  body-lg:
-    fontFamily: "Inter"
-    fontSize: 18px
-    fontWeight: 400
-    lineHeight: 28px
-    letterSpacing: -0.015em
-  body-md:
-    fontFamily: "Inter"
-    fontSize: 16px
-    fontWeight: 400
-    lineHeight: 24px
-    letterSpacing: -0.01em
-  body-sm:
-    fontFamily: "Inter"
-    fontSize: 14px
-    fontWeight: 400
-    lineHeight: 20px
-    letterSpacing: -0.01em
-  label-lg:
-    fontFamily: "Plus Jakarta Sans"
-    fontSize: 18px
-    fontWeight: 650
-    lineHeight: 24px
-    letterSpacing: 0em
-  label-md:
-    fontFamily: "Plus Jakarta Sans"
-    fontSize: 16px
-    fontWeight: 600
-    lineHeight: 22px
-    letterSpacing: 0em
-  label-sm:
-    fontFamily: "Plus Jakarta Sans"
-    fontSize: 14px
-    fontWeight: 600
-    lineHeight: 20px
-    letterSpacing: 0em
-  label-caps:
-    fontFamily: "Plus Jakarta Sans"
-    fontSize: 12px
-    fontWeight: 600
-    lineHeight: 16px
-    letterSpacing: 0.08em
-rounded:
-  none: 0px
-  sm: 4px
-  md: 8px
-  lg: 12px
-  xl: 15px
-  full: 9999px
-spacing:
-  xs: 2px
-  sm: 10px
-  md: 18px
-  lg: 30px
-  xl: 80px
-components:
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.neutral}"
-    typography: "{typography.label-md}"
-    rounded: "{rounded.xl}"
-    padding: "14px 20px"
-    height: "52px"
-  button-primary-hover:
-    backgroundColor: "#2a2a2a"
-    textColor: "{colors.neutral}"
-    rounded: "{rounded.xl}"
-  button-secondary:
-    backgroundColor: "{colors.secondary}"
-    textColor: "{colors.primary}"
-    typography: "{typography.label-md}"
-    rounded: "{rounded.xl}"
-    padding: "14px 20px"
-    height: "52px"
-  button-link:
-    backgroundColor: "transparent"
-    textColor: "{colors.primary}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.none}"
-    padding: "0px"
-  card:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.on-surface}"
-    rounded: "{rounded.lg}"
-    padding: "20px"
-  input:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.text}"
-    rounded: "{rounded.full}"
-    padding: "10px 14px"
-  chip:
-    backgroundColor: "{colors.surface-muted}"
-    textColor: "{colors.text}"
-    typography: "{typography.label-sm}"
-    rounded: "{rounded.full}"
-    padding: "6px 10px"
-  sidebar:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.neutral}"
-    rounded: "{rounded.none}"
-  panel:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.on-surface}"
-    rounded: "{rounded.none}"
+name: TUDU
+description: Design system for TUDU's task board and settings.
 ---
 
-# ClickUp Modern Workspace
+# TUDU design system
 
-## Overview
-ClickUp presents itself as a confident, high-performance productivity platform: polished, modern, and clearly built for teams that want speed without visual noise. The experience feels spacious and airy, with a large hero area, generous whitespace, and a strong editorial headline treatment that gives the brand a premium SaaS tone. The UI balances approachability and utility through soft neutrals, rounded controls, and a single vivid accent color.
+The board helps people find a task, plan it for today and finish it. Keep these
+actions visible in the list. Show subtasks directly under their parent. Keep
+project assignment and repeat settings in task details. Use the text **TUDU** as the brand.
 
-## Colors
-- **Primary (#202020):** A deep charcoal used for the main brand text, primary buttons, navigation emphasis, and dark sidebar surfaces. It gives the interface structure and keeps the design grounded.
-- **Primary Accent (#5F55EE):** A lively indigo-purple used as the signature accent for small highlights, product marks, and interactive cues. It adds energy without overpowering the calm layout.
-- **Secondary (#F0F0F0):** A soft gray used for secondary button fills and subtle control surfaces. It supports hierarchy while staying quiet.
-- **Tertiary (#646464):** A medium gray used for body copy, navigation text, and supportive interface labels. It creates readable but low-drama contrast.
-- **Neutral (#FFFFFF):** The dominant page and surface color. It keeps the workspace feeling open, modern, and lightweight.
-- **Surface (#FFFFFF):** A clean card and panel base used for containers, menus, and content blocks.
-- **Surface Muted (#F8F8F8):** A faint off-white used for subtle backgrounds, chips, and restrained UI accents.
-- **Border (#E8E8E8):** A delicate divider color used for cards, tables, and structural rules.
-- **Text (#202020):** The main foreground color for strong readable content and primary actions.
-- **Text Muted (#646464):** A supporting text color for descriptions, metadata, and secondary labels.
-- **On Surface (#292D34):** A slightly softer near-black used on cards and embedded panels to reduce harshness.
-- **Success (#26B36A):** A positive status green for completion and done states.
-- **Warning (#FF7A45):** A warm alert tone for urgency and high-priority indicators.
-- **Error (#D83A3A):** Reserved for destructive states and error messaging.
+## Color
 
-## Typography
-The system is anchored by **Plus Jakarta Sans** for headlines, navigation, labels, and interface chrome. Headings are bold, tightly tracked, and compact, with large sizes that create a clear editorial hierarchy; the display style is especially prominent in the hero. **Inter** is used for body copy and supporting text, giving paragraphs a neutral, highly legible feel that works well in product marketing and dense workspace UI. The small uppercase-like label treatment uses slightly increased letter spacing to improve clarity in compact UI contexts.
+Charcoal and indigo anchor both appearances. Use the roles below through the
+custom properties in `src/app/globals.css`. Settings offers **System**,
+**Light** and **Dark**. System follows the device, including changes while the
+app is open. The server applies the saved choice on the first render.
 
-Use `headline-display`, `headline-lg`, and `headline-md` for marketing banners and major page titles. Use `headline-sm` for smaller section headings or card titles. Use `body-xl`, `body-lg`, `body-md`, and `body-sm` for explanatory text, helper content, and dense interface copy. Use `label-lg`, `label-md`, `label-sm`, and `label-caps` for buttons, nav items, chips, and metadata.
+| CSS token | Light | Dark | Role |
+| --- | --- | --- | --- |
+| `--primary` | `#202020` | `#202020` | Navigation rail |
+| `--brand-accent` | `#5F55EE` | `#5F55EE` | Indigo used to tint active navigation |
+| `--neutral` | `#FFFFFF` | `#FFFFFF` | Light lettering on the rail |
+| `--action` | `#202020` | `#E8E7ED` | Primary button fill |
+| `--on-action` | `#FFFFFF` | `#202020` | Primary button text |
+| `--primary-hover` | `#373739` | `#FFFFFF` | Primary button hover |
+| `--accent` | `#5F55EE` | `#B3AAFF` | Focus, selected actions and progress |
+| `--secondary` | `#F0F0F0` | `#303137` | Secondary buttons and count backgrounds |
+| `--surface` | `#FFFFFF` | `#191A1E` | Page, cards and dialogs |
+| `--surface-muted` | `#F8F8F8` | `#222328` | Search, column headers and metadata |
+| `--border` | `#E8E8E8` | `#393A42` | Dividers and container outlines |
+| `--control-border` | `#85858C` | `#85858E` | Form control outlines |
+| `--text` | `#202020` | `#F1F1F4` | Headings and task titles |
+| `--text-muted` | `#646464` | `#B0B0B9` | Dates, notes and supporting text |
+| `--on-surface` | `#292D34` | `#DEDEE5` | Panel text |
+| `--success` | `#227344` | `#76CE94` | Checked tasks and successful saves |
+| `--warning` | `#C45827` | `#FFA372` | High priority |
+| `--error` | `#BE3838` | `#FF9696` | Overdue dates and errors |
 
-## Layout
-The layout relies on a centered, fixed-max-width hero and content column with large outer whitespace, making the page feel intentionally spacious rather than full-bleed. Major sections are separated by vertical breathing room rather than heavy dividers, and the rhythm follows a loose scale built from `xs` through `xl`. The UI uses generous internal padding in cards and panels, with especially comfortable spacing around primary actions and product screenshots.
+The rail mixes white with charcoal in both appearances. Use `--rail-text`
+(79% white) for navigation, `--rail-muted` (60%) for counts and
+`--rail-rule` (14%) for dividers.
 
-Navigation and top-level product chrome are compact, while the marketing content expands with wide typographic blocks and ample gap between headline, supporting copy, and CTA row. In-app surfaces use tighter organization: left rail, central list, and right-side panel are arranged in a dense multi-column workspace pattern, but still preserve clear gutters and consistent alignment.
+Pair status colors with a label, icon or checked state. For example, a late task
+shows its date and the word “overdue.” Use flat surfaces, thin borders and
+background changes to distinguish controls.
 
-## Elevation & Depth
-The design is mostly flat and relies on contrast, borders, and tonal separation instead of dramatic shadows. Cards and containers are defined with subtle `#E8E8E8` borders and clean white fills, while the dark sidebar and primary CTA create depth through color inversion rather than elevation. Where shadow appears, it is restrained and functional, supporting floating affordances without making the interface feel heavy.
+## Type, shape and spacing
 
-This flat approach reinforces the product’s efficiency and keeps attention on content, status, and task structure.
+Use `--heading` (Plus Jakarta Sans) for headings, navigation and task titles.
+Use `--body` (Inter) for dates, notes, form values and instructions.
 
-## Shapes
-The shape language is soft and approachable, with rounded corners used on buttons, inputs, chips, and key cards. The primary radius feels intentionally relaxed at `15px` for buttons, while smaller structural containers and cards use gentler rounding such as `12px` or fully pill-shaped forms. Overall, the system blends human-friendly curves with a clean SaaS precision.
+| Element | Type |
+| --- | --- |
+| Board heading | 650 weight, 33–50px, 1.15 line height |
+| Section heading on the board | 650 weight, 17px/25px |
+| Task title | 600 weight, 15px/23px |
+| Navigation | 500 weight, 14px/20px |
+| Body text | 400 weight, 16px/24px |
+| Hints | 400 weight, 14px/20px |
+| Row metadata | 400 weight, 12px/18px |
 
-## Components
-**Buttons:** Primary buttons should use `button-primary` with a dark fill, white text, and the `label-md` typographic treatment. Secondary buttons should use `button-secondary` with a light gray fill and dark text. Link-style actions should use `button-link` with no fill and minimal padding. Buttons are medium-large, with a fixed height around `52px` and padding close to `14px 20px`, making them feel substantial and easy to scan. Hover states should stay subtle; the primary button can darken slightly via `button-primary-hover` rather than changing shape or introducing heavy motion.
+| Scale | Tokens and values |
+| --- | --- |
+| Radius | `--r-sm` 4px, `--r-md` 8px, `--r-lg` 12px, `--r-xl` 15px, `--r-full` 9999px |
+| Spacing | `--s-xs` 2px, `--s-sm` 10px, `--s-md` 18px, `--s-lg` 30px, `--s-xl` 80px |
 
-**Cards:** Use `card` for content containers, with a white background, thin border, and `rounded.lg` corners. Cards should feel clean and modular, not shadow-heavy. Use 20px interior padding as the default for panels, lists, and surfaces that need separation from the page background.
+## Workspace
 
-**Inputs:** Inputs are soft and understated, typically pill-shaped with a white background and light border treatment implied by surrounding structure. Keep them compact but readable, using `body-md` or `label-sm` text. Search fields and filters should feel embedded rather than dominant.
+- **Navigation.** The charcoal sidebar has expanded and compact desktop modes. Projects and Tags each have a disclosure. Keep project creation beside the Projects heading and identify the selected view in either mode. At 820px and below, the rail becomes a top bar with All tasks and Today visible. More views opens the remaining lists and tools.
+- **Current view.** Place the localized date above the view name. Show its open and completed totals together, with a progress bar where space permits. Search filters this view. Keep the totals tied to the whole view as the results change.
+- **Entry.** Keep the task field and Add button on one line. Show recognized date, priority and tags below the field while typing. Put shortcut help and optional AI capture beneath the main action. A failed submission keeps the draft available.
+- **List.** Give the task title the flexible column. Align due date, priority and row controls on desktop. At narrow list widths, wrap scheduling information below the title. The sun button plans an open task for Today. Task details holds the notes, project assignment, repeat rule and delete action.
+- **Subtasks.** Indent children one level below their parent. Each child has a completion control and an editable title. The parent exposes inline entry and a completed/total count. Its visibility control can show all children, hide completed children, or collapse the list.
+- **Task panel.** Reveal the panel icon on row hover and keyboard focus. Keep it visible on touchscreens and on the selected row. Anchor the inspector to the right and mark its task with the accent color. On narrow screens, show it in a modal sheet with a reachable close button. Keep planned day and deadline separate. Use editable controls for task properties, with collapsible sections for longer content.
+- **Search and recovery.** Reveal matching completed tasks during a search. An empty list offers to add a task. An empty search offers to clear it. A failed load offers a retry.
+- **Settings.** Put a labeled back arrow at the upper left. Name its destination and keep it within reach while scrolling. Appearance choices use labeled radio controls with visible selection and keyboard focus. Changes preview in the form. Keep Save and its result together and within reach on a phone.
 
-**Chips and status pills:** Use `chip` for status labels like In Progress, Open, and Done. Chips should be compact, rounded-full, and lightly filled, with strong text contrast and minimal padding. Status colors can be introduced sparingly for semantic meaning, but the form itself should remain quiet and consistent.
+## Controls and accessibility
 
-**Sidebar and panels:** The sidebar should use `sidebar`, with a dark background and white text/icons, creating a strong anchor in the workspace. Secondary panels should use `panel` or `card` depending on whether they are structural or content-driven. Side panels should feel organized and calm, with borders and whitespace doing most of the work.
+Use shared `.btn`, `.card`, `.chip` and `.section-title` styles where they fit.
+The shared form button is 52px tall with a 15px radius. The inline Add button
+is 40px tall on desktop and 44px on phones, with an 8px radius. A standard card has a 1px border, a 12px
+radius and 20px padding. Task lists supply their own row padding.
 
-**Tables and lists:** Dense list rows should keep clear vertical separators, muted column labels, and a consistent row height. Use small status markers, icons, and avatars to add hierarchy without clutter.
-
-## Do's and Don'ts
-- Do keep the page airy, with large headline spacing and generous whitespace around primary marketing content.
-- Do use Plus Jakarta Sans for headlines, labels, and navigation, and Inter for body copy.
-- Do prefer flat surfaces with subtle borders over heavy shadows or glossy effects.
-- Do keep primary actions dark and secondary actions light, with strong contrast between them.
-- Do use rounded corners consistently, especially on buttons, chips, and search inputs.
-- Don't introduce saturated colors beyond the accent and semantic status colors unless they support meaning.
-- Don't compress the layout too tightly; this system depends on breathing room to feel premium.
-- Don't over-style cards with shadows, gradients, or ornate decoration; clarity is the priority.
+Use `.back-link` for return navigation and `.form-control` and `.select-control` for form fields.
+Give phone controls a 44px touch target, including the full row of each dropdown option.
+Use the native select menu with rounded corners, a checked option and visible keyboard focus
+in browsers that support picker styling. Other browsers use their system picker.
+Use native controls for dates, choices and disclosures where practical. Give
+icon-only buttons a localized accessible name. Decorative icons inherit text
+color and stay out of the accessibility tree. Show a visible focus outline
+for keyboard interaction and honor reduced-motion preferences. Check both
+languages at phone width with long task and project names.

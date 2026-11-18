@@ -4,8 +4,11 @@ import { PRIORITIES } from "@/features/tasks/schema";
 import { DATE_FORMATS } from "@/lib/dates";
 import { aiModelSchema, aiProviderSchema } from "@/features/ai/schema";
 
+export const THEMES = ["system", "light", "dark"] as const;
+
 const fields = {
   locale: z.enum(LOCALES),
+  theme: z.enum(THEMES),
   defaultPriority: z.enum(PRIORITIES),
   startView: z.enum(["all", "today"]),
   dateFormat: z.enum(DATE_FORMATS),
@@ -14,6 +17,7 @@ const fields = {
 };
 export const settingsSchema = z.object({
   locale: fields.locale.default(DEFAULT_LOCALE),
+  theme: fields.theme.default("system"),
   defaultPriority: fields.defaultPriority.default("medium"),
   startView: fields.startView.default("all"),
   dateFormat: fields.dateFormat.default("locale"),

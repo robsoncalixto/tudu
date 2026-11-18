@@ -16,11 +16,13 @@ describe("task keyboard shortcuts", () => {
   });
   it.each([
     ["n", "composer"], ["/", "composer"], ["j", "next"], ["ArrowDown", "next"],
-    ["k", "previous"], ["ArrowUp", "previous"], ["x", "toggle"],
+    ["k", "previous"], ["ArrowUp", "previous"], ["x", "toggle"], ["a", "add-subtask"], ["i", "task-panel"],
     ["Delete", "delete"], ["Backspace", "delete"], ["?", "help"],
   ])("maps %s to %s", (input, action) => expect(taskShortcut(key(input), false, false)).toBe(action));
   it("ignores editable contexts, modals, handled events and modified browser shortcuts", () => {
     expect(taskShortcut(key("x"), true, false)).toBeNull();
+    expect(taskShortcut(key("a"), true, false)).toBeNull();
+    expect(taskShortcut(key("a", { ctrlKey: true }), false, false)).toBeNull();
     expect(taskShortcut(key("x"), false, true)).toBeNull();
     for (const modifier of ["ctrlKey", "metaKey", "altKey", "shiftKey", "defaultPrevented"] as const) {
       expect(taskShortcut(key("x", { [modifier]: true }), false, false)).toBeNull();
@@ -29,7 +31,7 @@ describe("task keyboard shortcuts", () => {
     expect(taskShortcut(key("J"), false, false)).toBe("next");
   });
   it("allows held navigation keys but never repeats mutations, composer focus or help", () => {
-    for (const input of ["x", "Delete", "Backspace", "?", "n", "/"]) {
+    for (const input of ["x", "a", "i", "Delete", "Backspace", "?", "n", "/"]) {
       expect(taskShortcut(key(input, { repeat: true }), false, false)).toBeNull();
     }
     expect(taskShortcut(key("ArrowDown", { repeat: true }), false, false)).toBe("next");

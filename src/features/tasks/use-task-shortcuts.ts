@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { isTypingTarget } from "@/lib/keyboard";
 import type { Task, TaskPatch } from "./schema";
 import type { ShortcutDialog } from "./shortcut-schema";
@@ -13,13 +13,14 @@ export function useTaskShortcuts(tasks: Task[] | null, patch: (id: string, patch
   const [deleteFailed, setDeleteFailed] = useState(false);
   const pending = useRef(false);
   const returnFocus = useRef<HTMLElement | null>(null);
+  const rowFocus = useRef<{ id: string; index: number; row: HTMLElement } | null>(null);
   const afterClose = useRef<(() => void) | null>(null);
   const onClosed = useCallback(() => {
     const restore = afterClose.current;
     afterClose.current = null;
     const active = document.activeElement;
     requestAnimationFrame(() => {
-      if (root.current && document.activeElement === active && !root.current.querySelector("dialog[open]")) restore?.();
+      if (root.current && document.activeElement === active && !root.current.querySelector("dialog[open]:not(.inspector-host)")) restore?.();
     });
   }, []);
 
@@ -34,6 +35,27 @@ export function useTaskShortcuts(tasks: Task[] | null, patch: (id: string, patch
     else if (visible.length) visible[0].focus();
     else focusComposer();
   }, [rows, focusComposer]);
+
+  const patchFromRow = useCallback((id: string, changes: TaskPatch) => {
+    const visible = rows();
+    const index = visible.findIndex((row) => row.dataset.taskId === id);
+    const row = visible[index];
+    const active = document.activeElement;
+    // A title editor commits on blur, when the browser can already report body.
+    rowFocus.current = row && (row.contains(active) || active === document.body) ? { row, id, index } : null;
+    return patch(id, changes);
+  }, [patch, rows]);
+
+  useLayoutEffect(() => {
+    const origin = rowFocus.current;
+    rowFocus.current = null;
+    if (!origin || origin.row.isConnected) return;
+    requestAnimationFrame(() => {
+      if (document.activeElement === document.body && root.current && !root.current.querySelector("dialog[open]:not(.inspector-host)")) {
+        focusAfter(origin.id, origin.index, true);
+      }
+    });
+  }, [tasks, focusAfter]);
 
   const showHelp = useCallback(() => {
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -59,10 +81,11 @@ export function useTaskShortcuts(tasks: Task[] | null, patch: (id: string, patch
 
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
+      if (event.target instanceof Element && event.target.closest("[data-subtasks], [role='menu'], .inspector-host")) return;
       const typing = event.target instanceof HTMLTextAreaElement && root.current?.contains(event.target)
         && event.target.closest(".composer") ? "composer" : isTypingTarget(event.target);
-      const blocking = dialog !== null || Boolean(document.querySelector("dialog[open]"))
-        || Boolean(root.current?.querySelector<HTMLElement>(".more-views[open]")?.getClientRects().length);
+      const blocking = dialog !== null || Boolean(document.querySelector("dialog:modal"))
+        || Boolean(root.current?.querySelector<HTMLElement>('.more-views[aria-expanded="true"]')?.getClientRects().length);
       const action = taskShortcut(event, typing, blocking);
       if (!action) return;
       if (action === "leave-composer") {
@@ -84,7 +107,15 @@ export function useTaskShortcuts(tasks: Task[] | null, patch: (id: string, patch
       }
       const task = tasks?.find((task) => task.id === active?.dataset.taskId);
       if (!task || !active || pending.current) return;
+      if (action === "add-subtask") {
+        const add = active.querySelector<HTMLButtonElement>("[data-add-subtask]");
+        if (add && !add.disabled) { event.preventDefault(); add.click(); }
+        return;
+      }
       event.preventDefault();
+      if (action === "task-panel") {
+        active.querySelector<HTMLButtonElement>("[data-open-panel]")?.click(); return;
+      }
       if (action === "delete") {
         requestDelete(task.id); return;
       }
@@ -112,5 +143,5 @@ export function useTaskShortcuts(tasks: Task[] | null, patch: (id: string, patch
       } else setDeleteFailed(true);
     } finally { pending.current = false; setDeleting(false); }
   }
-  return { root, showHelp, requestDelete, dialogProps: { dialog, deleting, deleteFailed, onClose: close, onClosed, onDelete: confirmDelete } };
+  return { root, showHelp, requestDelete, patchFromRow, dialogProps: { dialog, deleting, deleteFailed, onClose: close, onClosed, onDelete: confirmDelete } };
 }

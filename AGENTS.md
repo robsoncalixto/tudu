@@ -49,6 +49,7 @@ the app and exercise the change in both languages.
 ```
 src/
   app/                    Routing only: layout, page, global CSS, API routes
+    layout.tsx            Applies the saved language and theme to the document
     api/tasks/            GET, POST            /api/tasks
     api/tasks/[id]/       PATCH, DELETE        /api/tasks/:id
     api/ai/capture/       GET status, POST     /api/ai/capture
@@ -63,16 +64,24 @@ src/
   features/
     tasks/
       schema.ts           Zod schemas and the Task types (shared by client and server)
-      selectors.ts        Pure functions: sorting, filtering, counts
+      selectors.ts        View and search matching, open-task ordering, progress and sidebar counts
+      board-navigation.ts Validates the board view and draft restored after visiting Settings
+      use-board-navigation.ts Owns the active view and its same-tab return state
+      use-sidebar-layout.ts Remembers the desktop rail and group disclosure state on this device
       api.ts              Browser client for the tasks endpoints
-      use-tasks.ts        Hook that owns the task list and optimistic updates
-      use-task-shortcuts.ts Keyboard focus, help and shared mouse/keyboard delete confirmation
+      use-tasks.ts        Task loading and retry, contextual quick add and ordered writes per task
+      optimistic-tasks.ts Applies pending edits and deletions to the last confirmed task list
       use-projects.ts     Project registry state and task-assignment callback
       shortcut-schema.ts  Keyboard action and dialog contracts
       task-shortcuts.ts   Pure key-to-action mapping
-      use-task-shortcuts.ts Task navigation, mutation guards and focus recovery
+      use-task-shortcuts.ts Visible-row navigation, delete confirmation and focus recovery
+      use-task-inspector.ts Selected task and return focus for the right-hand panel
+      use-task-draft.ts   Per-task drafts while switching tasks in the panel
       recurrence.ts       Pure next-date logic and repeat-date validation
-      components/         Board (composition), Sidebar, Composer, TaskList, TaskRow, TaskChecklist, TaskRepeat, TaskShortcuts, ProjectManager
+      components/         Board, BoardHeader, Sidebar, Composer, TaskEmpty, TaskList, TaskRow,
+                          TaskChecklist (inline and panel subtasks), TaskContextMenu, TaskRepeat, TaskShortcuts,
+                          TaskPanelFrame, TaskPanel, TaskPanelText, TaskResources and ProjectManager
+                          Task workspace styles live alongside their components
       server/
         repository.ts     The data contract; picks the store from DATABASE_URL
         store.ts          The TaskStore interface every backend implements
@@ -86,10 +95,10 @@ src/
     quick-add/
       schema.ts           Validated text/today input and optional-priority task draft
       parser.ts           Pure EN/PT shortcut parsing from an explicit local date
-      api.ts              Parses one task and calls the task creation API
+      api.ts              Preview recognized fields and create with the current project, tag or planned day
     settings/
       schema.ts, api.ts   Validated preferences and browser client
-      use-settings.ts     Draft preferences, saving and error recovery
+      use-settings.ts     Draft preferences, theme preview, saving and error recovery
       components/         SettingsPanel
       server/repository.ts Atomic settings.json persistence
     work-log/
@@ -126,7 +135,7 @@ src/
     locales/pt-BR.ts      Must satisfy Dictionary
     index.ts              Locales, dictionaries, errorMessage()
     use-locale.ts         Hook: dictionary and document language from server preferences
-  lib/                    Feature-agnostic helpers (dates, http, use-today)
+  lib/                    Shared icons and feature-agnostic helpers (dates, http, use-today)
 e2e/                      End-to-end tests, one spec per component, plus support.ts
 design.md                 The design system (source of truth for the UI)
 docker/postgres-init.sql  Creates the tudu_test database in the Postgres container
@@ -217,9 +226,11 @@ run in a Node environment.
 ### End-to-end tests (Playwright)
 
 Run with `npm run test:e2e` (`npm run test:e2e:ui` to watch and debug). Specs
-live in `e2e/`, one file per component: `board`, `composer`, `sidebar`,
-`task-list`, `task-row`, `task-checklist`, `task-repeat`, `task-shortcuts`, `project-manager`,
-`settings-panel`, `work-log-panel`.
+live in `e2e/`. The task workspace has component specs for `board`,
+`board-header`, `composer`, `sidebar`, `task-empty`, `task-list`, `task-row`,
+`task-checklist`, `task-context-menu`, `task-panel-frame`, `task-panel`, `task-panel-text`,
+`task-resources`, `task-repeat`, `task-shortcuts` and `project-manager`.
+Settings and Work log have `settings-panel` and `work-log-panel` specs.
 Playwright builds the app and serves it on port 3100
 with a throwaway data folder, so it never touches `./data` or a dev server on
 port 3000. First-time setup: `npx playwright install chromium`.
@@ -298,6 +309,10 @@ variables at the top of `src/app/globals.css`.
 
 - Use the variables (`--primary`, `--accent`, `--r-lg`, `--s-md`, …). Do not
   write raw hex colors, radii or font families in component styles.
+- Keep charcoal and indigo as the brand colors. Use the theme-aware surface,
+  text and action tokens for controls in both light and dark appearances.
+  The root layout reads the saved theme from Settings. System follows the
+  device through CSS.
 - Plus Jakarta Sans for headings, labels and navigation; Inter for body text.
 - Flat surfaces with thin borders. No shadows, gradients or decoration.
 - Reuse the existing component classes before adding new ones: `.btn`

@@ -14,9 +14,9 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const { locale } = await getSettings();
+  const { locale, theme } = await getSettings();
   return (
-    <html lang={locale} className={`${heading.variable} ${body.variable}`}>
+    <html lang={locale} data-theme={theme} className={`${heading.variable} ${body.variable}`}>
       <body>{children}</body>
     </html>
   );

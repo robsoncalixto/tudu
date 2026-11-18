@@ -1,5 +1,17 @@
 import { z } from "zod";
 import type { RepeatRule } from "@/features/recurrence/schema";
+import type { Dictionary, Locale } from "@/i18n";
+import { weekdayName } from "@/lib/dates";
+
+export function repeatDescription(repeat: RepeatRule | null, locale: Locale, t: Dictionary): string {
+  if (!repeat) return t.repeatFrequencies.never;
+  if (repeat.frequency === "monthly") return t.repeatMonthlyDay(repeat.day);
+  if (repeat.frequency === "weekly") {
+    const days = repeat.days.map((day) => weekdayName(day, locale));
+    return `${t.repeatFrequencies.weekly}: ${days.join(", ")}`;
+  }
+  return t.repeatFrequencies[repeat.frequency];
+}
 
 export class InvalidRepeatError extends Error {
   constructor() { super("invalid_repeat"); }

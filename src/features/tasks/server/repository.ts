@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { taskSchema, type Task, type TaskInput, type TaskPatch, type TaskUpdate } from "../schema";
+import { taskSchema, type Task, type TaskCreationInput, type TaskInput, type TaskPatch, type TaskUpdate } from "../schema";
 import { nextDueDate, validateRepeat } from "../recurrence";
 import { createJsonStore } from "./json-store";
 import { connectPostgres, createPostgresStore } from "./postgres-store";
@@ -35,7 +35,7 @@ export function createRepository(store: TaskStore) {
       return store.list();
     },
 
-    async addTasks(inputs: TaskInput[]): Promise<Task[]> {
+    async addTasks(inputs: TaskCreationInput[]): Promise<Task[]> {
       const now = new Date().toISOString();
       const created = inputs.map((input) => {
         validateRepeat(input.due, input.repeat);
