@@ -48,7 +48,8 @@ export const proposalSchema = proposalDraftSchema.extend({
 });
 export type Proposal = z.infer<typeof proposalSchema>;
 export const automaticReviewStatusSchema = z.object({
-  ranAt: z.iso.datetime(), outcome: z.enum(["running", "succeeded", "failed"]), summary: z.string().optional(),
+  ranAt: z.iso.datetime(), outcome: z.enum(["running", "succeeded", "failed", "skipped"]), summary: z.string().optional(),
+  skipReason: z.enum(["no_provider", "no_tasks", "unchanged"]).optional(),
 });
 export const agentStateSchema = z.object({
   automaticReview: automaticReviewStatusSchema.nullable().optional(),

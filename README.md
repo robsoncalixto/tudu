@@ -141,7 +141,8 @@ beside the affected fields in its details, where you can accept or reject
 them. Possible duplicate flags record the decision without
 modifying either task. You can enable automatic review in Settings and choose
 a local time. It runs at most once per day while TUDU is running and can use a
-paid model. It skips the model when the task list has not changed.
+paid model. It records a skip when there are no open tasks, the task list has
+not changed, or the selected provider is unavailable.
 
 **Work log** lists the tasks completed on a chosen day, grouped by project or
 tag, with recorded time, estimates alongside recorded time, and totals per

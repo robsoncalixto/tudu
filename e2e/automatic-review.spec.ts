@@ -39,3 +39,24 @@ for (const locale of ["en", "pt-BR"] as const) {
     }
   });
 }
+
+test("records an unchanged schedule slot without calling the model again", async ({ page, request }) => {
+  await saveSettings(request, { aiProvider: "openai", aiModel: "test-agent" });
+  await seed(request, [{ title: "Already reviewed", due: "2026-11-01" }]);
+  const result = await request.put(fixtureUrl, { data: { plan: { summary: "Already reviewed.", proposals: [] } } });
+  expect(result.ok()).toBe(true);
+  const manual = await request.post("/api/agent/proposals", { data: { review: true, text: "", today: "2026-11-17" } });
+  expect(manual.status()).toBe(201);
+  await saveSettings(request, { automaticReview: { enabled: true, time: "00:00", timeZone: "UTC", enabledAt: null } });
+  try {
+    await expect.poll(async () => {
+      const response = await request.get("/api/agent/proposals");
+      return (await response.json()).automaticReview?.skipReason;
+    }, { timeout: 18_000 }).toBe("unchanged");
+    await page.goto("/agent");
+    await expect(page.getByText(dictionaries.en.automaticReviewSkipReasons.unchanged, { exact: false })).toBeVisible();
+    expect((await (await request.get(fixtureUrl)).json()).requests).toHaveLength(1);
+  } finally {
+    await saveSettings(request, { automaticReview: { enabled: false, time: "09:00", timeZone: "UTC", enabledAt: null } });
+  }
+});

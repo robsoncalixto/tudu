@@ -18,20 +18,27 @@ export function startAutomaticReview() {
     checking = true;
     try {
       const snapshot = await getSettings();
-      if (!snapshot.automaticReview.enabled || !aiPublicConfiguration().available[snapshot.aiProvider]) return;
+      if (!snapshot.automaticReview.enabled) return;
       await serializeReview(async () => {
         const settings = await getSettings();
         const config = aiPublicConfiguration();
-        if (!config.available[settings.aiProvider]) return;
         const now = new Date();
-        const last = await reviewState.read();
+        const last = await reviewState.read(now.toISOString());
         const day = automaticReviewDay(now, settings.automaticReview, last.status?.ranAt ?? null);
         if (!day) return;
+        const ranAt = now.toISOString();
+        if (!config.available[settings.aiProvider]) {
+          await reviewState.write({ ...last, status: { ranAt, outcome: "skipped", skipReason: "no_provider" } });
+          return;
+        }
         const tasks = await listTasks();
         const fingerprint = taskFingerprint(tasks);
-        if (!tasks.some((task) => !task.done) || last.fingerprint === fingerprint) return;
+        const skipReason = !tasks.some((task) => !task.done) ? "no_tasks" : last.fingerprint === fingerprint ? "unchanged" : null;
+        if (skipReason) {
+          await reviewState.write({ ...last, status: { ranAt, outcome: "skipped", skipReason } });
+          return;
+        }
 
-        const ranAt = now.toISOString();
         const status = { ranAt, outcome: "running" as const };
         setAutomaticRunning(true);
         try {
