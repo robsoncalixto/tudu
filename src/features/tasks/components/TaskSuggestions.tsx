@@ -39,8 +39,8 @@ export function TaskSuggestionField({ field, proposals, projects, today, locale,
   });
 }
 
-export function TaskSuggestionActions({ proposals, t, onApplied }: {
-  proposals: ContextProposal[]; t: Dictionary; onApplied: () => void;
+export function TaskSuggestionActions({ proposals, t }: {
+  proposals: ContextProposal[]; t: Dictionary;
 }) {
   const [busy, setBusy] = useState<{ id: string; accepting: boolean } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -53,7 +53,6 @@ export function TaskSuggestionActions({ proposals, t, onApplied }: {
     try {
       setErrors((current) => ({ ...current, [proposal.id]: "" }));
       await agentApi.decide(proposal.id, accept ? { decision: "accept", action: proposal.action } : { decision: "reject" });
-      if (accept) onApplied();
     } catch (error) { setErrors((current) => ({ ...current, [proposal.id]: errorCode(error) })); }
     finally { inFlight.current = false; setBusy(null); }
   }

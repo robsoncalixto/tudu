@@ -8,8 +8,11 @@ export const agentApi = {
     .then((data) => z.object({ proposals: z.array(proposalSchema) }).parse(data).proposals).then(updated),
   review: (text: string, today: string) => request<unknown>("/api/agent/proposals", { method: "POST", body: { text, today, review: true } })
     .then((data) => taskReviewResponseSchema.parse(data)).then(updated),
-  decide: (id: string, decision: ProposalDecision) => request<unknown>(`/api/agent/proposals/${encodeURIComponent(id)}`, { method: "POST", body: decision })
-    .then((data) => z.object({ proposal: proposalSchema }).parse(data).proposal).then(updated),
+  async decide(id: string, decision: ProposalDecision) {
+    const response = await request<unknown>(`/api/agent/proposals/${encodeURIComponent(id)}`, { method: "POST", body: decision });
+    const { proposal } = z.object({ proposal: proposalSchema }).parse(response);
+    return updated(proposal);
+  },
 };
 
 const changeEvent = "tudu:agent-updated";
