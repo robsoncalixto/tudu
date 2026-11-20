@@ -97,6 +97,8 @@
 .inspector-tags-button > svg { flex: none; color: var(--text-muted); }
 .inspector-tags-value .chip { min-width: 0; max-width: 100%; }
 .inspector-text-editor { display: grid; align-content: start; gap: 7px; min-width: 0; }
+/* The confirmation sits beside the label, where it shows however far the field runs down the panel. */
+.inspector-field-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-sm); min-height: 20px; }
 .inspector-notes, .inspector-tags { padding-block: var(--s-md); }
 .inspector-text-editor .form-control { width: 100%; min-width: 0; }
 .inspector-text-editor textarea { resize: vertical; line-height: 1.5; }

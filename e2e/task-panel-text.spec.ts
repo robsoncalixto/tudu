@@ -41,7 +41,8 @@ for (const l of languages) {
     await notes.fill("Check the build");
     await expect.poll(async () => (await stored()).notes).toBe("Check the build");
     await expect(notes).toBeFocused();
-    await expect(panel.getByRole("group", { name: l.notes, exact: true }).getByText(l.saved, { exact: true })).toBeVisible();
+    // The confirmation is beside the label, in view without scrolling the panel.
+    await expect(panel.getByRole("group", { name: l.notes, exact: true }).getByText(l.saved, { exact: true })).toBeInViewport();
     await expect(task.getByText("Check the build", { exact: true })).toBeVisible();
     // Moving to another task saves what was still waiting.
     await notes.pressSequentially(" first");
@@ -50,13 +51,20 @@ for (const l of languages) {
     await expect.poll(async () => (await stored()).notes).toBe("Check the build first");
     await taskDetails(task).click();
     await expect(notes).toHaveValue("Check the build first");
-    // Escape goes back to the notes as they were when the edit began, even after a save.
-    await notes.fill("Throwaway");
-    await expect.poll(async () => (await stored()).notes).toBe("Throwaway");
+    // Escape never takes notes back. It closes the panel and keeps them, saved already or still waiting.
+    await notes.fill("Saved before Escape");
+    await expect.poll(async () => (await stored()).notes).toBe("Saved before Escape");
     await notes.press("Escape");
-    await expect(notes).toHaveValue("Check the build first");
+    await expect(panel).toBeHidden();
+    await expect(taskDetails(task)).toBeFocused();
+    expect((await stored()).notes).toBe("Saved before Escape");
+    await taskDetails(task).click();
+    await notes.fill("Check the build first");
+    await notes.press("Escape");
+    await expect(panel).toBeHidden();
     await expect.poll(async () => (await stored()).notes).toBe("Check the build first");
-    await expect(panel).toBeVisible();
+    await taskDetails(task).click();
+    await expect(notes).toHaveValue("Check the build first");
 
     // The button is named by what it shows, the tags, and described as the way to edit them.
     const editTags = panel.getByRole("button", { name: new RegExp(`^${l.tags}`) });

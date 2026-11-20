@@ -25,8 +25,6 @@ export function TaskPanelText({ field, task, t, draft, onDraftChange, onPatch }:
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const timer = useRef<number | undefined>(undefined);
-  // What was saved when this edit began, which Escape goes back to.
-  const began = useRef<string | null>(null);
   const label = { title: t.agentTaskTitle, notes: t.agentNotes, tags: t.tags }[field];
   const saved = field === "tags" ? formatPanelTags(task.tags) : task[field];
   const text = draft ?? saved;
@@ -71,7 +69,6 @@ export function TaskPanelText({ field, task, t, draft, onDraftChange, onPatch }:
   }
 
   function openEditor() {
-    began.current = saved;
     onDraftChange(saved);
     setState(null);
     requestAnimationFrame(() => document.getElementById(id)?.focus());
@@ -82,16 +79,14 @@ export function TaskPanelText({ field, task, t, draft, onDraftChange, onPatch }:
     timer.current = undefined;
     onDraftChange(undefined);
     setState(null);
-    // Notes may already have been saved since the edit began; Escape still means "as it was".
-    if (field === "notes" && began.current !== null && began.current !== saved) void onPatch(task.id, { notes: began.current });
-    if (field !== "notes") restore();
+    restore();
   }
 
   function onKeyDown(event: KeyboardEvent) {
     if (event.nativeEvent.isComposing) return;
-    // Notes saved during this edit can still be taken back, so Escape belongs to the field until it is as it was.
-    const changed = editing || (field === "notes" && began.current !== null && began.current !== saved);
-    if (event.key === "Escape" && changed) {
+    // A title or a tag list is saved only on Enter, so Escape drops that edit. Notes save themselves and are
+    // never taken back: there Escape is the panel's, which keeps what was typed as it closes.
+    if (event.key === "Escape" && editing && field !== "notes") {
       event.preventDefault();
       event.stopPropagation();
       if (state !== "saving") cancel();
@@ -123,22 +118,22 @@ export function TaskPanelText({ field, task, t, draft, onDraftChange, onPatch }:
 
   const fieldProps = {
     className: "form-control", id, value: text, "aria-invalid": !valid || undefined,
-    onFocus: () => { if (began.current === null) began.current = saved; },
     onBlur: () => {
       if (valid) void save(text, true);
       else if (field !== "notes") cancel();
-      began.current = null;
     },
   };
   return <div className={`inspector-text-editor inspector-${field}`} role="group" aria-label={label} onKeyDown={onKeyDown}>
-    <label className="inspector-label" htmlFor={id}><Icon name={field === "notes" ? "note" : field === "tags" ? "tag" : "pencil"} size={17} />{label}</label>
+    <div className="inspector-field-head">
+      <label className="inspector-label" htmlFor={id}><Icon name={field === "notes" ? "note" : field === "tags" ? "tag" : "pencil"} size={17} />{label}</label>
+      {status}
+    </div>
     {field === "title"
       ? <input {...fieldProps} required maxLength={300} onChange={(event) => change(event.target.value)} />
       : <textarea {...fieldProps} rows={field === "notes" ? 3 : 2} maxLength={field === "notes" ? 2000 : undefined}
           placeholder={field === "notes" ? t.writeTaskNotes : undefined} aria-describedby={field === "tags" ? `${id}-hint` : undefined}
           onChange={(event) => change(event.target.value)} />}
     {field === "tags" && <small className="hint" id={`${id}-hint`}>{valid ? t.taskTagsHint : t.taskTagsLimit}</small>}
-    {status}
     {state === "failed" && <p role="alert" className="inspector-error">
       <span>{t.errors.generic}</span>
       <button type="button" className="chip" onClick={() => void save(text, false)}>{t.retry}</button>
