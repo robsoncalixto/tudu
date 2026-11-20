@@ -134,8 +134,8 @@ shows a notice that names the task and offers **Undo** for a few seconds.
 Undo takes back one action after another, newest first, for as long as the
 notice shows, in whichever list you move to. A deleted task is only removed
 when that notice is gone, and completing a repeating task creates its next one
-only then, so undoing either leaves nothing behind. Closing, reloading or hiding
-the page ends that wait and sends what was held. A save that could not reach the server offers **Retry**
+only then, so undoing either leaves nothing behind. Closing or reloading the
+page ends that wait and sends what was held; so does hiding it on a phone. A save that could not reach the server offers **Retry**
 in the same notice. The task actions menu of a row also plans the task for
 tomorrow or next week and deletes it.
 

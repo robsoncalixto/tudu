@@ -78,8 +78,9 @@ proposals) and `mcp`. Imports use the `@/` alias for `src/`.
     Undo can take back, newest first. A deletion, and the completion of a
     repeating task, are only shown until that notice is gone and are sent then
     (`changeLater` in `use-tasks.ts`), so undoing them leaves nothing on the
-    server. Closing or hiding the page ends the wait; the request must leave in
-    that same turn, so nothing on that path may wait for a promise first.
+    server. Closing the page, or hiding it on a touch device, ends the wait;
+    the request must leave in that same turn, so nothing on that path may wait
+    for a promise first.
 
 Dependency direction: `app` → `features` → `i18n`, `lib`.
 
