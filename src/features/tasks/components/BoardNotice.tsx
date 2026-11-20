@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Dictionary } from "@/i18n";
 import { Icon } from "@/lib/Icon";
-import type { Notice } from "./TaskWorkspace";
+import type { Notice } from "../use-notice";
 
 /** Long enough to read and reach Undo; hovering or focusing the notice stops the clock. */
 const NOTICE_MS = 6000;
