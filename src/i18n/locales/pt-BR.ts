@@ -114,6 +114,8 @@ export const ptBR: Dictionary = {
   emptyFiltered: "Nenhuma tarefa aberta com esta etiqueta.",
   loading: "Carregando…",
   taskLoadFailed: "Não foi possível carregar suas tarefas.",
+  offlineTitle: "Você está sem conexão",
+  offlineHint: "Conecte-se novamente para ver ou alterar suas tarefas.",
   retry: "Tentar novamente",
   today: "Hoje",
   tomorrow: "Amanhã",
