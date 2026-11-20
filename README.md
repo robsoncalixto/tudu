@@ -102,6 +102,14 @@ structured output.
   each proposal, then accept or reject it. Decisions are kept in a history that
   survives restarts.
 
+## Install TUDU
+
+Open TUDU on `localhost` or over HTTPS. On desktop, use the browser’s
+**Install app** option. On a phone, use **Add to Home Screen** or **Install**
+from your browser menu. The installed app opens in its own window and follows
+your **Start view** setting. When the connection drops, it shows an offline
+page until it can reach the server again.
+
 ## Using TUDU
 
 The sidebar opens **All tasks**, **Today**, projects, tags, **Work log** and
@@ -110,6 +118,8 @@ for today, unfinished tasks planned earlier, and tasks due today or overdue.
 Use the sun button to plan a task for today or clear its existing plan.
 The task actions menu can move the planned day to tomorrow or the next Monday
 while keeping the deadline. Your open-task sort is remembered on the device.
+The board refreshes tasks and projects on focus and periodically while the
+tab is visible.
 
 Open the task panel (the icon at the right of a row) to edit the title,
 notes, subtasks, priority, project, tags, planned day, due date, repeat rule,
