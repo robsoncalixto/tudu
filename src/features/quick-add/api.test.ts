@@ -66,18 +66,36 @@ describe("controlled quick-add details", () => {
     const defaults = { priority: "low", due: today, tags: ["team"], tag: "work",
       projectId: "00000000-0000-4000-8000-000000000001" } as const;
     expect(quickAddApi.previewDrafts("First !high tomorrow @acme-web ~30m #bug\n\nSecond @unknown", today, {
-      ...defaults, tags: [...defaults.tags], plannedFor: today,
+      ...defaults, tags: [...defaults.tags], plannedFor: today, estimateHours: 2,
     }, [project])).toMatchObject([
       { title: "First", priority: "high", due: "2026-11-18", estimateHours: 0.5, projectId: project.id, tags: ["bug", "team", "work"], plannedFor: today },
-      { title: "Second @unknown", priority: "low", due: today, projectId: defaults.projectId, tags: ["team", "work"], plannedFor: today },
+      { title: "Second @unknown", priority: "low", due: today, projectId: defaults.projectId, tags: ["team", "work"], plannedFor: today, estimateHours: 2 },
     ]);
+    expect(quickAddApi.previewDrafts("Call @amanha 9h", today, { plannedFor: null, projectId: null }, [project]))
+      .toMatchObject([{ title: "Call", due: "2026-11-18", partOfDay: "morning", projectId: null }]);
   });
 
   it("removes only the shortcuts that correspond to the control being edited", () => {
-    expect(quickAddApi.stripTokens(String.raw`!high Draft \!low #work`, "priority").trim()).toBe(String.raw`Draft \!low #work`);
-    expect(quickAddApi.stripTokens(String.raw`tomorrow Draft \tomorrow #work`, "due").trim()).toBe(String.raw`Draft \tomorrow #work`);
-    expect(quickAddApi.stripTokens(String.raw`#work Draft \#work #docs`, "tag", "work").trim()).toBe(String.raw`Draft \#work #docs`);
+    expect(quickAddApi.stripTokens(String.raw`!high Draft \!low #work`, today, [], "priority")).toBe(String.raw`Draft \!low #work`);
+    expect(quickAddApi.stripTokens(String.raw`tomorrow Draft \tomorrow #work`, today, [], "due")).toBe(String.raw`Draft \tomorrow #work`);
+    expect(quickAddApi.stripTokens(String.raw`#work Draft \#work #docs`, today, [], "tag", "work")).toBe(String.raw`Draft \#work #docs`);
   });
+});
+
+it("removes a token with one neighbouring space, wherever it sits and on every line", () => {
+  const project = { id: "00000000-0000-4000-8000-000000000002", name: "Acme Web" };
+  expect(quickAddApi.stripTokens("Draft @amanha 14h now\nPlan @sex", today, [], "due")).toBe("Draft now\nPlan");
+  expect(quickAddApi.stripTokens("Draft !alta", today, [], "priority")).toBe("Draft");
+  expect(quickAddApi.stripTokens("Draft +acme-web today @acme-web t30m", today, [project], "project")).toBe("Draft today t30m");
+  expect(quickAddApi.stripTokens("Draft ~2h notes t30m", today, [], "estimate")).toBe("Draft notes");
+  expect(quickAddApi.stripTokens("Draft #a #b", today, [], "tag")).toBe("Draft");
+});
+
+it("exposes what was typed for the field highlight, the chips and the row editor", () => {
+  expect(quickAddApi.parse("Plan #a @amanha", today)).toMatchObject({ title: "Plan", tags: ["a"], due: "2026-11-18" });
+  expect(quickAddApi.tokens("One #a\nTwo !alta", today).map(({ type, start }) => [type, start])).toEqual([["tag", 4], ["priority", 11]]);
+  expect(quickAddApi.warnings("One\nPay @31/02", today)).toEqual([{ kind: "date", text: "@31/02", start: 8, end: 14 }]);
+  expect(quickAddApi.edit("Pay", "Pay @amanha", today)).toEqual({ title: "Pay", changes: { due: "2026-11-18" } });
 });
 
 it("reports the actual input line and validates the batch limits before writing", () => {
