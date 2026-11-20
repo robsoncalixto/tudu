@@ -8,7 +8,8 @@ import { Icon, type IconName } from "@/lib/Icon";
 import { boardFilterForPage } from "../board-navigation";
 import type { TaskFilter, TaskView } from "../selectors";
 import { useSidebarLayout } from "../use-sidebar-layout";
-import { ProjectManager, type ProjectDialogMode, type ProjectManagerProps } from "./ProjectManager";
+import { NavProjectCreate } from "./NavProjectCreate";
+import { ProjectManager, type ProjectManagerProps } from "./ProjectManager";
 
 interface Props {
   t: Dictionary;
@@ -26,18 +27,20 @@ interface Props {
 
 export function Sidebar({ t, view, filter, projectManager, onFilter, page, pendingCount, taskLoadFailed, projectLoadFailed, onRetryTasks, onRetryProjects }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const [projectDialog, setProjectDialog] = useState<ProjectDialogMode | null>(null);
+  const [managing, setManaging] = useState(false);
+  const [creating, setCreating] = useState(false);
   const { layout, compact, update, toggleGroup } = useSidebarLayout();
   const toggle = useRef<HTMLButtonElement>(null);
+  const addProject = useRef<HTMLButtonElement>(null);
   function choose(next: TaskFilter) {
     if (expanded && (next.kind === "project" || next.kind === "tag")) toggle.current?.focus();
     setExpanded(false);
     onFilter(next);
   }
-  function openProjects(mode: ProjectDialogMode) {
+  function startProject() {
     projectManager.clearError();
-    if (mode === "create" && !layout.projects) update({ projects: true });
-    setProjectDialog(mode);
+    if (!layout.projects) update({ projects: true });
+    setCreating(true);
   }
   const active = boardFilterForPage(page, filter);
   const tagFilter = active?.kind === "tag" ? active.tag : null;
@@ -96,13 +99,19 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, page, pendi
         </div>
         <NavGroup name="projects" label={t.projects} icon="folder" open={layout.projects && !compact}
           currentLabel={projectName} onToggle={() => toggleGroup("projects")} action={
-            <button type="button" className="nav-item nav-add-project" aria-label={t.newProject} title={t.newProject}
-              aria-haspopup="dialog" onClick={() => openProjects("create")}><Icon name="plus" size={17} /></button>}>
+            <button type="button" ref={addProject} className="nav-item nav-add-project" aria-label={t.newProject} title={t.newProject}
+              aria-expanded={creating} aria-controls="nav-projects" onClick={startProject}><Icon name="plus" size={17} /></button>}>
+          {creating && <NavProjectCreate t={t} error={projectManager.error} clearError={projectManager.clearError} onCreate={projectManager.onCreate}
+            onClose={(settled) => {
+              setCreating(false);
+              projectManager.clearError();
+              if (settled) addProject.current?.focus();
+            }} />}
           {view.projectCounts.map(([project, count]) =>
             <NavItem key={project.id} label={project.name} count={count} active={active?.kind === "project" && active.id === project.id}
               ariaLabel={`${t.project}: ${project.name}, ${t.countOpen(count)}`} onClick={() => choose({ kind: "project", id: project.id })} />)}
           <button type="button" className="nav-item manage-projects" aria-haspopup="dialog"
-            onClick={() => openProjects("manage")}>{t.manageProjects}</button>
+            onClick={() => { projectManager.clearError(); setCreating(false); setManaging(true); }}>{t.manageProjects}</button>
         </NavGroup>
         {tags.length > 0 && <NavGroup name="tags" label={t.tags} icon="tag" open={layout.tags && !compact}
           currentLabel={tagFilter ? `#${tagFilter}` : undefined} onToggle={() => toggleGroup("tags")}>
@@ -119,7 +128,7 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, page, pendi
       </button>
       {pageLink("/settings")}
     </div>
-    <ProjectManager {...projectManager} t={t} mode={projectDialog} onClose={() => setProjectDialog(null)} />
+    <ProjectManager {...projectManager} error={creating ? "" : projectManager.error} t={t} open={managing} onClose={() => setManaging(false)} />
   </aside>;
 }
 

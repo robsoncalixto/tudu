@@ -64,7 +64,7 @@
 }
 
 .task + .task { border-top: 1px solid var(--border); }
-.task.is-new { animation: appear 0.25s ease-out both; }
+.task.is-new { animation: appear 0.15s ease-out both; }
 .task-body { min-width: 0; }
 
 .task .check {

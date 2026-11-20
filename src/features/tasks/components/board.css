@@ -61,6 +61,15 @@
 .nav-group-items { margin: 0 0 4px 20px; padding-inline-start: 5px; border-inline-start: 1px solid var(--rail-rule); }
 .nav-group-items .nav-item { font-size: 13px; }
 .manage-projects { color: var(--rail-muted); }
+.nav-create { padding: 2px 0 4px; }
+.nav-input {
+  width: 100%; min-height: var(--touch-target); padding: 8px 12px; border: 1px solid var(--rail-muted); border-radius: var(--r-md);
+  background: var(--rail-rule); color: var(--neutral); font: 500 13px/20px var(--heading);
+}
+.nav-input::placeholder { color: var(--rail-muted); opacity: 1; }
+.nav-input:focus-visible { outline-color: var(--neutral); outline-offset: 1px; }
+.nav-create p { margin: 4px 2px 0; color: color-mix(in srgb, var(--error) 45%, var(--neutral)); font: 400 12px/17px var(--body); }
+@media (max-width: 820px) { .nav-input { font-size: 16px; } }
 .nav-item:focus-visible { outline-color: var(--neutral); outline-offset: -2px; }
 @media (min-width: 821px) {
   .shell:has(> .sidebar.is-compact) { --sidebar-width: 66px; }
@@ -147,6 +156,8 @@ html:has(.inspector-host:modal) { overflow: hidden; }
 .board-date svg { margin-right: 7px; vertical-align: -2px; }
 .board-header h1 { font: 650 clamp(33px, 3.6vw, 50px)/1.15 var(--heading); letter-spacing: -.052em; color: var(--text); overflow-wrap: anywhere; margin: 9px 0 0; }
 .view-tally { min-width: 126px; flex-shrink: 0; margin-bottom: 4px; }
+/* While loading, the text takes the line the totals will take. */
+.board-header > .hint { margin-bottom: 4px; font: 500 12px/18px var(--body); }
 .view-tally > div { display: flex; align-items: center; gap: 9px; color: var(--text-muted); font: 500 12px/18px var(--body); }
 .view-tally span + span::before { content: "·"; margin-right: 9px; }
 .view-tally progress { display: block; appearance: none; width: 100%; height: 4px; margin-top: 7px; border: 0; border-radius: var(--r-full); overflow: hidden; color: var(--accent); background: var(--secondary); }
@@ -183,6 +194,39 @@ html:has(.inspector-host:modal) { overflow: hidden; }
 .task-empty p { max-width: 46ch; color: var(--text-muted); font: 400 14px/21px var(--body); }
 .empty-action { width: fit-content; min-height: var(--touch-target); padding-inline: 10px; border-radius: var(--r-md); margin-top: 11px; color: var(--accent); font: 600 13px/20px var(--heading); }
 .empty-action:hover { text-decoration: underline; }
+.empty-keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px var(--s-md); margin-top: var(--s-sm); font-size: 12px; }
+.empty-keys > span { display: inline-flex; align-items: center; gap: 5px; }
+.empty-keys kbd { min-width: 20px; height: 20px; padding: 0 5px; font-size: 11px; }
+/* Keys are for a keyboard; a touch screen has the button above. */
+@media (hover: none), (pointer: coarse) { .empty-keys { display: none; } }
+/* Loading: the same blocks the board will have, so the page does not move when the tasks arrive. */
+.task-skeleton > div, .skeleton-toolbar > span, .skeleton-row > span { border-radius: var(--r-md); background: var(--surface-muted); }
+/* A column of flex items, so the margins add up exactly as the real blocks do. */
+.task-skeleton { display: flex; flex-direction: column; container-type: inline-size; animation: skeleton-pulse 1.4s ease-in-out infinite; }
+.skeleton-entry { height: 54px; margin-top: var(--s-lg); border-radius: var(--r-lg); }
+.skeleton-line { width: min(440px, 80%); height: 28px; margin-top: 10px; }
+.skeleton-options { width: 130px; height: 24px; margin: 8px 0; }
+.task-skeleton > .skeleton-toolbar { display: flex; justify-content: space-between; align-items: center; height: 79px; margin-top: var(--s-lg); padding: 22px 0 12px; border-top: 1px solid var(--border); border-radius: 0; background: none; }
+.skeleton-toolbar > span { width: 84px; height: 25px; }
+.skeleton-toolbar > span + span { width: 132px; height: 44px; }
+.task-skeleton > .skeleton-list { border: 1px solid var(--border); border-radius: var(--r-lg); background: none; overflow: clip; }
+.skeleton-head { height: 37px; border-bottom: 1px solid var(--border); background: var(--surface-muted); }
+.skeleton-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 90px 96px; align-items: center; gap: 20px; height: 65px; padding-inline: 26px 20px; }
+.skeleton-row + .skeleton-row { border-top: 1px solid var(--border); }
+.skeleton-row > span { height: 14px; }
+.skeleton-row > span:first-child { width: 19px; height: 19px; border-radius: var(--r-sm); }
+@keyframes skeleton-pulse { 50% { opacity: .55; } }
+@container (max-width: 670px) {
+  .skeleton-head { display: none; }
+  .skeleton-row { grid-template-columns: 20px minmax(0, 1fr); padding-inline: 24px 12px; }
+  .skeleton-row > span:nth-child(n + 3) { display: none; }
+}
+@media (max-width: 820px), (pointer: coarse) {
+  .skeleton-line { height: 44px; margin-top: 6px; }
+  .skeleton-options { height: 36px; margin: 6px 0; }
+}
+@media (max-width: 620px) { .skeleton-entry { margin-top: var(--s-md); } }
+@media (max-width: 510px) { .task-skeleton > .skeleton-toolbar { height: 70px; margin-top: var(--s-md); padding-top: 13px; } }
 .project-manager { width: min(470px, calc(100% - 28px)); max-height: calc(100dvh - 40px); color: var(--text); }
 .project-manager::backdrop { background: color-mix(in srgb, var(--primary) 50%, transparent); }
 .project-manager > header { display: flex; justify-content: space-between; align-items: center; }
@@ -215,7 +259,8 @@ html:has(.inspector-host:modal) { overflow: hidden; }
 @media (max-width: 510px) {
   .board-location span, .board-location svg:nth-of-type(2) { display: none; }
   .board-search { width: min(180px, 65%); }
-  .board-header { flex-wrap: wrap; gap: 12px; }
+  /* The totals always take their own line, so a long title or a loading board never moves what follows. */
+  .board-header { flex-direction: column; align-items: flex-start; gap: 6px; }
   .view-tally { min-width: 0; }
   .view-tally progress { display: none; }
   .view-tally > div { flex-wrap: wrap; gap: 6px; }
