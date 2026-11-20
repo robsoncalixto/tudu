@@ -124,6 +124,8 @@ export const ptBR: Dictionary = {
   loading: "Carregando…",
   taskDeletedElsewhere: "Essa tarefa foi excluída em outro lugar.",
   taskLoadFailed: "Não foi possível carregar suas tarefas.",
+  offlineTitle: "Você está sem conexão",
+  offlineHint: "Conecte-se novamente para ver ou alterar suas tarefas.",
   retry: "Tentar novamente",
   today: "Hoje",
   tomorrow: "Amanhã",

@@ -1,9 +1,9 @@
 import { composer, expect, listTasks, openSection, row, saveSettings, seed, seedProjects, sidebar, taskDetails, taskPanel, test } from "./support";
 
 for (const l of [
-  { locale: "en", all: /^All tasks,/, allLabel: "All tasks", project: /^Project: Outside,/, notes: "Notes",
+  { locale: "en", all: /^All tasks,/, allLabel: "All tasks", project: /^Project: Outside,/, notes: "Notes", priority: "Priority",
     removed: "That task was deleted elsewhere.", loadFailed: "Couldn’t load your tasks." },
-  { locale: "pt-BR", all: /^Todas as tarefas,/, allLabel: "Todas as tarefas", project: /^Projeto: Outside,/, notes: "Anotações",
+  { locale: "pt-BR", all: /^Todas as tarefas,/, allLabel: "Todas as tarefas", project: /^Projeto: Outside,/, notes: "Anotações", priority: "Prioridade",
     removed: "Essa tarefa foi excluída em outro lugar.", loadFailed: "Não foi possível carregar suas tarefas." },
 ] as const) {
   test(`refreshes outside changes and preserves local drafts in ${l.locale}`, async ({ page, request }) => {
@@ -14,7 +14,7 @@ for (const l of [
     await composer(page).fill("Unsubmitted entry");
     const notes = taskPanel(page).getByRole("textbox", { name: l.notes, exact: true });
     await notes.fill("In-progress notes");
-    await seedProjects(request, ["Outside"]);
+    const [outside] = await seedProjects(request, ["Outside"]);
     await seed(request, [{ title: "Remote task" }]);
     await page.route("**/api/tasks", (route) => route.fulfill({ status: 503, json: { error: "temporary" } }));
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -27,12 +27,18 @@ for (const l of [
     await expect(sidebar(page).getByRole("button", { name: l.all })).toHaveText(`${l.allLabel}2`);
     await expect(composer(page)).toHaveValue("Unsubmitted entry");
     await expect(notes).toHaveValue("In-progress notes");
+    await row(openSection(page), first.title).getByRole("combobox", { name: l.priority }).selectOption("high");
+    await expect.poll(async () => (await listTasks(request)).find((task) => task.id === first.id)?.priority).toBe("high");
     await request.delete(`/api/tasks/${first.id}`);
     await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
     await expect(taskPanel(page)).toBeHidden();
     await expect(page.getByRole("status")).toHaveText(l.removed);
     await expect(composer(page)).toHaveValue("Unsubmitted entry");
     expect((await listTasks(request)).map((task) => task.title)).toEqual(["Remote task"]);
+    await sidebar(page).getByRole("button", { name: l.project }).click();
+    expect((await request.delete(`/api/projects/${outside.id}`)).status()).toBe(204);
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(l.allLabel);
   });
 }
 

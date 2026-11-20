@@ -122,6 +122,8 @@ export const en = {
   loading: "Loading…",
   taskDeletedElsewhere: "That task was deleted elsewhere.",
   taskLoadFailed: "Couldn’t load your tasks.",
+  offlineTitle: "You’re offline",
+  offlineHint: "Reconnect to view or change your tasks.",
   retry: "Retry",
   today: "Today",
   tomorrow: "Tomorrow",

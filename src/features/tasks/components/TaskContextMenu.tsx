@@ -17,11 +17,13 @@ export function TaskContextMenu({ row, t, addSubtask, postpone }: Props) {
   const menu = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const opener = useRef<HTMLElement | null>(null);
-  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const wasOpen = useRef(false);
+  const [anchor, setAnchor] = useState<{ x: number; y: number; above: number } | null>(null);
   const hasActions = Boolean(addSubtask || postpone);
 
   function close() {
     menu.current?.hidePopover();
+    setAnchor(null);
     opener.current?.focus({ preventScroll: true });
   }
 
@@ -29,7 +31,7 @@ export function TaskContextMenu({ row, t, addSubtask, postpone }: Props) {
     if (typeof menu.current?.showPopover !== "function") return;
     opener.current = origin;
     const bounds = trigger.current?.getBoundingClientRect();
-    setAnchor(point ?? { x: bounds?.left ?? 0, y: bounds?.bottom ?? 0 });
+    setAnchor(point ? { ...point, above: point.y } : { x: bounds?.left ?? 0, y: bounds?.bottom ?? 0, above: bounds?.top ?? 0 });
   }
 
   useLayoutEffect(() => {
@@ -38,7 +40,8 @@ export function TaskContextMenu({ row, t, addSubtask, postpone }: Props) {
     popup.showPopover();
     const bounds = popup.getBoundingClientRect();
     popup.style.left = `${Math.max(4, Math.min(anchor.x, document.documentElement.clientWidth - bounds.width - 4))}px`;
-    popup.style.top = `${Math.max(4, Math.min(anchor.y, window.innerHeight - bounds.height - 4))}px`;
+    const top = anchor.y + bounds.height <= window.innerHeight - 4 ? anchor.y : anchor.above - bounds.height;
+    popup.style.top = `${Math.max(4, top)}px`;
     popup.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
   }, [anchor]);
 
@@ -65,8 +68,13 @@ export function TaskContextMenu({ row, t, addSubtask, postpone }: Props) {
   if (!hasActions) return null;
   return <>
     <button ref={trigger} type="button" className="task-more" aria-label={t.taskActions} title={t.taskActions}
-      aria-haspopup="menu" aria-controls={id} aria-expanded={anchor !== null} onClick={(event) => {
-        if (menu.current?.matches(":popover-open")) close();
+      aria-haspopup="menu" aria-controls={id} aria-expanded={anchor !== null}
+      onPointerDown={() => { wasOpen.current = Boolean(menu.current?.matches(":popover-open")); }}
+      onPointerCancel={() => { wasOpen.current = false; }}
+      onClick={(event) => {
+        const toggleClosed = event.detail > 0 && wasOpen.current;
+        wasOpen.current = false;
+        if (toggleClosed || menu.current?.matches(":popover-open")) close();
         else open(event.currentTarget);
       }}><Icon name="more" size={17} /></button>
     <div ref={menu} id={id} popover="auto" role="menu" aria-label={t.taskActions} className="task-context-menu"

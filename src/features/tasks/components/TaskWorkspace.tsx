@@ -41,7 +41,13 @@ function useWorkspaceState(settings: Settings) {
       setNotice({ kind: "ok", text: t.taskDeletedElsewhere });
     }
   }, settings.aiProvider);
-  const projectData = useProjects(fail, taskData.clearProject);
+  const projectData = useProjects(fail, taskData.clearProject, (ids) => {
+    if (filter.kind !== "project" || ids.has(filter.id)) return;
+    setSelectedId(null);
+    setQuery("");
+    setFilter({ kind: "all" });
+    setNotice(null);
+  });
   const { retryLoad, tasks } = taskData;
   useEffect(() => subscribeAgentUpdates(retryLoad), [retryLoad]);
   const { projects } = projectData;

@@ -102,6 +102,14 @@ structured output.
   each proposal, then accept or reject it. Decisions are kept in a history that
   survives restarts.
 
+## Install TUDU
+
+Open TUDU on `localhost` or over HTTPS. On desktop, use the browser’s
+**Install app** option. On a phone, use **Add to Home Screen** or **Install**
+from your browser menu. The installed app opens in its own window and follows
+your **Start view** setting. When the connection drops, it shows an offline
+page until it can reach the server again.
+
 ## Using TUDU
 
 The same sidebar on every screen opens **All tasks**, **Today**, projects,
