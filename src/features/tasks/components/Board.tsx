@@ -39,15 +39,22 @@ export function Board({ settings }: { settings: Settings }) {
   const scheduled = useCallback((task: Task) => {
     if (task.due && today) setNotice({ kind: "ok", text: t.nextOccurrence(dueLabel(task.due, today, locale, t, settings.dateFormat)) });
   }, [today, locale, t, settings.dateFormat]);
-  const { tasks, aiEnabled, add, capture, patch, remove, clearProject, loadFailed, retryLoad } = useTasks(fail, scheduled);
   const inspector = useTaskInspector();
+  const { tasks, aiEnabled, add, capture, patch, remove, clearProject, loadFailed, retryLoad } = useTasks(fail, scheduled, (currentIds) => {
+    if (inspector.selectedId && !currentIds.has(inspector.selectedId)) {
+      inspector.close();
+      setNotice({ kind: "ok", text: t.taskDeletedElsewhere });
+    }
+  });
   const selectedTask = tasks?.find((task) => task.id === inspector.selectedId);
   const actions = useTaskActions(tasks, patch, async (id) => {
     const removed = await remove(id);
     if (removed) inspector.setSelectedId((current) => current === id ? null : current);
     return removed;
   });
-  const { projects, projectError, clearProjectError, createProject, renameProject, deleteProject } = useProjects(fail, clearProject);
+  const { projects, projectError, clearProjectError, createProject, renameProject, deleteProject } = useProjects(fail, clearProject, (ids) => {
+    if (filter.kind === "project" && !ids.has(filter.id)) select({ kind: "all" });
+  });
   const view = useMemo(() => buildTaskView(tasks ?? [], filter, today ?? "", projects, query, sort),
     [tasks, filter, today, projects, query, sort]);
   const title = filter.kind === "project" ? projects.find((p) => p.id === filter.id)?.name ?? t.projects
