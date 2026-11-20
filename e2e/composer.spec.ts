@@ -85,7 +85,7 @@ test.describe("Composer", () => {
     await page.getByRole("button", { name: "Set up AI capture" }).click();
     await expect(page.getByText("AI is off. Configure the selected provider's API key in the server's .env file.")).toBeVisible();
     const guide = page.getByRole("region", { name: "Set up AI capture" });
-    await expect(guide.getByRole("link", { name: "Settings", exact: true })).toHaveAttribute("href", "/settings?from=tasks#ai-settings-heading");
+    await expect(guide.getByRole("link", { name: "Settings", exact: true })).toHaveAttribute("href", "/settings#ai-settings-heading");
     await expect(composer(page)).toHaveValue("some note");
     await expect(page.getByRole("button", { name: "Create with AI" })).toBeDisabled();
   });

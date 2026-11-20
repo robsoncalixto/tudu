@@ -199,8 +199,6 @@ export const ptBR: Dictionary = {
   preferences: "Preferências do aplicativo",
   colorTheme: "Aparência",
   themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
-  backToTasks: "Voltar às tarefas",
-  backToAssistant: "Voltar ao assistente",
   english: "English",
   portuguese: "Português (Brasil)",
   defaultPriority: "Prioridade padrão",

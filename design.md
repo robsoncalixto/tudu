@@ -77,7 +77,7 @@ Use `--body` (Inter) for dates, notes, form values and instructions.
 - **Subtasks.** Indent children one level below their parent. Each child has a completion control and an editable title. The parent exposes inline entry and a completed/total count. Its visibility control can show all children, hide completed children, or collapse the list.
 - **Task panel.** Reveal the panel icon on row hover and keyboard focus. Keep it visible on touchscreens and on the selected row. Anchor the inspector to the right and mark its task with the accent color. On narrow screens, show it in a modal sheet with a reachable close button. Keep planned day and deadline separate. Use editable controls for task properties, with collapsible sections for longer content.
 - **Search and recovery.** Reveal matching completed tasks during a search. An empty list offers to add a task. An empty search offers to clear it. A failed load offers a retry.
-- **Settings.** Put a labeled back arrow at the upper left. Name its destination and keep it within reach while scrolling. Appearance choices use labeled radio controls with visible selection and keyboard focus. Changes preview in the form. Keep Save and its result together and within reach on a phone.
+- **Settings.** Use the shared sidebar, with Settings marked as the active page. Appearance choices use labeled radio controls with visible selection and keyboard focus. Changes preview in the form. Keep Save and its result together and within reach on a phone.
 
 ## Controls and accessibility
 

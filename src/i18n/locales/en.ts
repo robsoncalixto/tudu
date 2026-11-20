@@ -197,8 +197,6 @@ export const en = {
   preferences: "App preferences",
   colorTheme: "Appearance",
   themes: { system: "System", light: "Light", dark: "Dark" },
-  backToTasks: "Back to tasks",
-  backToAssistant: "Back to assistant",
   english: "English",
   portuguese: "Português (Brasil)",
   defaultPriority: "Default priority",

@@ -15,7 +15,7 @@ import type { Task, TaskPatch } from "./schema";
  * caller can keep the user's text; `patch` and `remove` update optimistically,
  * roll back on failure and report the error code through `onError`.
  */
-export function useTasks(onError: (code: string) => void, onNext?: (task: Task) => void, onRefreshed?: (currentIds: ReadonlySet<string>) => void) {
+export function useTasks(onError: (code: string) => void, onNext?: (task: Task) => void, onRefreshed?: (currentIds: ReadonlySet<string>) => void, provider?: string) {
   const [confirmed, setConfirmed] = useState<Task[] | null>(null);
   const [pending, setPending] = useState<PendingTaskMutation[]>([]);
   const revision = useRef(0);
@@ -54,11 +54,12 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   }, []);
 
   useEffect(() => {
-    captureApi
-      .status()
-      .then(setAiEnabled)
-      .catch(() => setAiEnabled(false));
-  }, []);
+    let active = true;
+    captureApi.status()
+      .then((enabled) => { if (active) setAiEnabled(enabled); })
+      .catch(() => { if (active) setAiEnabled(false); });
+    return () => { active = false; };
+  }, [provider]);
 
   const append = useCallback((created: Task[]) => {
     revision.current++;
