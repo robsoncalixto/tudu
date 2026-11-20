@@ -3,7 +3,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 3100;
+// Fixed defaults; override both to run suites from two checkouts at once.
+const PORT = Number(process.env.TUDU_E2E_PORT ?? 3100);
+const AI_PORT = Number(process.env.TUDU_AI_TEST_PORT ?? 3120);
+process.env.TUDU_AI_TEST_PORT = String(AI_PORT);
 
 // The app under test stores its tasks in a throwaway folder, never in ./data.
 const dataDir = process.env.TUDU_E2E_DATA_DIR ?? mkdtempSync(path.join(tmpdir(), "tudu-e2e-"));
@@ -33,8 +36,8 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [{
     command: "node scripts/ai-test-server.mjs",
-    url: "http://127.0.0.1:3120/health",
-    env: { TUDU_AI_TEST_PORT: "3120" },
+    url: `http://127.0.0.1:${AI_PORT}/health`,
+    env: { TUDU_AI_TEST_PORT: String(AI_PORT) },
     reuseExistingServer: false,
   }, {
     command: `npm run build && npx next start --port ${PORT}`,
@@ -49,7 +52,7 @@ export default defineConfig({
       ANTHROPIC_API_KEY: "",
       ANTHROPIC_AUTH_TOKEN: "",
       OPENAI_API_KEY: "tudu-e2e-openai-key",
-      OPENAI_BASE_URL: "http://127.0.0.1:3120/v1",
+      OPENAI_BASE_URL: `http://127.0.0.1:${AI_PORT}/v1`,
       OPENROUTER_API_KEY: "",
       TUDU_AI_MODEL: "",
       TUDU_OPENAI_MODEL: "",
