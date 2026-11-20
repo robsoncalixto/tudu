@@ -122,7 +122,7 @@ export function Board({ settings }: { settings: Settings }) {
         </>}
       </div>
     </main>
-    {selectedTask && <TaskPanelFrame label={t.taskDetails} taskId={selectedTask.id} onClose={inspector.close}>
+    {selectedTask && <TaskPanelFrame label={t.taskDetails} resizeLabel={t.resizeTaskPanel} taskId={selectedTask.id} onClose={inspector.close}>
       <TaskPanel task={selectedTask} projects={projects} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat}
         t={t} onPatch={patch} onDelete={shortcuts.requestDelete} onClose={inspector.close} />
     </TaskPanelFrame>}
