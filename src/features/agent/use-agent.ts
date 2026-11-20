@@ -12,6 +12,7 @@ export function useAgent() {
   const [text, setText] = useState("");
   const [generating, setGenerating] = useState(false);
   const [empty, setEmpty] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const version = useRef(0);
@@ -36,13 +37,14 @@ export function useAgent() {
     return () => { mounted.current = false; ++version.current; };
   }, [reload]);
 
-  async function propose(today: string) {
-    if (pending.current || !text.trim() || !state?.enabled) return;
-    pending.current = true; setGenerating(true); setError(null); setEmpty(false);
+  async function propose(today: string, review = false) {
+    if (pending.current || (!review && !text.trim()) || !state?.enabled) return;
+    pending.current = true; setGenerating(true); setError(null); setEmpty(false); setSummary(null);
     try {
-      const proposals = await agentApi.propose(text, today);
+      const result = review ? await agentApi.review(text, today) : { summary: null, proposals: await agentApi.propose(text, today) };
       if (mounted.current) {
-        setEmpty(proposals.length === 0);
+        setEmpty(result.proposals.length === 0);
+        setSummary(result.summary);
         if (await reload()) setText("");
       }
     } catch (error) { if (mounted.current) setError(errorCode(error)); }
@@ -65,5 +67,5 @@ export function useAgent() {
       return false;
     } finally { pending.current = false; if (mounted.current) setBusyId(null); }
   }
-  return { state, loading, error, text, setText, generating, empty, busyId, errors, reload, propose, decide };
+  return { state, loading, error, text, setText, generating, empty, summary, busyId, errors, reload, propose, decide };
 }
