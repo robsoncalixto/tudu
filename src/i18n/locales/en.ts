@@ -56,6 +56,7 @@ export const en = {
   automaticReviewOutcomes: { skipped: "Skipped", running: "Running", succeeded: "Succeeded", failed: "Failed" },
   automaticReviewSkipReasons: { no_provider: "No provider configured", no_tasks: "No open tasks", unchanged: "The task list is unchanged" },
   taskHasSuggestions: "Suggestions",
+  suggestedChecklist: "Proposed checklist",
   suggestedSubtasks: "Suggested subtasks",
   suggestedValue: (value: string) => `Suggested: ${value}`,
   agentReviewTasks: "Review my tasks",

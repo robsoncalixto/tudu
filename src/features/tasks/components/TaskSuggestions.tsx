@@ -6,7 +6,7 @@ import type { Project } from "@/features/projects/schema";
 import { errorMessage, type Dictionary, type Locale } from "@/i18n";
 import { dueLabel, type DateFormat } from "@/lib/dates";
 import { errorCode } from "@/lib/http";
-import { suggestedSteps, type ContextProposal, type SuggestedField } from "../task-suggestions";
+import { suggestedChecklist, type ContextProposal, type SuggestedField } from "../task-suggestions";
 
 export function TaskSuggestionField({ field, proposals, projects, today, locale, t, dateFormat }: {
   field: SuggestedField; proposals: ContextProposal[]; projects: Project[];
@@ -17,10 +17,13 @@ export function TaskSuggestionField({ field, proposals, projects, today, locale,
     if (proposal.action.kind !== "update_task" || !(field in proposal.action.patch)) return null;
     const { patch } = proposal.action;
     if (field === "steps") {
-      const steps = suggestedSteps(proposal);
-      return steps.length > 0 && <div className="inspector-suggestion" key={proposal.id}>
-        <strong>{t.suggestedSubtasks}</strong>
-        <ul>{steps.map((step) => <li key={step.id}>{step.title}</li>)}</ul>
+      const checklist = suggestedChecklist(proposal);
+      if (!checklist) return null;
+      return <div className="inspector-suggestion" key={proposal.id}>
+        <strong>{checklist.replaced ? t.suggestedChecklist : t.suggestedSubtasks}</strong>
+        {checklist.steps.length ? <ol>{checklist.steps.map((step) =>
+          <li key={step.id}>{step.title} {checklist.replaced && <span>· {step.done ? t.agentStepStatuses.done : t.agentStepStatuses.open}</span>}</li>
+        )}</ol> : <p>{t.agentEmpty}</p>}
         <p>{proposal.reason}</p>
       </div>;
     }
@@ -32,7 +35,7 @@ export function TaskSuggestionField({ field, proposals, projects, today, locale,
       title: patch.title, notes: patch.notes, tags: patch.tags?.join(", "),
     };
     return <div className="inspector-suggestion" key={proposal.id}>
-      <strong>{t.suggestedValue(values[field] ?? "")}</strong><p>{proposal.reason}</p>
+      <strong>{t.suggestedValue(values[field] || t.agentEmpty)}</strong><p>{proposal.reason}</p>
     </div>;
   });
 }
@@ -40,14 +43,14 @@ export function TaskSuggestionField({ field, proposals, projects, today, locale,
 export function TaskSuggestionActions({ proposals, t, onApplied }: {
   proposals: ContextProposal[]; t: Dictionary; onApplied: () => void;
 }) {
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<{ id: string; accepting: boolean } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const inFlight = useRef(false);
 
   async function decide(proposal: ContextProposal, accept: boolean) {
     if (inFlight.current) return;
     inFlight.current = true;
-    setBusy(proposal.id);
+    setBusy({ id: proposal.id, accepting: accept });
     try {
       setErrors((current) => ({ ...current, [proposal.id]: "" }));
       await agentApi.decide(proposal.id, accept ? { decision: "accept", action: proposal.action } : { decision: "reject" });
@@ -56,19 +59,29 @@ export function TaskSuggestionActions({ proposals, t, onApplied }: {
     finally { inFlight.current = false; setBusy(null); }
   }
 
+  const fields: Record<SuggestedField, string> = {
+    title: t.agentTaskTitle, notes: t.agentNotes, priority: t.priority, due: t.setDate, tags: t.tags,
+    steps: t.suggestedChecklist, projectId: t.project, plannedFor: t.agentPlannedFor, partOfDay: t.partOfDay,
+  };
   if (!proposals.length) return null;
   return <section className="inspector-suggestion-decisions" aria-label={t.agentPending}>
     <h3 className="section-title">{t.agentPending}</h3>
-    {proposals.map((proposal) => <div key={proposal.id} aria-busy={busy === proposal.id}>
-      {proposal.action.kind === "flag_duplicate" && <p>{t.agentPossibleDuplicate(proposal.action.otherTitle)}</p>}
-      <p>{proposal.reason}</p>
-      <div className="proposal-actions">
-        <button type="button" className="btn btn-primary" disabled={busy !== null}
-          onClick={() => void decide(proposal, true)}>{busy === proposal.id ? t.agentSaving : t.agentAccept}</button>
-        <button type="button" className="btn btn-secondary" disabled={busy !== null}
-          onClick={() => void decide(proposal, false)}>{t.agentReject}</button>
-      </div>
-      {errors[proposal.id] && <p className="notice is-error" role="alert">{errorMessage(t, errors[proposal.id])}</p>}
-    </div>)}
+    {proposals.map((proposal) => {
+      const action = proposal.action;
+      const changes = action.kind === "flag_duplicate" ? t.agentPossibleDuplicate(action.otherTitle)
+        : (Object.keys(action.patch) as SuggestedField[]).map((field) => fields[field]).join(", ");
+      const label = `proposal-${proposal.id}`;
+      return <article key={proposal.id} aria-labelledby={label} aria-busy={busy?.id === proposal.id}>
+        <strong id={label}>{changes}</strong>
+        <p id={`${label}-reason`}>{proposal.reason}</p>
+        <div className="proposal-actions">
+          <button type="button" className="btn btn-primary" disabled={busy !== null} aria-describedby={`${label} ${label}-reason`}
+            onClick={() => void decide(proposal, true)}>{busy?.id === proposal.id && busy.accepting ? t.agentSaving : t.agentAccept}</button>
+          <button type="button" className="btn btn-secondary" disabled={busy !== null} aria-describedby={`${label} ${label}-reason`}
+            onClick={() => void decide(proposal, false)}>{busy?.id === proposal.id && !busy.accepting ? t.agentSaving : t.agentReject}</button>
+        </div>
+        {errors[proposal.id] && <p className="notice is-error" role="alert">{errorMessage(t, errors[proposal.id])}</p>}
+      </article>;
+    })}
   </section>;
 }
