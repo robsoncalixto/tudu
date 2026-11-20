@@ -3,13 +3,14 @@ import { settingsSchema } from "@/features/settings/schema";
 import { projectSchema } from "@/features/projects/schema";
 import { taskInputSchema } from "./schema";
 
-export const TASK_SORTS = ["due", "priority", "newest"] as const;
+export const TASK_SORTS = ["due", "priority", "newest", "manual"] as const;
 export type TaskSort = (typeof TASK_SORTS)[number];
 
 const taskSortSchema = z.enum(TASK_SORTS);
 
-export function restoreTaskSort(saved: string | null): TaskSort {
-  return taskSortSchema.safeParse(saved).data ?? "due";
+export function restoreTaskSort(saved: string | null, fallback: TaskSort = "due"): TaskSort {
+  const value = taskSortSchema.safeParse(saved).data;
+  return value && (value !== "manual" || fallback === "manual") ? value : fallback;
 }
 
 const sidebarLayoutSchema = z.object({

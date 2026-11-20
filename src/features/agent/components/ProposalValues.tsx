@@ -7,6 +7,8 @@ export function ProposalValues({ action, proposal, projects, locale, t, before =
   action: ProposalAction; proposal: Proposal; projects: Project[]; locale: Locale; t: Dictionary; before?: boolean;
 }) {
   if (action.kind === "create_project" || action.kind === "rename_project") return <p>{before ? proposal.projectBefore?.name : action.name}</p>;
+  if (action.kind === "order_day") return <ol>{action.items.map(({ taskId, title, reason }) =>
+    <li key={taskId}><strong>{title}</strong><p>{reason}</p></li>)}</ol>;
   if (action.kind === "flag_duplicate") return <p>{t.agentPossibleDuplicate(action.otherTitle)}</p>;
   const fields = action.kind === "create_task" ? action.task : action.patch;
   const values = before && proposal.taskBefore ? proposal.taskBefore : fields;

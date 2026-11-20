@@ -36,6 +36,7 @@ export function taskReviewContext(tasks: Task[], projects: Project[], today: str
 
 function pendingKeys(draft: ProposalDraft): string[] {
   const action = draft.action;
+  if (action.kind === "order_day") return [JSON.stringify(["order", action.day])];
   if (action.kind === "flag_duplicate") {
     return [JSON.stringify(["duplicate", ...[action.taskId, action.otherTaskId].sort()])];
   }

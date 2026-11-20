@@ -9,7 +9,9 @@ import { dueLabel, longDate } from "@/lib/dates";
 import { errorCode } from "@/lib/http";
 import { useToday } from "@/lib/use-today";
 import type { Task } from "../schema";
-import { buildTaskView, type TaskFilter, type TaskSort } from "../selectors";
+import { rankDayTasks } from "../day-order";
+import { useDayOrder } from "../use-day-order";
+import { isForToday, buildTaskView, type TaskFilter, type TaskSort } from "../selectors";
 import { useProjects } from "../use-projects";
 import { useTaskShortcuts } from "../use-task-shortcuts";
 import { useBoardNavigation } from "../use-board-navigation";
@@ -39,7 +41,7 @@ export function Board({ settings }: { settings: Settings }) {
   const scheduled = useCallback((task: Task) => {
     if (task.due && today) setNotice({ kind: "ok", text: t.nextOccurrence(dueLabel(task.due, today, locale, t, settings.dateFormat)) });
   }, [today, locale, t, settings.dateFormat]);
-  const { tasks, aiEnabled, add, capture, patch, remove, clearProject, loadFailed, retryLoad } = useTasks(fail, scheduled);
+  const { reorder, tasks, aiEnabled, add, capture, patch, remove, clearProject, loadFailed, retryLoad } = useTasks(fail, scheduled);
   const inspector = useTaskInspector();
   const selectedTask = tasks?.find((task) => task.id === inspector.selectedId);
   const shortcuts = useTaskShortcuts(tasks, patch, async (id) => {
@@ -72,7 +74,9 @@ export function Board({ settings }: { settings: Settings }) {
 
   function clearSearch() { setQuery(""); search.current?.focus(); }
   const searching = Boolean(query.trim());
-  const list = { today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: shortcuts.patchFromRow,
+  const dayIds = today ? rankDayTasks((tasks ?? []).filter((task) => !task.done && isForToday(task, today)), today).map((task) => task.id) : [];
+  const order = useDayOrder(today, dayIds, filter.kind === "today" && sort === "manual", reorder, fail);
+  const list = { order: order && searching ? { ...order, ready: false } : order, today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: shortcuts.patchFromRow,
     selectedId: inspector.selectedId, onShowPanel: inspector.toggle, onTag: (tag: string) => select({ kind: "tag", tag }) };
 
   return <div className={`shell${selectedTask ? " has-inspector" : ""}`} ref={shortcuts.root}>
@@ -109,6 +113,7 @@ export function Board({ settings }: { settings: Settings }) {
               <h2 id="open-heading" className="section-title">{t.open} <span>{view.open.length}</span></h2>
               {view.scopeOpen > 0 && <label className="board-sort"><Icon name="sort" size={16} />
                 <select className="select-control" aria-label={t.sortTasks} value={sort} onChange={(event) => setSort(event.target.value as TaskSort)}>
+                  {filter.kind === "today" && <option value="manual">{t.sortManual}</option>}
                   <option value="due">{t.sortDue}</option><option value="priority">{t.sortPriority}</option><option value="newest">{t.sortNewest}</option>
                 </select></label>}
             </div>

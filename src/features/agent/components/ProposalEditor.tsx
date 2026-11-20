@@ -12,6 +12,8 @@ export function ProposalEditor({ action, projects, t, onChange }: Props) {
   if (action.kind === "create_project" || action.kind === "rename_project") return <label>{t.projectName}
     <input className="form-control" value={action.name} maxLength={80} onChange={(event) => onChange({ ...action, name: event.target.value })} />
   </label>;
+  if (action.kind === "order_day") return <ol>{action.items.map(({ taskId, title, reason }) =>
+    <li key={taskId}><strong>{title}</strong><p>{reason}</p></li>)}</ol>;
   if (action.kind === "flag_duplicate") return <p>{t.agentPossibleDuplicate(action.otherTitle)}</p>;
   const values = action.kind === "create_task" ? action.task : action.patch;
   const change = (fields: Extract<ProposalAction, { kind: "update_task" }>["patch"]) => onChange(action.kind === "create_task"

@@ -105,5 +105,13 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   const clearProject = useCallback((id: string) => {
     setConfirmed((current) => current?.map((task) => task.projectId === id ? { ...task, projectId: null } : task) ?? null);
   }, []);
-  return { tasks, aiEnabled, loadFailed, retryLoad, add, capture, patch, remove, clearProject };
+  const reorder = useCallback(async (day: string, taskIds: string[], expected: string[]) => {
+    const order = await tasksApi.setDayOrder({ day, taskIds, expected });
+    const rank = new Map(order.taskIds.map((id, index) => [id, index]));
+    setConfirmed((before) => before?.map((task) => {
+      const position = rank.get(task.id);
+      return position === undefined ? task : { ...task, dayRanks: { ...task.dayRanks, [day]: position } };
+    }) ?? null);
+  }, []);
+  return { reorder, tasks, aiEnabled, loadFailed, retryLoad, add, capture, patch, remove, clearProject };
 }

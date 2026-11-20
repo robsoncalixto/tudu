@@ -17,7 +17,7 @@ export function ProposalCard({ proposal, projects, locale, t, busy, saving, erro
   const heading = useId();
   const uncertain = proposal.status === "applying" || error === "agent_uncertain";
   const action = proposal.approved ?? (uncertain ? draft : proposal.action);
-  const title = action.kind === "create_task" ? action.task.title : action.kind === "update_task" || action.kind === "flag_duplicate" ? proposal.taskBefore?.title : action.name;
+  const title = action.kind === "order_day" ? action.day : action.kind === "create_task" ? action.task.title : action.kind === "update_task" || action.kind === "flag_duplicate" ? proposal.taskBefore?.title : action.name;
   const values = (shown = action, before = false) => <ProposalValues action={shown} proposal={proposal} projects={projects} locale={locale} t={t} before={before} />;
   return <article className="card proposal" aria-labelledby={heading} data-proposal-id={proposal.id} tabIndex={-1}>
     <header className="proposal-header"><div><p className="eyebrow">{t.agentKinds[action.kind]}</p><h3 id={heading}>{title}</h3></div>

@@ -5,16 +5,22 @@ import { restoreBoardReturn, restoreTaskSort, type BoardReturn, type TaskFilter,
 
 const RETURN_KEY = "tudu.boardReturn";
 const SORT_KEY = "tudu.taskSort";
+const DAY_SORT_KEY = "tudu.todaySort";
 
 export function useBoardNavigation(startView: BoardReturn["startView"]) {
   const [filter, setFilter] = useState<TaskFilter>({ kind: startView });
   const [query, setQuery] = useState("");
-  const [sort, updateSort] = useState<TaskSort>(() => restoreTaskSort(null));
+  const [listSort, updateListSort] = useState<TaskSort>("due");
+  const [daySort, updateDaySort] = useState<TaskSort>("manual");
+  const sort = filter.kind === "today" ? daySort : listSort;
   const [text, setText] = useState("");
   const unsavedSort = useRef<TaskSort | undefined>(undefined);
 
   useLayoutEffect(() => {
-    try { updateSort(restoreTaskSort(localStorage.getItem(SORT_KEY))); } catch { /* Device storage is optional. */ }
+    try {
+      updateListSort(restoreTaskSort(localStorage.getItem(SORT_KEY)));
+      updateDaySort(restoreTaskSort(localStorage.getItem(DAY_SORT_KEY), "manual"));
+    } catch { /* Device storage is optional. */ }
   }, []);
 
   useLayoutEffect(() => {
@@ -28,7 +34,8 @@ export function useBoardNavigation(startView: BoardReturn["startView"]) {
         setFilter(previous.filter);
         if (previous.sort) {
           unsavedSort.current = previous.sort;
-          updateSort(previous.sort);
+          if (previous.filter.kind === "today") updateDaySort(previous.sort);
+          else updateListSort(previous.sort);
         }
         setQuery(previous.query);
         setText(previous.text);
@@ -47,9 +54,10 @@ export function useBoardNavigation(startView: BoardReturn["startView"]) {
   }
 
   function setSort(next: TaskSort) {
-    updateSort(next);
+    if (filter.kind === "today") updateDaySort(next);
+    else updateListSort(next);
     try {
-      localStorage.setItem(SORT_KEY, next);
+      localStorage.setItem(filter.kind === "today" ? DAY_SORT_KEY : SORT_KEY, next);
       unsavedSort.current = undefined;
     } catch { unsavedSort.current = next; }
   }

@@ -29,6 +29,7 @@ export const taskReviewModelSchema = z.object({
   summary: z.string().trim().min(1).max(1000),
   proposals: z.array(z.discriminatedUnion("kind", [
     ...mutations,
+    z.object({ kind: z.literal("order_day"), reason, items: z.array(z.object({ taskId: id, reason }).strict()).min(2).max(50) }).strict(),
     z.object({ kind: z.literal("flag_duplicate"), taskId: id, otherTaskId: id, reason }).strict(),
   ])).max(20),
 }).strict();

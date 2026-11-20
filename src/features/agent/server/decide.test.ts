@@ -26,6 +26,8 @@ beforeEach(async () => {
   dir = await mkdtemp(path.join(tmpdir(), "tudu-test-proposals-")); repo = createProposalRepository(dir);
   tasks = [structuredClone(task)]; projects = [structuredClone(project)];
   operations = {
+    readDayOrder: vi.fn(async (day) => ({ day, taskIds: [] })),
+    setDayOrder: vi.fn(async (order) => order),
     listTasks: vi.fn(async () => tasks), listProjects: vi.fn(async () => projects),
     createTask: vi.fn(async (id, input) => {
       const created = taskSchema.parse({ ...input, id, done: false, completedAt: null, createdAt: "2026-11-17T12:00:00Z" });

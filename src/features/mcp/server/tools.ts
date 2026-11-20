@@ -1,13 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 import type { CallToolResult } from "@modelcontextprotocol/server";
-import { taskDraftSchema, taskPatchSchema, type Task, type TaskDraft, type TaskPatch, type TaskUpdate } from "@/features/tasks/schema";
+import { taskDraftSchema, taskPatchSchema, type DayOrder, type DayOrderRequest, type Task, type TaskDraft, type TaskPatch, type TaskUpdate } from "@/features/tasks/schema";
 import type { Project, ProjectInput } from "@/features/projects/schema";
-import { addTasksToolSchema, completeTaskToolSchema, createProjectToolSchema, deleteTaskToolSchema, listTasksToolSchema, listProjectsToolSchema, updateTaskToolSchema } from "../schema";
+import { getDayOrderToolSchema, setDayOrderToolSchema, addTasksToolSchema, completeTaskToolSchema, createProjectToolSchema, deleteTaskToolSchema, listTasksToolSchema, listProjectsToolSchema, updateTaskToolSchema } from "../schema";
 import { filterTasks } from "../selectors";
 
 export interface TaskOperations {
   listTasks(): Promise<Task[]>;
+  readDayOrder(day: string): Promise<DayOrder>;
+  setDayOrder(order: DayOrderRequest): Promise<DayOrder>;
   isForToday(task: Task, today: string): boolean;
   listProjects(): Promise<Project[]>;
   createProject(input: ProjectInput): Promise<Project>;
@@ -37,6 +39,13 @@ function withStepIds<T extends { steps?: { id?: string }[] }>(fields: T): T {
 
 export function createTaskTools(operations: TaskOperations) {
   return {
+    get_day_order: (raw: unknown) => result("get_day_order", async () => {
+      const { day } = getDayOrderToolSchema.parse(raw);
+      return { order: await operations.readDayOrder(day) };
+    }),
+    set_day_order: (raw: unknown) => result("set_day_order", async () => ({
+      order: await operations.setDayOrder(setDayOrderToolSchema.parse(raw)),
+    })),
     list_projects: (raw: unknown) => result("list_projects", async () => {
       listProjectsToolSchema.parse(raw);
       return { projects: await operations.listProjects() };

@@ -10,6 +10,8 @@ let tools: ReturnType<typeof createTaskTools>;
 beforeEach(() => {
   operations = {
     listTasks: vi.fn(async () => [task]),
+    readDayOrder: vi.fn(async (day) => ({ day, taskIds: [task.id] })),
+    setDayOrder: vi.fn(async ({ day, taskIds }) => ({ day, taskIds })),
     isForToday,
     listProjects: vi.fn(async () => []),
     createProject: vi.fn(async () => project),

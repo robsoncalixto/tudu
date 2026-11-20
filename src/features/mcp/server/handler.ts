@@ -1,6 +1,6 @@
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import {
-  addTasksOutputSchema, addTasksToolSchema, completeTaskToolSchema, createProjectOutputSchema, createProjectToolSchema, deleteTaskOutputSchema, deleteTaskToolSchema, listProjectsOutputSchema,
+  dayOrderToolOutputSchema, getDayOrderToolSchema, setDayOrderToolSchema, addTasksOutputSchema, addTasksToolSchema, completeTaskToolSchema, createProjectOutputSchema, createProjectToolSchema, deleteTaskOutputSchema, deleteTaskToolSchema, listProjectsOutputSchema,
   listProjectsToolSchema, listTasksOutputSchema, listTasksToolSchema, taskUpdateOutputSchema, updateTaskToolSchema,
 } from "../schema";
 import { createTaskTools, type TaskOperations } from "./tools";
@@ -48,6 +48,15 @@ export function createTuduMcpHandler(operations: TaskOperations) {
       inputSchema: deleteTaskToolSchema, outputSchema: deleteTaskOutputSchema,
       annotations: { ...local, readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     }, tools.delete_task);
+    server.registerTool("get_day_order", {
+      description: "Read the saved execution order of open tasks for a local day. Use its task IDs to request a reorder.",
+      inputSchema: getDayOrderToolSchema, outputSchema: dayOrderToolOutputSchema, annotations: { ...local, readOnlyHint: true },
+    }, tools.get_day_order);
+    server.registerTool("set_day_order", {
+      description: "Reorder all open tasks in Today for the given YYYY-MM-DD day. Include every current task exactly once. Pass expected as the last read order to prevent overwriting changes.",
+      inputSchema: setDayOrderToolSchema, outputSchema: dayOrderToolOutputSchema,
+      annotations: { ...local, readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    }, tools.set_day_order);
     return server;
   }, { responseMode: "json", maxRequestBodySize: 1_048_576 });
 }

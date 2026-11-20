@@ -9,6 +9,8 @@ import { PRIORITIES, type Priority, type Task } from "../schema";
 import { nextSubtaskVisibility, stepProgress, type SubtaskVisibility } from "../checklist";
 import { repeatDescription } from "../recurrence";
 import { isPlannedForToday } from "../selectors";
+import { TASK_ORDER_DRAG_TYPE } from "../use-day-order";
+import { TaskOrderControls } from "./TaskOrderControls";
 import type { TaskActions } from "./TaskList";
 import { TaskChecklist } from "./TaskChecklist";
 
@@ -22,7 +24,7 @@ interface Props extends TaskActions {
   t: Dictionary;
 }
 
-export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, onPatch, selectedId, onShowPanel, onTag }: Props) {
+export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, order, onPatch, selectedId, onShowPanel, onTag }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.title);
   const selected = selectedId === task.id;
@@ -50,12 +52,25 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
 
   return (
     <li className={`task${task.done ? " is-done" : ""}${fresh ? " is-new" : ""}`} data-priority={task.priority}
-      data-task-id={task.id} data-inspected={selected || undefined} tabIndex={-1} aria-label={task.title}>
+      data-task-id={task.id} data-inspected={selected || undefined} tabIndex={-1} aria-label={task.title}
+      onDragOver={(event) => {
+        if (order?.ready && order.positions.has(task.id) && event.dataTransfer.types.includes(TASK_ORDER_DRAG_TYPE)) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+        }
+      }}
+      onDrop={(event) => {
+        const target = order?.positions.get(task.id);
+        if (!order?.ready || target === undefined) return;
+        const id = event.dataTransfer.getData(TASK_ORDER_DRAG_TYPE);
+        if (id) { event.preventDefault(); order.move(id, target); }
+      }}>
       <button type="button" className="check" role="checkbox" aria-checked={task.done}
         aria-label={task.done ? t.markOpen : t.markDone} onClick={() => onPatch(task.id, { done: !task.done })}>
         {task.done && <Icon name="check" size={14} />}
       </button>
       <div className="task-body">
+        {order && <TaskOrderControls id={task.id} t={t} order={order} />}
         {editing ? (
           <input className="form-control task-edit" value={draft} autoFocus maxLength={300} aria-label={t.editTitle}
             onChange={(event) => setDraft(event.target.value)} onBlur={commit}

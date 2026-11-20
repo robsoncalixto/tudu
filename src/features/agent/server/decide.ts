@@ -1,10 +1,12 @@
-import { taskInputSchema, taskSchema, type Task, type TaskPatch } from "@/features/tasks/schema";
+import { taskInputSchema, taskSchema, type DayOrder, type Task, type TaskPatch } from "@/features/tasks/schema";
 import type { Project } from "@/features/projects/schema";
 import { AgentError, proposalActionSchema, type Proposal, type ProposalAction, type ProposalDecision, type ProposalResult } from "../schema";
 import type { ProposalRepository } from "./repository";
 
 export interface ProposalOperations {
   listTasks(): Promise<Task[]>;
+  readDayOrder(day: string): Promise<DayOrder>;
+  setDayOrder(order: DayOrder, expected: Task[]): Promise<DayOrder>;
   listProjects(): Promise<Project[]>;
   createTask(id: string, input: Extract<ProposalAction, { kind: "create_task" }>["task"]): Promise<Task>;
   updateTask(id: string, patch: TaskPatch, expected: Task): Promise<Task | null>;
@@ -18,7 +20,7 @@ function editedAction(proposal: Proposal, edited: ProposalAction): ProposalActio
   if (action.kind !== original.kind
     || action.kind === "update_task" && (original.kind !== "update_task" || action.taskId !== original.taskId
       || !same(Object.keys(action.patch).sort(), Object.keys(original.patch).sort()))
-    || action.kind === "flag_duplicate" && !same(action, original)
+    || (action.kind === "flag_duplicate" || action.kind === "order_day") && !same(action, original)
     || action.kind === "rename_project" && (original.kind !== "rename_project" || action.projectId !== original.projectId)) {
     throw new AgentError("agent_invalid_proposal");
   }
@@ -31,6 +33,9 @@ function matches(proposal: Proposal, action: ProposalAction, result: ProposalRes
       && result.task.estimateHours === null && result.task.realTimeHours === null && result.task.links.length === 0
       && result.task.plannedFor === plannedFor && same(taskInputSchema.parse(result.task), input);
   }
+  if (action.kind === "order_day" && result.kind === "day_order") {
+    return result.order.day === action.day && same(result.order.taskIds, action.items.map(({ taskId }) => taskId));
+  }
   if (action.kind === "flag_duplicate" && result.kind === "task") return same(result.task, proposal.taskBefore);
   if (action.kind === "update_task" && result.kind === "task" && proposal.taskBefore) {
     return same(taskSchema.parse(result.task), taskSchema.parse({ ...proposal.taskBefore, ...action.patch }));
@@ -40,6 +45,9 @@ function matches(proposal: Proposal, action: ProposalAction, result: ProposalRes
 }
 async function execute(proposal: Proposal, action: ProposalAction, operations: ProposalOperations): Promise<ProposalResult> {
   if (action.kind === "create_task") return { kind: "task", task: await operations.createTask(proposal.id, action.task) };
+  if (action.kind === "order_day") return {
+    kind: "day_order", order: await operations.setDayOrder({ day: action.day, taskIds: action.items.map(({ taskId }) => taskId) }, action.baseline),
+  };
   if (action.kind === "create_project") return { kind: "project", project: await operations.createProject(proposal.id, action.name) };
   if (action.kind === "flag_duplicate") {
     const result = await outcome(proposal, action, operations);
@@ -56,6 +64,7 @@ async function execute(proposal: Proposal, action: ProposalAction, operations: P
   throw new AgentError("agent_stale");
 }
 async function outcome(proposal: Proposal, action: ProposalAction, operations: ProposalOperations): Promise<ProposalResult | null> {
+  if (action.kind === "order_day") return { kind: "day_order", order: await operations.readDayOrder(action.day) };
   if (action.kind === "flag_duplicate") {
     const tasks = await operations.listTasks();
     const task = tasks.find((candidate) => candidate.id === action.taskId && !candidate.done);

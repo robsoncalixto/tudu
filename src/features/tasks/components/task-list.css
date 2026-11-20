@@ -370,3 +370,8 @@
 @container (max-width: 490px) {
   .subtask-form .form-control { flex-basis: 100%; }
 }
+
+.task-order-control { display: flex; align-items: center; gap: var(--s-xs); flex-wrap: wrap; }
+.task-order-rank { font-variant-numeric: tabular-nums; min-width: 2rem; justify-content: center; }
+.task-order-rank[draggable="true"] { cursor: grab; }
+.task-order-up svg { transform: rotate(180deg); }

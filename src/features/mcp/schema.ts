@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PRIORITIES, stepSchema, taskDraftSchema, taskPatchSchema, taskSchema, taskUpdateSchema } from "@/features/tasks/schema";
+import { dayOrderSchema, dayOrderRequestSchema, dayOrderResponseSchema, PRIORITIES, stepSchema, taskDraftSchema, taskPatchSchema, taskSchema, taskUpdateSchema } from "@/features/tasks/schema";
 import { projectIdSchema, projectInputSchema, projectSchema } from "@/features/projects/schema";
 
 export const listTasksToolSchema = z.object({
@@ -47,3 +47,7 @@ export const listTasksOutputSchema = z.object({
 export const addTasksOutputSchema = z.object({ tasks: z.array(taskSchema) });
 export const taskUpdateOutputSchema = taskUpdateSchema;
 export const deleteTaskOutputSchema = z.object({ deleted: z.literal(true), id: z.string() });
+
+export const getDayOrderToolSchema = dayOrderSchema.pick({ day: true });
+export const setDayOrderToolSchema = dayOrderRequestSchema;
+export const dayOrderToolOutputSchema = dayOrderResponseSchema;

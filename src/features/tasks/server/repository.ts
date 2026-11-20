@@ -1,12 +1,19 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { taskSchema, type Task, type TaskCreationInput, type TaskInput, type TaskPatch, type TaskUpdate } from "../schema";
+import { dayOrderSchema, taskSchema, type DayOrder, type DayOrderRequest, type Task, type TaskCreationInput, type TaskInput, type TaskPatch, type TaskUpdate } from "../schema";
+import { rankDayTasks } from "../day-order";
+import { isForToday } from "../selectors";
 import { nextDueDate, validateRepeat } from "../recurrence";
 import { createJsonStore } from "./json-store";
 import { connectPostgres, createPostgresStore } from "./postgres-store";
 import type { TaskStore } from "./store";
 
 export class TaskChangedError extends Error {}
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+function dayTaskList(tasks: Task[], day: string) {
+  return rankDayTasks(tasks.filter((task) => !task.done && isForToday(task, day)), day);
+}
 
 /** The rules every backend shares: new tasks start open, completion is stamped. */
 export function createRepository(store: TaskStore) {
@@ -14,6 +21,12 @@ export function createRepository(store: TaskStore) {
     return store.modify(id, (current) => {
       if (expected && JSON.stringify(taskSchema.parse(current)) !== JSON.stringify(taskSchema.parse(expected))) throw new TaskChangedError();
       const task: Task = { ...current, ...patch };
+      if (task.plannedFor !== current.plannedFor || task.due !== current.due || task.done !== current.done) {
+        task.planChangedAt = new Date().toISOString();
+        const moved = task.plannedFor !== current.plannedFor;
+        task.dayRanks = Object.fromEntries(Object.entries(current.dayRanks).filter(([day]) =>
+          !task.done && isForToday(task, day) && (!moved || (day !== current.plannedFor && day !== task.plannedFor))));
+      }
       validateRepeat(task.due, task.repeat);
       const completing = !current.done && task.done;
       if (task.done !== current.done) task.completedAt = task.done ? new Date().toISOString() : null;
@@ -22,7 +35,7 @@ export function createRepository(store: TaskStore) {
       if (completing && task.repeat && task.due && !task.nextOccurrenceId) {
         nextTask = taskSchema.parse({
           ...task, id: randomUUID(), due: nextDueDate(task.due, task.repeat),
-          done: false, completedAt: null, createdAt: task.completedAt, plannedFor: null,
+          done: false, completedAt: null, createdAt: task.completedAt, plannedFor: null, dayRanks: {}, planChangedAt: null,
           realTimeHours: null,
           steps: task.steps.map((step) => ({ ...step, done: false })), nextOccurrenceId: null,
         });
@@ -34,6 +47,26 @@ export function createRepository(store: TaskStore) {
   return {
     listTasks(): Promise<Task[]> {
       return store.list();
+    },
+
+    async readDayOrder(day: string): Promise<DayOrder> {
+      return dayOrderSchema.parse({ day, taskIds: dayTaskList(await store.list(), day).map((task) => task.id) });
+    },
+
+    async setDayOrder({ day, taskIds, expected }: DayOrderRequest, expectedTasks?: Task[]): Promise<DayOrder> {
+      const order = dayOrderSchema.parse({ day, taskIds });
+      await store.changeOrder((snapshot) => {
+        const current = dayTaskList(snapshot, day);
+        const ids = current.map((task) => task.id);
+        const rank = new Map(order.taskIds.map((id, index) => [id, index]));
+        if (ids.length !== rank.size || ids.some((id) => !rank.has(id)) ||
+          (expected && !same(ids, expected)) ||
+          (expectedTasks && !same(current.map((task) => taskSchema.parse(task)), expectedTasks.map((task) => taskSchema.parse(task))))) {
+          throw new TaskChangedError();
+        }
+        return current.map((task) => ({ ...task, dayRanks: { ...task.dayRanks, [day]: rank.get(task.id)! } }));
+      });
+      return order;
     },
 
     async addTasks(inputs: TaskCreationInput[]): Promise<Task[]> {
@@ -89,4 +122,4 @@ function defaultStore(): TaskStore {
 
 const repository = createRepository(defaultStore());
 
-export const { listTasks, addTasks, addApprovedTask, updateTask, updateTaskWithNext, updateTaskIfUnchanged, deleteTask, clearTaskProject } = repository;
+export const { listTasks, readDayOrder, setDayOrder, addTasks, addApprovedTask, updateTask, updateTaskWithNext, updateTaskIfUnchanged, deleteTask, clearTaskProject } = repository;
