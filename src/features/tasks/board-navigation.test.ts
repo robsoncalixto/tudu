@@ -26,7 +26,7 @@ describe("sidebar current page", () => {
 });
 
 const previous: BoardReturn = {
-  startView: "all", filter: { kind: "today" }, query: "draft", sort: "priority", text: "Follow up",
+  startView: "all", filter: { kind: "today" }, query: "draft", listSort: "priority", daySort: "newest", text: "Follow up",
 };
 
 describe("returning to the board", () => {
@@ -41,6 +41,19 @@ describe("returning to the board", () => {
   it("uses a newly saved initial view and preserves the unfinished task", () => {
     expect(restoreBoardReturn(JSON.stringify({ ...previous, filter: { kind: "tag", tag: "work" } }), "today"))
       .toEqual({ ...previous, startView: "today", filter: { kind: "today" }, query: "" });
+  });
+
+  it("restores a legacy session sort to its original view when the initial view changes", () => {
+    const { listSort, daySort, ...view } = previous;
+    expect(restoreBoardReturn(JSON.stringify({ ...view, sort: daySort }), "today"))
+      .toEqual({ ...view, startView: "today", filter: { kind: "today" }, query: "", daySort });
+    expect(restoreBoardReturn(JSON.stringify({ ...view, filter: { kind: "tag", tag: "work" }, sort: listSort }), "today"))
+      .toEqual({ ...view, startView: "today", filter: { kind: "today" }, query: "", listSort });
+  });
+
+  it("discards an invalid list sort without losing the Today sort or draft", () => {
+    const { listSort: _listSort, ...view } = previous;
+    expect(restoreBoardReturn(JSON.stringify({ ...view, listSort: "manual" }), "all")).toEqual(view);
   });
 
   it.each([null, "{", "[]",

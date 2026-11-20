@@ -40,15 +40,22 @@ const boardReturnSchema = z.object({
   startView: settingsSchema.shape.startView.unwrap(),
   filter: filterSchema,
   query: z.string(),
+  listSort: taskSortSchema.exclude(["manual"]).optional().catch(undefined),
+  daySort: taskSortSchema.optional().catch(undefined),
   sort: taskSortSchema.optional().catch(undefined),
   text: z.string(),
 });
-export type BoardReturn = z.infer<typeof boardReturnSchema>;
+export type BoardReturn = Omit<z.infer<typeof boardReturnSchema>, "sort">;
 
 export function restoreBoardReturn(serialized: string | null, startView: BoardReturn["startView"]): BoardReturn | null {
   if (!serialized) return null;
   try {
-    const previous = boardReturnSchema.parse(JSON.parse(serialized));
+    const { sort, ...previous } = boardReturnSchema.parse(JSON.parse(serialized));
+    // Older sessions kept one unsaved sort alongside their active filter.
+    if (sort) {
+      if (previous.filter.kind === "today") previous.daySort ??= sort;
+      else if (sort !== "manual") previous.listSort ??= sort;
+    }
     if (previous.startView === startView) return previous;
     return { ...previous, startView, filter: { kind: startView }, query: "" };
   } catch {
