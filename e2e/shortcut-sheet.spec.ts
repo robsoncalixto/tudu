@@ -36,7 +36,11 @@ for (const l of [
     const sheet = page.getByRole("dialog", { name: l.title, exact: true });
     const single = sheet.getByRole("checkbox", { name: l.single, exact: true });
     await expect(single).toBeChecked();
+    await expect(sheet.locator(".shortcut-binding .sr-only")).toHaveCount(0);
     await single.uncheck();
+    // A key that no longer works is struck out for the eye and said to be off for a reader.
+    await expect(sheet.locator(".shortcut-binding[data-off] .sr-only").first()).toHaveText(l.locale === "en" ? "(off)" : "(desligado)");
+    await expect(sheet.locator(".shortcut-binding:not([data-off]) .sr-only")).toHaveCount(0);
     await sheet.getByRole("button", { name: l.close, exact: true }).click();
     await expect(sheet).toBeHidden();
     const first = row(page, "First task");
@@ -51,6 +55,9 @@ for (const l of [
     // Keys that are not characters keep working on the focused task.
     await page.keyboard.press("Space");
     await expect.poll(async () => (await page.request.get("/api/tasks").then((response) => response.json())).tasks[0].done).toBe(true);
+    // The notice names a key for Undo only while that key works.
+    await expect(page.getByRole("status").getByRole("button").first().locator("kbd")).toHaveCount(0);
+    await expect(page.getByRole("status").getByRole("button").first()).not.toHaveAttribute("aria-keyshortcuts");
     await sidebar(page).getByRole("button", { name: l.open, exact: true }).click();
     await single.check();
     await page.keyboard.press("Escape");

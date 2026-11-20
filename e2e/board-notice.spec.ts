@@ -1,9 +1,15 @@
 import { doneSection, expect, listTasks, openSection, row, saveSettings, seed, sidebar, test } from "./support";
 
 for (const l of [
-  { locale: "en", done: "Mark as done", open: "Mark as open", completed: "Task completed.", reopened: "Task reopened.", undo: "Undo", dismiss: "Dismiss",
+  { locale: "en", done: "Mark as done", open: "Mark as open", undo: "Undo", dismiss: "Dismiss", retry: "Retry", setDate: "Due date",
+    completed: (title: string) => `Completed “${title}”.`, reopened: (title: string) => `Reopened “${title}”.`,
+    deleted: (title: string) => `Deleted “${title}”.`, restored: (title: string) => `Restored “${title}”.`,
+    due: (title: string, date: string) => `Due date of “${title}”: ${date}.`, later: "Nov 27", friday: "Nov 20",
     doneHeading: "Done", next: "Next task scheduled for Tomorrow.", error: "Something went wrong. Try again." },
-  { locale: "pt-BR", done: "Marcar como concluída", open: "Marcar como aberta", completed: "Tarefa concluída.", reopened: "Tarefa reaberta.", undo: "Desfazer", dismiss: "Dispensar",
+  { locale: "pt-BR", done: "Marcar como concluída", open: "Marcar como aberta", undo: "Desfazer", dismiss: "Dispensar", retry: "Tentar novamente", setDate: "Prazo",
+    completed: (title: string) => `“${title}” concluída.`, reopened: (title: string) => `“${title}” reaberta.`,
+    deleted: (title: string) => `“${title}” excluída.`, restored: (title: string) => `“${title}” restaurada.`,
+    due: (title: string, date: string) => `Prazo de “${title}”: ${date}.`, later: "27 de nov", friday: "20 de nov",
     doneHeading: "Concluídas", next: "Próxima tarefa programada para Amanhã.", error: "Algo deu errado. Tente novamente." },
 ] as const) {
   test(`completing and reopening a task can be undone from the notice in ${l.locale}`, async ({ page, request }) => {
@@ -11,50 +17,151 @@ for (const l of [
     await seed(request, [{ title: "Write report" }, { title: "Other task" }]);
     await page.goto("/");
     const status = page.getByRole("status");
+    const undo = status.getByRole("button", { name: l.undo, exact: true });
     const task = row(openSection(page), "Write report");
     const listTop = (await openSection(page).boundingBox())!.y;
     await task.getByRole("checkbox", { name: l.done, exact: true }).click();
     await expect(task).toHaveCount(0);
-    await expect(status).toHaveText(`${l.completed}${l.undo}`);
+    // The notice names the task, and the button names the key that does the same.
+    await expect(status).toContainText(l.completed("Write report"));
+    await expect(undo).toHaveAttribute("aria-keyshortcuts", "Z");
+    await expect(undo.locator("kbd")).toHaveText("Z");
     // The notice floats, so the list stays where it was.
     expect((await openSection(page).boundingBox())!.y).toBe(listTop);
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(true);
-    await status.getByRole("button", { name: l.undo, exact: true }).click();
+    await undo.click();
     await expect(task).toBeFocused();
-    await expect(status).toHaveText("");
+    // Taking it back is said too, with nothing left to undo.
+    await expect(status).toContainText(l.reopened("Write report"));
+    await expect(undo).toHaveCount(0);
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(false);
 
     await task.getByRole("checkbox", { name: l.done, exact: true }).click();
     await doneSection(page).getByText(l.doneHeading).click();
     await row(doneSection(page), "Write report").getByRole("checkbox", { name: l.open, exact: true }).click();
-    await expect(status).toHaveText(`${l.reopened}${l.undo}`);
+    await expect(status).toContainText(l.reopened("Write report"));
     await page.locator("main").focus();
     await page.keyboard.press("z");
     await expect(row(openSection(page), "Write report")).toHaveCount(0);
-    await expect(status).toHaveText("");
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(true);
   });
 
-  test(`a repeating task keeps Undo beside the next date and a failure replaces the notice in ${l.locale}`, async ({ page, request }) => {
+  test(`Undo takes back one action after another, newest first, in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    await seed(request, [{ title: "First" }, { title: "Second" }, { title: "Third" }]);
+    await page.goto("/");
+    const status = page.getByRole("status");
+    const open = openSection(page);
+    await row(open, "First").focus();
+    await page.keyboard.press("Space");
+    await expect(row(open, "Second")).toBeFocused();
+    await page.keyboard.press("Space");
+    await expect(row(open, "Third")).toBeFocused();
+    await page.keyboard.press("Delete");
+    await expect(status).toContainText(l.deleted("Third"));
+    // With no row left the keyboard stays on the board, where the undo key still works.
+    await expect(composerOrEmptyAction(page)).toBeFocused();
+    await expect.poll(async () => (await listTasks(request)).map((task) => task.done)).toEqual([true, true, false]);
+
+    await page.keyboard.press("z");
+    await expect(row(open, "Third")).toBeFocused();
+    await expect(status).toContainText(`${l.restored("Third")} ${l.completed("Second")}`);
+    await page.keyboard.press("z");
+    await expect(row(open, "Second")).toBeFocused();
+    await expect(status).toContainText(`${l.reopened("Second")} ${l.completed("First")}`);
+    await page.keyboard.press("z");
+    await expect(row(open, "First")).toBeFocused();
+    await expect(status).toContainText(l.reopened("First"));
+    await expect(status.getByRole("button", { name: l.undo, exact: true })).toHaveCount(0);
+    // Nothing more to take back: the key is left alone.
+    await page.keyboard.press("z");
+    await expect.poll(async () => (await listTasks(request)).map((task) => task.done)).toEqual([false, false, false]);
+  });
+
+  test(`a repeating task is completed for good only once Undo is out of reach, in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale });
     const [repeating] = await seed(request, [{ title: "Daily report", due: "2026-11-17", repeat: { frequency: "daily" } }, { title: "Fragile" }]);
     await page.goto("/");
     const status = page.getByRole("status");
-    await row(openSection(page), "Daily report").filter({ hasText: /./ }).first().getByRole("checkbox", { name: l.done, exact: true }).click();
-    await expect(status).toHaveText(`${l.completed} ${l.next}${l.undo}`);
+    const open = openSection(page);
+    await row(open, "Daily report").getByRole("checkbox", { name: l.done, exact: true }).click();
+    await expect(status).toContainText(`${l.completed("Daily report")} ${l.next}`);
+    await expect(row(open, "Daily report")).toHaveCount(0);
+    // Nothing was sent yet, so taking it back leaves no next task behind.
+    expect((await listTasks(request)).map((task) => task.done)).toEqual([false, false]);
     await status.getByRole("button", { name: l.undo, exact: true }).click();
-    await expect.poll(async () => (await listTasks(request)).find((task) => task.id === repeating.id)?.done).toBe(false);
+    await expect(row(open, "Daily report")).toBeFocused();
+    expect(await listTasks(request)).toHaveLength(2);
 
-    await page.route("**/api/tasks/*", (route) => route.request().method() === "PATCH"
+    // Reopening it from the Done list while it still waits also takes the completion back.
+    await row(open, "Daily report").getByRole("checkbox", { name: l.done, exact: true }).click();
+    await doneSection(page).getByText(l.doneHeading).click();
+    await row(doneSection(page), "Daily report").getByRole("checkbox", { name: l.open, exact: true }).click();
+    await expect(status).toContainText(l.reopened("Daily report"));
+    await expect(row(open, "Daily report")).toBeVisible();
+    await status.getByRole("button", { name: l.dismiss, exact: true }).click();
+    expect((await listTasks(request)).map((task) => task.done)).toEqual([false, false]);
+
+    // Once the notice is gone the completion is saved and the next task arrives.
+    await row(open, "Daily report").getByRole("checkbox", { name: l.done, exact: true }).click();
+    await status.getByRole("button", { name: l.dismiss, exact: true }).click();
+    await expect.poll(async () => (await listTasks(request)).map((task) => [task.title, task.due, task.done]))
+      .toEqual([["Daily report", "2026-11-17", true], ["Fragile", null, false], ["Daily report", "2026-11-18", false]]);
+    expect((await listTasks(request)).find((task) => task.id === repeating.id)?.done).toBe(true);
+    await expect(row(open, "Daily report")).toBeVisible();
+  });
+
+  test(`a save that failed says so and can be sent again in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    await seed(request, [{ title: "Fragile" }]);
+    await page.goto("/");
+    const status = page.getByRole("status");
+    let failing = true;
+    await page.route("**/api/tasks/*", (route) => failing && route.request().method() === "PATCH"
       ? route.fulfill({ status: 500, json: { error: "generic" } }) : route.fallback());
     await row(openSection(page), "Fragile").getByRole("checkbox", { name: l.done, exact: true }).click();
-    await expect(status).toHaveText(l.error);
+    await expect(status).toContainText(l.error);
     await expect(status.getByRole("button", { name: l.undo, exact: true })).toHaveCount(0);
     await expect(row(openSection(page), "Fragile")).toBeVisible();
-    await status.getByRole("button", { name: l.dismiss, exact: true }).click();
+    expect((await listTasks(request))[0].done).toBe(false);
+    failing = false;
+    await status.getByRole("button", { name: l.retry, exact: true }).click();
+    await expect(row(openSection(page), "Fragile")).toHaveCount(0);
+    await expect.poll(async () => (await listTasks(request))[0].done).toBe(true);
+    await expect(status).toHaveText("");
+    // A refusal is not worth sending again, so it offers no Retry.
+    await page.route("**/api/tasks/*", (route) => route.request().method() === "PATCH"
+      ? route.fulfill({ status: 404, json: { error: "not_found" } }) : route.fallback());
+    await doneSection(page).getByText(l.doneHeading).click();
+    await row(doneSection(page), "Fragile").getByRole("checkbox", { name: l.open, exact: true }).click();
+    await expect(status.getByRole("button", { name: l.dismiss, exact: true })).toBeVisible();
+    await expect(status.getByRole("button", { name: l.retry, exact: true })).toHaveCount(0);
+  });
+
+  test(`a due date changed in the list is said and taken back as one change in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    await seed(request, [{ title: "Pay rent", due: "2026-11-20" }]);
+    await page.goto("/");
+    const status = page.getByRole("status");
+    const task = row(openSection(page), "Pay rent");
+    const date = task.getByLabel(l.setDate, { exact: true });
+    // Two changes in a row, as when a date is stepped with the arrow keys.
+    await date.fill("2026-11-25");
+    await date.fill("2026-11-27");
+    await expect(status).toContainText(l.due("Pay rent", l.later));
+    await expect.poll(async () => (await listTasks(request))[0].due).toBe("2026-11-27");
+    await status.getByRole("button", { name: l.undo, exact: true }).click();
+    await expect(status).toContainText(l.due("Pay rent", l.friday));
+    await expect(status.getByRole("button", { name: l.undo, exact: true })).toHaveCount(0);
+    await expect.poll(async () => (await listTasks(request))[0].due).toBe("2026-11-20");
+    // Back at the date it had, there is nothing to undo.
+    await date.fill("2026-11-25");
+    await date.fill("2026-11-20");
     await expect(status).toHaveText("");
   });
 }
+
+const composerOrEmptyAction = (page: import("@playwright/test").Page) => page.getByRole("button", { name: /^(Add a task|Adicionar uma tarefa)$/ });
 
 test("a notice leaves on its own, waits while the pointer is on it, and then lets a deletion through", async ({ page, request }) => {
   await seed(request, [{ title: "Short lived" }, { title: "Stays" }]);
@@ -63,10 +170,10 @@ test("a notice leaves on its own, waits while the pointer is on it, and then let
   const task = row(openSection(page), "Short lived");
   await task.focus();
   await page.keyboard.press("Delete");
-  await expect(status).toHaveText("Task deleted.Undo");
+  await expect(status).toContainText("Deleted “Short lived”.");
   await status.hover();
   await page.waitForTimeout(6500);
-  await expect(status).toHaveText("Task deleted.Undo");
+  await expect(status).toContainText("Deleted “Short lived”.");
   expect(await listTasks(request)).toHaveLength(2);
   await page.getByRole("heading", { level: 1 }).hover();
   await expect(status).toHaveText("", { timeout: 9000 });
@@ -74,9 +181,23 @@ test("a notice leaves on its own, waits while the pointer is on it, and then let
   // An error does not leave on its own.
   await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "generic" } }));
   await row(openSection(page), "Stays").getByRole("checkbox").click();
-  await expect(status).toHaveText("Something went wrong. Try again.");
+  await expect(status).toContainText("Something went wrong. Try again.");
   await page.waitForTimeout(6500);
-  await expect(status).toHaveText("Something went wrong. Try again.");
+  await expect(status).toContainText("Something went wrong. Try again.");
+});
+
+test("dismissing the notice hands the keyboard back to where it was", async ({ page, request }) => {
+  await seed(request, [{ title: "First" }, { title: "Second" }]);
+  await page.goto("/");
+  const status = page.getByRole("status");
+  await row(openSection(page), "First").focus();
+  await page.keyboard.press("Space");
+  await expect(row(openSection(page), "Second")).toBeFocused();
+  const dismiss = status.getByRole("button", { name: "Dismiss", exact: true });
+  await dismiss.focus();
+  await page.keyboard.press("Enter");
+  await expect(status).toHaveText("");
+  await expect(row(openSection(page), "Second")).toBeFocused();
 });
 
 test("the notice fits a phone and its controls are easy to touch", async ({ page, request }) => {
@@ -85,7 +206,7 @@ test("the notice fits a phone and its controls are easy to touch", async ({ page
   await page.goto("/");
   await page.getByRole("checkbox", { name: "Mark as done" }).click();
   const status = page.getByRole("status");
-  await expect(status).toContainText("Task completed.");
+  await expect(status).toContainText("Completed “A task with a title long enough");
   for (const name of ["Undo", "Dismiss"]) {
     const box = await status.getByRole("button", { name, exact: true }).boundingBox();
     expect(Math.min(box!.width, box!.height)).toBeGreaterThanOrEqual(44);

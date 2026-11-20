@@ -24,6 +24,15 @@ export function provisionalTask(draft: TaskDraft, priority: Priority, now: Date)
   });
 }
 
+/**
+ * When a task written now joins the list: never before a task already there. The server stamps it on
+ * arrival, so even with two clocks that disagree the row waits where the saved task will be.
+ */
+export function arrivalTime(tasks: readonly Task[], now: Date): Date {
+  const latest = tasks.reduce((time, task) => Math.max(time, Date.parse(task.createdAt), task.planChangedAt ? Date.parse(task.planChangedAt) : 0), 0);
+  return new Date(Math.max(now.getTime(), latest + 1));
+}
+
 /** Nothing can be saved against a provisional task, so its row stays out of reach until the real one replaces it. */
 export function isProvisional(task: Pick<Task, "id">): boolean {
   return task.id.startsWith(PROVISIONAL);

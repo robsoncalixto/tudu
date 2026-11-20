@@ -8,8 +8,8 @@ export const tasksApi = {
   create: (input: TaskDraft | TaskDraft[] | string) =>
     request<unknown>("/api/tasks", { method: "POST", body: typeof input === "string" ? { title: input } : input })
       .then((data) => taskListSchema.parse(data).tasks),
+  // A change or a deletion can wait out its undo window, so either may be sent while the page is closing.
   update: (id: string, patch: TaskPatch) =>
-    request<unknown>(`/api/tasks/${id}`, { method: "PATCH", body: patch }).then((data) => taskUpdateSchema.parse(data)),
-  // A deletion waits out its undo window, so it may be sent while the page is closing.
+    request<unknown>(`/api/tasks/${id}`, { method: "PATCH", body: patch, keepalive: true }).then((data) => taskUpdateSchema.parse(data)),
   remove: (id: string) => request<void>(`/api/tasks/${id}`, { method: "DELETE", keepalive: true }),
 };

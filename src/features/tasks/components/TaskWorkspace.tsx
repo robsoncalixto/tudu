@@ -31,12 +31,14 @@ function useWorkspaceState(settings: Settings) {
   const { filter, query, sort, setFilter, setQuery } = navigation;
   const inspector = useTaskInspector();
   const { selectedId, setSelectedId } = inspector;
-  const fail = useCallback((code: string) => setNotice({ kind: "error", text: errorMessage(t, code) }), [t, setNotice]);
+  const fail = useCallback((code: string, retry?: () => void) => setNotice({
+    kind: "error", text: errorMessage(t, code), ...(retry ? { action: { label: t.retry, run: () => { setNotice(null); retry(); } } } : {}),
+  }), [t, setNotice]);
   const scheduled = useCallback((task: Task) => {
     if (!task.due || !today) return;
     const next = t.nextOccurrence(dueLabel(task.due, today, locale, t, settings.dateFormat));
     // Completing a repeating task keeps its Undo and adds when the next one is due.
-    setNotice((current) => current?.kind === "ok" && current.action && !current.onGone
+    setNotice((current) => current?.kind === "ok" && current.undo && !current.onGone
       ? { ...current, text: `${current.text} ${next}` } : { kind: "ok", text: next });
   }, [today, locale, t, settings.dateFormat, setNotice]);
   const taskData = useTasks(fail, scheduled, (currentIds) => {

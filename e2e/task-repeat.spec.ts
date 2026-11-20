@@ -5,6 +5,9 @@ const languages = [
   { code: "pt-BR", repeat: "Repetir", frequency: "Frequência", from: "Prazo programado", save: "Salvar repetição", remove: "Remover repetição", never: "Nunca", daily: "Diariamente", weekdays: "Dias úteis", weekly: "Semanalmente", monthly: "Mensalmente", day: "Dia do mês", monday: "segunda-feira", tuesday: "terça-feira", friday: "sexta-feira", done: "Marcar como concluída", reopen: "Marcar como aberta", today: "Hoje", date: "Prazo", cancel: "Cancelar", error: "Algo deu errado. Tente novamente.", invalid: "Uma tarefa recorrente precisa de um prazo válido.", next: "Próxima tarefa programada para Amanhã." },
 ];
 
+/** A repeating task is completed for good, and its next one created, once the notice with Undo is gone. */
+const settle = (page: import("@playwright/test").Page) => page.getByRole("status").getByRole("button", { name: /^(Dismiss|Dispensar)$/ }).click();
+
 for (const l of languages) {
   test(`daily completion copies details and resets progress in ${l.code}`, async ({ page, request }) => {
     const [project] = await seedProjects(request, ["Work"]);
@@ -24,6 +27,9 @@ for (const l of languages) {
     // The completion can still be undone, and the notice also says when the next one is due.
     await expect(page.getByRole("status")).toContainText(l.next);
     await expect(taskRows(openSection(page))).toHaveCount(0);
+    // Until then nothing was sent, so Undo has nothing to clean up.
+    expect(await listTasks(request)).toHaveLength(1);
+    await settle(page);
     await expect.poll(async () => (await listTasks(request)).length).toBe(2);
     const stored = await listTasks(request);
     const next = stored.find((item) => item.id !== original.id)!;
@@ -54,6 +60,7 @@ for (const l of languages) {
     await taskPanel(page).getByRole("button", { name: l.save, exact: true }).click();
     await closeTaskPanel(page).click();
     await task.getByRole("checkbox", { name: l.done, exact: true }).click();
+    await settle(page);
     await expect(task.getByLabel(l.date, { exact: true })).toHaveValue("2026-11-20");
     expect((await listTasks(request))[1]).toMatchObject({ due: "2026-11-20", repeat: { frequency: "weekly", days: [1, 5] } });
     await taskDetails(task).click();
@@ -62,6 +69,7 @@ for (const l of languages) {
     await taskPanel(page).getByRole("button", { name: l.save, exact: true }).click();
     await closeTaskPanel(page).click();
     await task.getByRole("checkbox", { name: l.done, exact: true }).click();
+    await settle(page);
     await expect(task.getByLabel(l.date, { exact: true })).toHaveValue("2026-11-23");
     await taskDetails(task).click();
     await taskPanel(page).getByText(`${l.repeat}: ${l.weekdays}`, { exact: true }).click();
@@ -74,6 +82,7 @@ for (const l of languages) {
     await taskPanel(page).getByRole("button", { name: l.save, exact: true }).click();
     await closeTaskPanel(page).click();
     await task.getByRole("checkbox", { name: l.done, exact: true }).click();
+    await settle(page);
     await expect(task.getByLabel(l.date, { exact: true })).toHaveValue("2027-02-28");
     await page.reload();
     await taskDetails(task).click();
@@ -121,11 +130,13 @@ for (const l of languages) {
     });
     const task = row(openSection(page), "Daily");
     await task.getByRole("checkbox", { name: l.done, exact: true }).click();
-    await expect(page.getByRole("status")).toHaveText(l.error);
+    await settle(page);
+    await expect(page.getByRole("status")).toContainText(l.error);
     await expect(task.getByRole("checkbox", { name: l.done, exact: true })).toHaveAttribute("aria-checked", "false");
     expect(await listTasks(request)).toHaveLength(2);
     await page.unroute("**/api/tasks/*");
     await task.getByRole("checkbox", { name: l.done, exact: true }).click();
+    await settle(page);
     await expect(task.getByLabel(l.date, { exact: true })).toHaveValue("2026-11-18");
     await expect(taskRows(openSection(page))).toHaveCount(1);
     expect(await listTasks(request)).toHaveLength(2);

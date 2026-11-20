@@ -12,6 +12,7 @@ export interface ComposerChoice {
   due?: string;
   estimateHours?: number;
   repeat?: RepeatFrequency;
+  partOfDay?: PartOfDay;
   /** `null` drops the day or project that the current view would add. */
   plannedFor?: string | null;
   projectId?: string | null;
@@ -31,6 +32,7 @@ export function composerDefaults(view: QuickAddDefaults, choice: ComposerChoice)
     ...(choice.due ? { due: choice.due } : {}),
     ...(choice.estimateHours === undefined ? {} : { estimateHours: choice.estimateHours }),
     ...(choice.repeat ? { repeat: choice.repeat } : {}),
+    ...(choice.partOfDay ? { partOfDay: choice.partOfDay } : {}),
     ...(plannedFor ? { plannedFor } : {}),
     ...(projectId ? { projectId } : {}),
     ...(view.tag && !choice.withoutViewTag ? { tag: view.tag } : {}),
@@ -61,10 +63,10 @@ export function composerValues(text: string, today: string, defaults: QuickAddDe
   return {
     batch: lines.length > 1,
     priority: typed?.priority ?? defaults.priority ?? null,
-    // Repeating starts from a date, so a task without one is due today.
-    due: typed?.due ?? defaults.due ?? (defaults.repeat && today ? today : null),
+    // Repeating starts from a date and a part of the day belongs to a day, so a task without a date is due today.
+    due: typed?.due ?? defaults.due ?? ((defaults.repeat || defaults.partOfDay) && today ? today : null),
     time: typed?.time ?? null,
-    partOfDay: typed?.partOfDay ?? null,
+    partOfDay: typed?.partOfDay ?? defaults.partOfDay ?? null,
     plannedFor: defaults.plannedFor ?? null,
     projectId: typed?.project ?? defaults.projectId ?? null,
     tags: [...tags.values()].filter(Boolean),
@@ -74,13 +76,14 @@ export function composerValues(text: string, today: string, defaults: QuickAddDe
 }
 
 /**
- * AI capture takes priority, dates, project and tags as defaults but has no field for an estimate
- * or a repeat. Those chips become a change to each task it created; `null` when there is none.
+ * AI capture takes priority, dates, project and tags as defaults but has no field for an estimate,
+ * a repeat or a part of the day. Those chips become a change to each task it created; `null` when there is none.
  */
 export function chipsAfterCapture(defaults: QuickAddDefaults, task: Pick<Task, "due">, today: string): TaskPatch | null {
   const due = task.due ?? today;
   const changes: TaskPatch = {
     ...(defaults.estimateHours == null ? {} : { estimateHours: defaults.estimateHours }),
+    ...(defaults.partOfDay ? { due, partOfDay: defaults.partOfDay } : {}),
     ...(defaults.repeat ? { due, repeat: repeatFrom(defaults.repeat, due) } : {}),
   };
   return Object.keys(changes).length ? changes : null;

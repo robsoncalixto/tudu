@@ -136,7 +136,7 @@ test.describe("Composer", () => {
       await composer(page).fill("Send Ana the draft by tomorrow and book a room");
       await page.getByRole("button", { name: "Create with AI" }).click();
 
-      await expect(page.getByRole("status")).toHaveText("2 tasks added");
+      await expect(page.getByRole("status")).toContainText("2 tasks added");
       expect(await rowTitles(openSection(page))).toEqual(["Send Ana the draft", "Book a room"]);
       const first = row(openSection(page), "Send Ana the draft");
       await expect(first.getByText("Tomorrow")).toBeVisible();
@@ -152,7 +152,7 @@ test.describe("Composer", () => {
       await composer(page).fill("Send Ana the draft by tomorrow and book a room");
       await composer(page).press("Control+Enter");
 
-      await expect(page.getByRole("status")).toHaveText("2 tasks added");
+      await expect(page.getByRole("status")).toContainText("2 tasks added");
       await expect(row(openSection(page), "Book a room")).toBeVisible();
     });
   });
@@ -208,8 +208,8 @@ for (const code of ["EN", "PT"]) {
 }
 
 for (const l of [
-  { code: "en", add: "Add", ai: "Create with AI", help: "Shortcuts and syntax", sheet: "Keyboard shortcuts", details: "New task details", due: "Due date: Tomorrow", priority: "Priority: High", raw: "Fix login #BUG !high tomorrow", title: "Fix login", tomorrow: "tomorrow", today: "today", weekday: "Tuesday", invalid: "Add a title of up to 300 characters, with at most 10 tags of up to 40 characters each. Your text is still here.", error: "Something went wrong. Try again." },
-  { code: "pt-BR", add: "Adicionar", ai: "Criar com IA", help: "Atalhos e sintaxe", sheet: "Atalhos de teclado", details: "Detalhes da nova tarefa", due: "Prazo: Amanhã", priority: "Prioridade: Alta", raw: "Corrigir login #BUG !high amanhã", title: "Corrigir login", tomorrow: "amanhã", today: "hoje", weekday: "terça-feira", invalid: "Adicione um título com até 300 caracteres e no máximo 10 etiquetas com até 40 caracteres cada. Seu texto continua aqui.", error: "Algo deu errado. Tente novamente." },
+  { code: "en", add: "Add", ai: "Create with AI", help: "Shortcuts and syntax", sheet: "Keyboard shortcuts", details: "New task details", due: "Due date: Tomorrow", priority: "Priority: High", raw: "Fix login #BUG !high tomorrow", title: "Fix login", tomorrow: "tomorrow", today: "today", weekday: "Tuesday", needsTitle: "This task needs a title.", longTitle: "The title is over 300 characters.", error: "Something went wrong. Try again." },
+  { code: "pt-BR", add: "Adicionar", ai: "Criar com IA", help: "Atalhos e sintaxe", sheet: "Atalhos de teclado", details: "Detalhes da nova tarefa", due: "Prazo: Amanhã", priority: "Prioridade: Alta", raw: "Corrigir login #BUG !high amanhã", title: "Corrigir login", tomorrow: "amanhã", today: "hoje", weekday: "terça-feira", needsTitle: "Esta tarefa precisa de um título.", longTitle: "O título passa de 300 caracteres.", error: "Algo deu errado. Tente novamente." },
 ]) {
   test(`quick-add parses tags, priority and date without AI in ${l.code}`, async ({ page, request }) => {
     await openApp(page);
@@ -260,12 +260,24 @@ for (const l of [
       saves++;
       return route.fulfill({ status: 500, json: { error: "failed" } });
     });
-    for (const invalid of [`#bug !high ${l.tomorrow}`, "x".repeat(301)]) {
-      await composer(page).fill(invalid);
-      await composer(page).press("Enter");
-      await expect(page.getByRole("status")).toHaveText(l.invalid);
-      await expect(composer(page)).toHaveValue(invalid);
-    }
+    const feedback = composerForm(page).locator("#composer-feedback");
+    const listTop = (await page.locator(".list-toolbar").boundingBox())!.y;
+    // Details alone are no task. That is said once the person tries to save, in one place, and nothing is sent.
+    await composer(page).fill(`#bug !high ${l.tomorrow}`);
+    await expect(feedback).toHaveText("");
+    await composer(page).press("Enter");
+    await expect(feedback.getByRole("alert")).toHaveText(l.needsTitle);
+    await expect(page.getByRole("status")).toHaveText("");
+    await expect(composer(page)).toHaveValue(`#bug !high ${l.tomorrow}`);
+    // The line kept free for the message holds it, so the list did not move.
+    expect((await page.locator(".list-toolbar").boundingBox())!.y).toBe(listTop);
+    // What more typing cannot fix is said while writing, and Add waits for it to be fixed.
+    await composer(page).fill("x".repeat(301));
+    await expect(feedback.getByRole("alert")).toHaveText(l.longTitle);
+    await expect(page.getByRole("button", { name: l.add, exact: true })).toBeDisabled();
+    await composer(page).press("Enter");
+    await expect(composer(page)).toHaveValue("x".repeat(301));
+    await expect(page.getByRole("status")).toHaveText("");
     expect(saves).toBe(0);
     expect(await listTasks(request)).toEqual([]);
     await composer(page).fill(l.raw);
@@ -329,10 +341,10 @@ for (const l of [
 for (const l of [
   { locale: "en", priority: "Priority", low: "Low", medium: "Medium", due: "Due date", dueField: "New task due date", tags: "Tags", tag: "New task tag",
     project: "Project", estimate: "Estimate", tomorrow: "Tomorrow", sidebarProject: /^Project: Other,/, error: "Something went wrong. Try again.", ai: "Create with AI", minute: "30 minutes",
-    repeat: "Repeat", weekly: "Weekly" },
+    repeat: "Repeat", weekly: "Weekly", view: "Today", added: "Added “Captured action”." },
   { locale: "pt-BR", priority: "Prioridade", low: "Baixa", medium: "Média", due: "Prazo", dueField: "Prazo da nova tarefa", tags: "Etiquetas", tag: "Etiqueta da nova tarefa",
     project: "Projeto", estimate: "Estimativa", tomorrow: "Amanhã", sidebarProject: /^Projeto: Other,/, error: "Algo deu errado. Tente novamente.", ai: "Criar com IA", minute: "30 minutos",
-    repeat: "Repetir", weekly: "Semanalmente" },
+    repeat: "Repetir", weekly: "Semanalmente", view: "Hoje", added: "“Captured action” adicionada." },
 ] as const) {
   test(`combines typed tokens and chips with view defaults in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale, defaultPriority: "high" });
@@ -383,21 +395,37 @@ for (const l of [
   test(`passes chip choices and the Today plan to AI capture in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale, startView: "today" });
     const defaults = { plannedFor: TODAY, priority: "low", due: TOMORROW, tags: ["team"] };
+    let answer = () => {};
+    const held = new Promise<void>((resolve) => { answer = resolve; });
     await page.route("**/api/ai/capture", async (route) => {
       if (route.request().method() === "GET") return route.fulfill({ json: { enabled: true } });
       expect(route.request().postDataJSON()).toEqual({ text: "Capture this note", today: TODAY, defaults });
+      await held;
       const response = await request.post("/api/tasks", { data: [{ title: "Captured action", ...defaults }] });
       await route.fulfill({ response });
     });
+    await seed(request, [{ title: "Already planned", plannedFor: TODAY }]);
     await page.goto("/");
     await composer(page).fill("Capture this note");
     await pickChip(page, l.priority, l.low);
     await pickChip(page, l.due, l.tomorrow);
     await pickTag(page, l.tags, l.tag, "team");
     await page.getByRole("button", { name: l.ai, exact: true }).click();
+    // While AI works the text cannot change, but the field keeps the keyboard: nothing typed runs as a shortcut.
+    await expect(composer(page)).toBeFocused();
+    await expect(composer(page)).toHaveAttribute("aria-busy", "true");
+    await page.keyboard.type("jd");
+    await expect(composer(page)).toHaveValue("Capture this note");
+    await expect(row(openSection(page), "Already planned")).toBeVisible();
+    answer();
     await expect(row(openSection(page), "Captured action")).toBeVisible();
-    expect(await listTasks(request)).toMatchObject([{ title: "Captured action", ...defaults }]);
+    // The view stays where the note was written.
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(l.view);
+    await expect(page.getByRole("status")).toContainText(l.added);
+    expect((await listTasks(request)).filter((task) => task.title === "Captured action")).toMatchObject([{ title: "Captured action", ...defaults }]);
+    expect((await listTasks(request)).every((task) => !task.done)).toBe(true);
     await expect(composer(page)).toHaveValue("");
+    await expect(composer(page)).toBeFocused();
   });
 
   test(`applies the estimate and repeat chips to what AI capture created in ${l.locale}`, async ({ page, request }) => {
@@ -428,7 +456,7 @@ for (const l of [
     await pickChip(page, l.estimate, l.minute);
     await pickChip(page, l.repeat, l.weekly);
     await page.getByRole("button", { name: l.ai, exact: true }).click();
-    await expect(page.getByRole("status")).toHaveText(l.error);
+    await expect(page.getByRole("status")).toContainText(l.error);
     expect((await saved()).slice(2)).toEqual([
       { title: "Dated action", due: "2026-11-20", repeat: null, estimateHours: null },
       { title: "Undated action", due: null, repeat: null, estimateHours: null },

@@ -21,7 +21,11 @@ interface Props {
   value: string | null;
   /** Extra explanation for the value, shown as a tooltip and read after the name. */
   note?: string;
+  /** Keeps the label beside the value, for a chip whose value another chip can show too. */
+  labelled?: boolean;
   options: ChipOption[];
+  /** A second set of choices under the first, for a value that goes with it. */
+  more?: { label: string; options: ChipOption[] };
   clearLabel: string;
   onClear: () => void;
   disabled?: boolean;
@@ -29,7 +33,7 @@ interface Props {
 }
 
 /** A chip that names one field of the task being written and opens a menu to set it. */
-export function ChipMenu({ icon, label, value, note, options, clearLabel, onClear, disabled, children }: Props) {
+export function ChipMenu({ icon, label, value, note, labelled, options, more, clearLabel, onClear, disabled, children }: Props) {
   const id = useId();
   const menu = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -44,7 +48,8 @@ export function ChipMenu({ icon, label, value, note, options, clearLabel, onClea
     if (!open || !popup || !anchor || typeof popup.showPopover !== "function") return;
     if (!popup.matches(":popover-open")) popup.showPopover();
     placeBelow(popup, anchor);
-    (popup.querySelector<HTMLElement>("[aria-checked='true']") ?? popup.querySelector<HTMLElement>("button"))?.focus({ preventScroll: true });
+    // An empty chip starts at the top of its choices; a set one, at the choice it holds.
+    ((value !== null && popup.querySelector<HTMLElement>("[aria-checked='true']")) || popup.querySelector<HTMLElement>("button"))?.focus({ preventScroll: true });
   }, [open]);
 
   function close() {
@@ -83,19 +88,22 @@ export function ChipMenu({ icon, label, value, note, options, clearLabel, onClea
         if (open || dismissed) close();
         else setOpen(true);
       }}>
-      <Icon name={icon} size={15} /><span className="chip-text">{value ?? label}</span>
+      <Icon name={icon} size={15} /><span className="chip-text">{value === null ? label : labelled ? `${label}: ${value}` : value}</span>
     </button>
     {value !== null && <button type="button" className="chip-clear" aria-label={clearLabel} title={clearLabel}
       disabled={disabled} onClick={onClear}><Icon name="x" size={13} /></button>}
     <div ref={menu} id={id} popover="auto" role="menu" aria-label={label} className="chip-menu"
       onBeforeToggle={(event) => { if (event.newState === "closed") setOpen(false); }} onKeyDown={onKeyDown}>
       {/* Always rendered: removing the focused option while the menu closes would lose the way back to the chip. */}
-      {options.map((option) => <button key={option.key} type="button" tabIndex={-1} data-hotkey={option.hotkey}
-        role={option.checked === undefined ? "menuitem" : "menuitemradio"} aria-checked={option.checked} aria-keyshortcuts={option.hotkey}
-        onClick={() => { close(); option.onSelect(); }}>
-        <span>{option.label}</span>{option.hotkey && <kbd aria-hidden="true">{option.hotkey}</kbd>}
-        {option.checked && <Icon name="check" size={15} />}
-      </button>)}
+      {[{ label, options }, ...(more ? [more] : [])].map((group, position) => <div key={group.label} role="group" aria-label={group.label}>
+        {position > 0 && <p aria-hidden="true">{group.label}</p>}
+        {group.options.map((option) => <button key={option.key} type="button" tabIndex={-1} data-hotkey={option.hotkey}
+          role={option.checked === undefined ? "menuitem" : "menuitemradio"} aria-checked={option.checked} aria-keyshortcuts={option.hotkey}
+          onClick={() => { close(); option.onSelect(); }}>
+          <span>{option.label}</span>{option.hotkey && <kbd aria-hidden="true">{option.hotkey}</kbd>}
+          {option.checked && <Icon name="check" size={15} />}
+        </button>)}
+      </div>)}
     </div>
     {children}
   </span>;

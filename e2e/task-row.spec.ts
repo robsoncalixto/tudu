@@ -140,7 +140,7 @@ test.describe("TaskRow", () => {
     await expect.poll(async () => (await listTasks(request))[0].priority).toBe("high");
     await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
     await priority.selectOption("medium");
-    await expect(page.getByRole("status")).toHaveText("Something went wrong. Try again.");
+    await expect(page.getByRole("status")).toContainText("Something went wrong. Try again.");
     await expect(priority).toHaveValue("high");
     expect((await listTasks(request))[0].priority).toBe("high");
     await page.unroute("**/api/tasks/*");
@@ -192,7 +192,7 @@ test.describe("TaskRow", () => {
     await expect(row(page, "Keep me")).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     // The task is removed once the chance to undo is gone.
-    await expect(page.getByRole("status")).toHaveText("Task deleted.Undo");
+    await expect(page.getByRole("status")).toContainText("Deleted “Remove me”.");
     await page.getByRole("status").getByRole("button", { name: "Dismiss", exact: true }).click();
     await expect.poll(async () => (await listTasks(request)).map((task) => task.title)).toEqual(["Keep me"]);
   });
@@ -204,22 +204,22 @@ test.describe("TaskRow", () => {
 
     await row(page, "Unlucky").getByRole("checkbox").click();
 
-    await expect(page.getByRole("status")).toHaveText("Something went wrong. Try again.");
+    await expect(page.getByRole("status")).toContainText("Something went wrong. Try again.");
     await expect(row(openSection(page), "Unlucky").getByRole("checkbox", { name: "Mark as done" })).toBeVisible();
 
     await taskDetails(row(page, "Unlucky")).click();
     await taskPanel(page).getByRole("button", { name: "Delete task" }).click();
     await expect(row(openSection(page), "Unlucky")).toHaveCount(0);
     await page.getByRole("status").getByRole("button", { name: "Dismiss", exact: true }).click();
-    await expect(page.getByRole("status")).toHaveText("Something went wrong. Try again.");
+    await expect(page.getByRole("status")).toContainText("Something went wrong. Try again.");
     await expect(row(openSection(page), "Unlucky")).toBeVisible();
     expect((await listTasks(request))[0]).toMatchObject({ title: "Unlucky", done: false });
   });
 });
 
 for (const language of [
-  { code: "en", deleted: "Task deleted.", undo: "Undo", dismiss: "Dismiss", remove: "Delete task", error: "Something went wrong. Try again." },
-  { code: "pt-BR", deleted: "Tarefa excluída.", undo: "Desfazer", dismiss: "Dispensar", remove: "Excluir tarefa", error: "Algo deu errado. Tente novamente." },
+  { code: "en", deleted: "Deleted “First task”.", restored: "Restored “First task”.", undo: "Undo", dismiss: "Dismiss", remove: "Delete task", error: "Something went wrong. Try again." },
+  { code: "pt-BR", deleted: "“First task” excluída.", restored: "“First task” restaurada.", undo: "Desfazer", dismiss: "Dispensar", remove: "Excluir tarefa", error: "Algo deu errado. Tente novamente." },
 ]) {
   test(`deletion can be undone and recovers after failure in ${language.code}`, async ({ page, request }) => {
     await seed(request, [{ title: "First task" }, { title: "Second task" }]);
@@ -234,18 +234,18 @@ for (const language of [
     await expect(first).toHaveCount(0);
     await expect(taskPanel(page)).toBeHidden();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(status).toHaveText(`${language.deleted}${language.undo}`);
+    await expect(status).toContainText(language.deleted);
     await expect(row(page, "Second task")).toBeFocused();
     expect(await listTasks(request)).toHaveLength(2);
     await status.getByRole("button", { name: language.undo, exact: true }).click();
     await expect(first).toBeFocused();
-    await expect(status).toHaveText("");
+    await expect(status).toContainText(language.restored);
     expect(await listTasks(request)).toHaveLength(2);
 
     await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
     await remove();
     await status.getByRole("button", { name: language.dismiss, exact: true }).click();
-    await expect(status).toHaveText(language.error);
+    await expect(status).toContainText(language.error);
     await expect(first).toBeVisible();
     expect(await listTasks(request)).toHaveLength(2);
     await page.unroute("**/api/tasks/*");
@@ -312,7 +312,7 @@ for (const language of [
     const todayButton = sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) });
     await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
     await row(page, "Retry pick").getByRole("button", { name: language.add }).click();
-    await expect(page.getByRole("status")).toHaveText(language.error);
+    await expect(page.getByRole("status")).toContainText(language.error);
     await expect(row(page, "Retry pick").getByRole("button", { name: language.add })).toBeVisible();
     await expect(todayButton).toHaveText(`${language.today} 0`);
     expect((await listTasks(request))[0].plannedFor).toBeNull();
@@ -428,20 +428,25 @@ test("deletes after a pending row edit and keeps that edit if deletion fails", a
   } finally {
     release();
   }
-  await expect(status).toHaveText("Something went wrong. Try again.");
+  await expect(status).toContainText("Something went wrong. Try again.");
   await expect(editing.getByRole("combobox", { name: "Priority" })).toHaveValue("high");
   expect((await listTasks(request))[0]).toMatchObject({ id: task.id, priority: "high" });
   expect(methods).toEqual(["PATCH", "DELETE"]);
 });
 
-test("deleting the only task from the keyboard hands focus to the task field", async ({ page, request }) => {
+test("deleting the only task from the keyboard keeps focus on the board, a key away from Undo", async ({ page, request }) => {
   await seed(request, [{ title: "Only task" }]);
   await openApp(page);
   await taskDetails(row(page, "Only task")).press("Enter");
   await taskPanel(page).getByRole("button", { name: "Delete task", exact: true }).press("Enter");
   await expect(taskPanel(page)).toBeHidden();
-  await expect(composer(page)).toBeFocused();
+  // Not in the task field, where the undo key would be typed as a letter.
+  await expect(page.getByRole("button", { name: "Add a task", exact: true })).toBeFocused();
   expect(await listTasks(request)).toHaveLength(1);
+  await page.keyboard.press("z");
+  await expect(row(page, "Only task")).toBeFocused();
+  await page.keyboard.press("Delete");
+  await expect(page.getByRole("button", { name: "Add a task", exact: true })).toBeFocused();
   // Leaving the board ends the undo window as well.
   await sidebar(page).getByRole("link", { name: "Work log" }).click();
   await expect.poll(async () => await listTasks(request)).toEqual([]);
@@ -462,7 +467,7 @@ for (const action of ["complete", "delete"]) {
       await taskDetails(task).press("Enter");
       await taskPanel(page).getByRole("button", { name: "Delete task", exact: true }).press("Enter");
     }
-    await expect(composer(page)).toBeFocused();
+    await expect(page.getByRole("button", { name: "Add a task", exact: true })).toBeFocused();
     if (action === "delete") {
       await page.getByRole("status").getByRole("button", { name: "Dismiss", exact: true }).click();
       await expect.poll(async () => (await listTasks(request)).length).toBe(1);
@@ -501,7 +506,7 @@ test("renaming the final search match keeps keyboard focus on the board", async 
   const edit = page.getByRole("combobox", { name: "Edit title" });
   await edit.fill("Renamed task");
   await edit.press("Enter");
-  await expect(composer(page)).toBeFocused();
+  await expect(openSection(page).getByRole("button", { name: "Clear search", exact: true })).toBeFocused();
   await expect(taskRows(openSection(page))).toHaveCount(0);
   await expect.poll(async () => (await listTasks(request)).find((task) => task.id === first.id)?.title).toBe("Renamed task");
 });
@@ -512,6 +517,8 @@ test("double-clicking a row opens its details and controls keep their own clicks
   const task = row(page, "Open me");
   await task.getByText("Some notes").dblclick();
   await expect(taskPanel(page).getByRole("heading", { name: "Open me", exact: true })).toBeVisible();
+  // The double click opens the details and selects no text on its way.
+  expect(await page.evaluate(() => getSelection()?.toString())).toBe("");
   await page.keyboard.press("Escape");
   await expect(taskPanel(page)).toBeHidden();
   await task.getByRole("button", { name: "Add to today" }).dblclick();

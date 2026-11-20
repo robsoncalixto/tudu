@@ -1,16 +1,13 @@
 "use client";
 
-import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { quickAddApi } from "@/features/quick-add/api";
 import type { QuickSuggestion, SuggestionSources } from "@/features/quick-add/schema";
 import { shortcutsApi } from "@/features/shortcuts/api";
 import type { ShortcutId } from "@/features/shortcuts/schema";
 import type { Dictionary, Locale } from "@/i18n";
-import { dayChoiceLabel } from "@/lib/dates";
-import type { Priority } from "../schema";
-import { Icon, type IconName } from "@/lib/Icon";
-import { placeBelow } from "@/lib/popover";
 import { replaceFieldText } from "@/lib/text-field";
+import { CommandSuggestions } from "./CommandSuggestions";
 import "./command-field.css";
 
 interface Props {
@@ -24,28 +21,31 @@ interface Props {
   sources: SuggestionSources;
   /** Tags the draft already carries, which are not offered again. */
   usedTags?: readonly string[];
+  /** The saved title when the field edits one: its words stay text and are not marked. */
+  editing?: string;
   t: Dictionary;
   locale: Locale;
   disabled?: boolean;
+  /** Something is being done with the text: it cannot change, but the field keeps the keyboard. */
+  busy?: boolean;
   describedBy?: string;
   inputRef?: RefObject<HTMLTextAreaElement | null>;
   /** Keys the suggestions did not use, with the shortcuts they are bound to. */
   onKey?: (event: KeyboardEvent<HTMLTextAreaElement>, shortcuts: ShortcutId[]) => void;
+  /** Where the caret is, or null while the field is not in use or text is selected. */
+  onCaret?: (caret: number | null) => void;
   onBlur?: () => void;
 }
 
-const ICONS: Record<QuickSuggestion["kind"], IconName> = { tag: "tag", create: "plus", project: "folder", due: "calendar", priority: "flag" };
-
 /** A text field that highlights the quick-add tokens it recognizes and completes the one being typed. */
-export function CommandField({ id, value, onChange, label, placeholder, hint, sources, usedTags, t, locale, disabled, describedBy, inputRef, onKey, onBlur }: Props) {
+export function CommandField({ id, value, onChange, label, placeholder, hint, sources, usedTags, editing, t, locale, disabled, busy, describedBy, inputRef, onKey, onCaret, onBlur }: Props) {
   const listId = useId();
   const ownRef = useRef<HTMLTextAreaElement>(null);
   const field = inputRef ?? ownRef;
-  const list = useRef<HTMLUListElement>(null);
   const [caret, setCaret] = useState<number | null>(null);
   const [picked, setPicked] = useState({ at: "", index: 0, moved: false });
   const [dismissed, setDismissed] = useState("");
-  const completion = caret === null || disabled ? null : quickAddApi.completion(value, caret);
+  const completion = caret === null || disabled || busy ? null : quickAddApi.completion(value, caret);
   const at = completion ? `${completion.start}:${completion.trigger}${completion.query}` : "";
   const word = completion ? value.slice(completion.start, completion.end) : "";
   const found = completion && dismissed !== `${completion.start}:${completion.trigger}` ? quickAddApi.suggestions(completion, sources, usedTags) : [];
@@ -53,10 +53,16 @@ export function CommandField({ id, value, onChange, label, placeholder, hint, so
   const items = found.length === 1 && quickAddApi.isTyped(word, found[0], sources) ? [] : found;
   const index = picked.at === at ? Math.min(picked.index, items.length - 1) : 0;
   const open = items.length > 0;
+  const typing = completion !== null;
+  // Escape hides the suggestions for the word being typed only: the next word is offered them again.
+  useEffect(() => { if (!typing) setDismissed(""); }, [typing]);
+
+  useEffect(() => onCaret?.(caret), [caret, onCaret]);
 
   const marks = [
-    ...quickAddApi.tokens(value, sources.today, sources.projects).map((token) => ({ ...token, known: true })),
-    ...quickAddApi.warnings(value, sources.today, sources.projects).map((warning) => ({ ...warning, known: false })),
+    ...quickAddApi.tokens(value, sources.today, sources.projects, editing).map((token) => ({ ...token, known: true })),
+    // The word being typed is not underlined yet: its next character may settle it.
+    ...quickAddApi.warnings(value, sources.today, sources.projects, { caret, editing }).map((warning) => ({ ...warning, known: false })),
   ].sort((a, b) => a.start - b.start);
   const mirror: ReactNode[] = [];
   let cursor = 0;
@@ -64,23 +70,6 @@ export function CommandField({ id, value, onChange, label, placeholder, hint, so
     mirror.push(value.slice(cursor, mark.start), <span key={mark.start} className={mark.known ? "command-token" : "command-unknown"}>{value.slice(mark.start, mark.end)}</span>);
     cursor = mark.end;
   }
-
-  // The list sits in the top layer under the field, so a list or panel that clips its content cannot cut it.
-  useLayoutEffect(() => {
-    const popup = list.current;
-    const input = field.current;
-    if (!popup || !input || typeof popup.showPopover !== "function") return;
-    if (!open) { if (popup.matches(":popover-open")) popup.hidePopover(); return; }
-    const place = () => placeBelow(popup, input.getBoundingClientRect());
-    if (!popup.matches(":popover-open")) popup.showPopover();
-    place();
-    window.addEventListener("scroll", place, true);
-    window.addEventListener("resize", place);
-    return () => {
-      window.removeEventListener("scroll", place, true);
-      window.removeEventListener("resize", place);
-    };
-  }, [open, value, items.length, field]);
 
   function accept(suggestion: QuickSuggestion) {
     const input = field.current;
@@ -92,21 +81,11 @@ export function CommandField({ id, value, onChange, label, placeholder, hint, so
     setCaret(input.selectionStart);
   }
 
-  /** What the suggestion means, and beside it what will be written when that says more. */
-  function describe(suggestion: QuickSuggestion): [string, string?] {
-    if (suggestion.kind === "tag") return [suggestion.insert];
-    if (suggestion.kind === "create") return [suggestion.insert, t.newTag];
-    if (suggestion.kind === "priority") return [t[suggestion.value as Priority], suggestion.insert];
-    if (suggestion.kind === "project") return [suggestion.label, suggestion.insert];
-    const day = dayChoiceLabel(suggestion.value, sources.today, locale, t);
-    return [suggestion.time ? `${day} · ${suggestion.time}` : day, suggestion.insert];
-  }
-
   return <div className="command-field">
     <div className="command-mirror" aria-hidden="true">
       {value ? <>{mirror}{value.slice(cursor)}{"​"}</> : <span className="command-placeholder">{placeholder}</span>}
     </div>
-    <textarea id={id} ref={field} value={value} rows={1} disabled={disabled} spellCheck placeholder={hint}
+    <textarea id={id} ref={field} value={value} rows={1} disabled={disabled} readOnly={busy} aria-busy={busy || undefined} spellCheck placeholder={hint}
       role="combobox" aria-label={label} aria-describedby={describedBy} aria-autocomplete="list" aria-haspopup="listbox"
       aria-expanded={open} aria-controls={listId} aria-activedescendant={open ? `${listId}-${index}` : undefined}
       onChange={(event) => { onChange(event.target.value); setCaret(event.target.selectionStart); }}
@@ -134,15 +113,6 @@ export function CommandField({ id, value, onChange, label, placeholder, hint, so
         }
         onKey?.(event, shortcuts);
       }} />
-    <ul ref={list} id={listId} role="listbox" aria-label={t.suggestionList} className="command-suggestions" popover="manual">
-      {items.map((suggestion, position) => {
-        const [meaning, written] = describe(suggestion);
-        return <li key={suggestion.insert} id={`${listId}-${position}`} role="option" aria-selected={position === index}
-          onPointerDown={(event) => event.preventDefault()} onClick={() => accept(suggestion)}>
-          <Icon name={ICONS[suggestion.kind]} size={15} /><span>{meaning}</span>{written && <code>{written}</code>}
-        </li>;
-      })}
-    </ul>
-    <div className="sr-only" aria-live="polite">{open ? t.suggestionCount(items.length) : ""}</div>
+    <CommandSuggestions id={listId} field={field} value={value} items={items} index={index} today={sources.today} t={t} locale={locale} onAccept={accept} />
   </div>;
 }

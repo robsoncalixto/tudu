@@ -6,9 +6,9 @@ export type ShortcutScope = (typeof SHORTCUT_SCOPES)[number];
 
 export const SHORTCUT_IDS = [
   "newTask", "search", "help", "undo", "goAll", "goToday", "goWorkLog", "goAssistant", "goSettings",
-  "nextTask", "previousTask", "toggleTask", "editTask", "openTask", "deleteTask",
+  "nextTask", "previousTask", "toggleTask", "editTask", "openTask", "deleteTask", "backToList",
   "submitTask", "newTaskLine", "submitWithAi", "leaveComposer", "nextSuggestion", "previousSuggestion", "acceptSuggestion", "undoFromField",
-  "searchResults", "clearSearch", "closePanel",
+  "searchResults", "clearSearch", "leaveSearch", "closePanel",
   "sendNote", "noteLine", "recallNote",
 ] as const;
 export type ShortcutId = (typeof SHORTCUT_IDS)[number];
@@ -48,6 +48,7 @@ export const SHORTCUTS: readonly Shortcut[] = z.array(shortcutSchema).parse([
   { id: "editTask", scope: "list", bindings: [{ keys: ["Enter"], within: "row" }] },
   { id: "openTask", scope: "list", bindings: [{ keys: ["e"], within: "list" }] },
   { id: "deleteTask", scope: "list", bindings: [{ keys: ["Delete"], within: "row" }, { keys: ["Backspace"], within: "row" }] },
+  { id: "backToList", scope: "list", bindings: [{ keys: ["Escape"], within: "list" }] },
   { id: "submitTask", scope: "composer", bindings: one("Enter") },
   { id: "newTaskLine", scope: "composer", bindings: one("Shift+Enter") },
   { id: "submitWithAi", scope: "composer", bindings: one("Mod+Enter") },
@@ -58,6 +59,7 @@ export const SHORTCUTS: readonly Shortcut[] = z.array(shortcutSchema).parse([
   { id: "undoFromField", scope: "composer", bindings: one("Mod+z") },
   { id: "searchResults", scope: "search", bindings: one("ArrowDown", "Enter") },
   { id: "clearSearch", scope: "search", bindings: one("Escape") },
+  { id: "leaveSearch", scope: "search", bindings: one("Escape") },
   { id: "closePanel", scope: "panel", bindings: one("Escape") },
   { id: "sendNote", scope: "assistant", bindings: one("Enter") },
   { id: "noteLine", scope: "assistant", bindings: one("Shift+Enter") },

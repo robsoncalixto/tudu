@@ -1,4 +1,4 @@
-import { chips, composer, expect, listTasks, openSection, row, saveSettings, seed, seedProjects, taskRows, test, TODAY, TOMORROW, tagChip } from "./support";
+import { chips, composer, expect, listTasks, openSection, row, rowTitles, saveSettings, seed, seedProjects, taskRows, test, TODAY, TOMORROW, tagChip } from "./support";
 
 const tokens = (page: import("@playwright/test").Page) => page.locator(".command-mirror .command-token").allTextContents();
 
@@ -6,11 +6,13 @@ for (const l of [
   { locale: "en", suggestions: "Suggestions", newTag: "New tag", due: "Due date: Tomorrow · Afternoon", priority: "Priority: High", planned: "Planned day: Today",
     clearPlanned: "Clear planned day", today: "Today", tomorrow: "Tomorrow · Nov 18 @tomorrow", friday: "Friday · Nov 20 @friday", fridayToken: "@friday", high: "High !high",
     project: "Website redesign +website-redesign", notDate: "“@31/02” is not a date, so it stays in the title.",
-    noProject: "No project matches “+nope”, so it stays in the title.", error: "Something went wrong. Try again.", count: "2 suggestions. Use the arrow keys to choose." },
+    noProject: "No project matches “+nope”, so it stays in the title.", error: "Something went wrong. Try again.", count: "2 suggestions. Use the arrow keys to choose.",
+    added: (title: string) => `Added “${title}”.`, notSaved: (title: string) => `“${title}” was not saved.`, show: "Show", retry: "Retry" },
   { locale: "pt-BR", suggestions: "Sugestões", newTag: "Nova etiqueta", due: "Prazo: Amanhã · Tarde", priority: "Prioridade: Alta", planned: "Dia planejado: Hoje",
     clearPlanned: "Limpar dia planejado", today: "Hoje", tomorrow: "Amanhã · 18 de nov. @amanhã", friday: "Sexta-feira · 20 de nov. @sexta", fridayToken: "@sexta", high: "Alta !alta",
     project: "Website redesign +website-redesign", notDate: "“@31/02” não é uma data; o texto continua no título.",
-    noProject: "Nenhum projeto corresponde a “+nope”; o texto continua no título.", error: "Algo deu errado. Tente novamente.", count: "2 sugestões. Use as setas para escolher." },
+    noProject: "Nenhum projeto corresponde a “+nope”; o texto continua no título.", error: "Algo deu errado. Tente novamente.", count: "2 sugestões. Use as setas para escolher.",
+    added: (title: string) => `“${title}” adicionada.`, notSaved: (title: string) => `“${title}” não foi salva.`, show: "Mostrar", retry: "Tentar novamente" },
 ] as const) {
   test(`a whole task is typed and saved without a click in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale });
@@ -172,7 +174,7 @@ for (const l of [
     ]);
   });
 
-  test(`a failed save returns the task to the field above what was typed meanwhile in ${l.locale}`, async ({ page, request }) => {
+  test(`a save that fails while the next task is being written waits in the notice in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale });
     await page.goto("/");
     let fail = () => {};
@@ -183,22 +185,140 @@ for (const l of [
       await route.fulfill({ status: 500, json: { error: "generic" } });
     });
     const field = composer(page);
+    const status = page.getByRole("status");
     await field.fill("First #a");
     await field.press("Enter");
     // The field is free at once and the task already shows, out of reach until it is saved.
     await expect(field).toHaveValue("");
     await expect(taskRows(openSection(page))).toHaveCount(1);
     await expect(row(openSection(page), "First")).toHaveCount(0);
-    await field.pressSequentially("Second");
+    await field.pressSequentially("Second !alta");
     fail();
-    await expect(page.getByRole("status")).toHaveText(l.error);
-    await expect(field).toHaveValue("First #a\nSecond");
+    // What is being written is left alone; the task that failed is named and can be sent again as it was.
+    await expect(status).toContainText(l.notSaved("First"));
+    await expect(field).toHaveValue("Second !alta");
+    await expect(field).toBeFocused();
     await expect(taskRows(openSection(page))).toHaveCount(0);
     expect(await listTasks(request)).toEqual([]);
     await page.unroute("**/api/tasks");
-    await field.press("Enter");
+    await status.getByRole("button", { name: l.retry, exact: true }).click();
     await expect(row(openSection(page), "First")).toBeVisible();
+    await expect(field).toHaveValue("Second !alta");
+    await field.press("Enter");
     await expect(row(openSection(page), "Second")).toBeVisible();
-    expect((await listTasks(request)).map((task) => task.title)).toEqual(["First", "Second"]);
+    expect((await listTasks(request)).map(({ title, tags, priority }) => ({ title, tags, priority }))).toEqual([
+      { title: "First", tags: ["a"], priority: "medium" }, { title: "Second", tags: [], priority: "high" },
+    ]);
+    // With nothing typed meanwhile, the text simply comes back to the field.
+    await page.route("**/api/tasks", (route) => route.request().method() === "POST"
+      ? route.fulfill({ status: 500, json: { error: "generic" } }) : route.fallback());
+    await field.fill("Third");
+    await field.press("Enter");
+    await expect(status).toHaveText(l.error);
+    await expect(field).toHaveValue("Third");
+  });
+
+  test(`a new task is named in a notice that leads to it, and its row keeps its place while it is saved, in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    // Dated tasks come first, so one without a date lands at the end of a long list, out of sight.
+    await seed(request, Array.from({ length: 14 }, (_, index) => ({ title: `Dated ${index + 1}`, due: "2026-11-18", plannedFor: index < 2 ? TODAY : null })));
+    await page.goto("/");
+    const field = composer(page);
+    const status = page.getByRole("status");
+    await field.fill("Undated task");
+    await field.press("Enter");
+    await expect(status).toContainText(l.added("Undated task"));
+    const created = row(openSection(page), "Undated task");
+    await expect(created).not.toBeInViewport();
+    await status.getByRole("button", { name: l.show, exact: true }).click();
+    await expect(created).toBeInViewport();
+    await expect(created).toBeFocused();
+
+    // In Today's own order a new task goes last. It waits there from the start, on whichever clock is ahead.
+    await page.keyboard.press("g");
+    await page.keyboard.press("t");
+    await page.keyboard.press("n");
+    let save = () => {};
+    const held = new Promise<void>((resolve) => { save = resolve; });
+    await page.route("**/api/tasks", async (route) => {
+      if (route.request().method() === "POST") await held;
+      await route.fallback();
+    });
+    await page.keyboard.type("Planned task");
+    await page.keyboard.press("Enter");
+    const last = taskRows(openSection(page)).last();
+    await expect(last).toHaveAttribute("aria-label", "Planned task");
+    await expect(last).toHaveClass(/is-new/);
+    await last.evaluate((node) => { (node as HTMLElement).dataset.mark = "kept"; });
+    expect(await rowTitles(openSection(page))).toEqual(["Dated 1", "Dated 2", "Planned task"]);
+    save();
+    await expect(row(openSection(page), "Planned task")).toBeVisible();
+    // The saved task took over the same row: nothing moved and nothing blinked.
+    await expect(taskRows(openSection(page)).last()).toHaveAttribute("data-mark", "kept");
+    expect(await rowTitles(openSection(page))).toEqual(["Dated 1", "Dated 2", "Planned task"]);
+    await expect(status).toContainText(l.added("Planned task"));
+    await expect(field).toBeFocused();
+    expect((await listTasks(request)).find((task) => task.title === "Planned task")).toMatchObject({ plannedFor: TODAY });
+  });
+
+  test(`what the field cannot read is pointed out once the word is left, and nothing moves, in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    await seedProjects(request, ["Website redesign"]);
+    await page.goto("/");
+    const field = composer(page);
+    const unknown = page.locator(".command-mirror .command-unknown");
+    const feedback = page.locator("#composer-feedback");
+    const listTop = (await page.locator(".list-toolbar").boundingBox())!.y;
+    // While a word is being typed it may still become a date or a project, so it is not called wrong yet.
+    for (const typed of ["Pagar @2", "5/", "1", " +web"]) {
+      await field.pressSequentially(typed);
+      await expect(unknown).toHaveCount(0);
+      await expect(feedback).toHaveText("");
+      expect((await page.locator(".list-toolbar").boundingBox())!.y).toBe(listTop);
+    }
+    await field.fill("Pagar @31/02");
+    await expect(unknown).toHaveCount(0);
+    await field.pressSequentially(" ");
+    await expect(unknown).toHaveText(["@31/02"]);
+    await expect(feedback).toHaveText(l.notDate);
+    // The message has its own line kept free, so the list stays where it was.
+    expect((await page.locator(".list-toolbar").boundingBox())!.y).toBe(listTop);
+    expect(await listTasks(request)).toEqual([]);
+  });
+
+  test(`suggestions return for the next word after Escape, and a long project name fits its row, in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    const long = "Programa de modernização da plataforma de pagamentos";
+    await seedProjects(request, [long]);
+    await seed(request, [{ title: "Seed", tags: ["home"] }]);
+    await page.goto("/");
+    const field = composer(page);
+    const list = page.getByRole("listbox", { name: l.suggestions });
+    await field.pressSequentially("Buy milk #");
+    await expect(list).toBeVisible();
+    await field.press("Escape");
+    await expect(list).toBeHidden();
+    await field.pressSequentially("home");
+    await field.press("Enter");
+    await expect(row(openSection(page), "Buy milk")).toBeVisible();
+    // The same place in the next task is a new word.
+    await field.pressSequentially("Pay rent #");
+    await expect(list).toBeVisible();
+    await field.press("Escape");
+    await field.press("Escape");
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await field.fill("");
+      await field.pressSequentially("Plan +pro");
+      const option = list.getByRole("option").first();
+      await expect(option).toContainText("Programa de modernização");
+      const bounds = (await list.boundingBox())!;
+      // One line for the name, inside the screen, under the field.
+      expect((await option.boundingBox())!.height).toBeLessThanOrEqual(48);
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      expect(bounds.y).toBeGreaterThan((await page.locator(".command-field").boundingBox())!.y);
+      await field.press("Escape");
+    }
   });
 }

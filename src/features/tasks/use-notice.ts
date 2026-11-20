@@ -5,6 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export type Notice = {
   kind: "ok" | "error";
   text: string;
+  /** Takes back what the notice reports. The undo key runs it for as long as the notice shows. */
+  undo?: () => void;
+  /** Something else to do about the message, such as going to the task it names. */
   action?: { label: string; run: () => void };
   /** Runs once the notice is replaced or dismissed, for work that waited on a possible undo. */
   onGone?: () => void;

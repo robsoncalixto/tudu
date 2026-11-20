@@ -15,6 +15,7 @@ import type { ComposerMode } from "../use-composer-submit";
 import { CommandField } from "./CommandField";
 import { ComposerBatch } from "./ComposerBatch";
 import { ComposerChips } from "./ComposerChips";
+import { ComposerFeedback } from "./ComposerFeedback";
 import "./composer.css";
 
 interface Props {
@@ -31,6 +32,7 @@ interface Props {
   /** Saved tags. */
   suggestions: string[];
   onSubmit: (mode: ComposerMode, text: string, defaults: QuickAddDefaults) => Promise<boolean>;
+  onUnsaved: (text: string, defaults: QuickAddDefaults, titles: string[]) => void;
   /** Escape on an empty field hands the keyboard back to the list. */
   onLeave: () => void;
   /** Undoes the last completion or deletion while its notice is showing; false when there is nothing to undo. */
@@ -38,14 +40,15 @@ interface Props {
 }
 
 /** One field writes the task; the chips under it show and set the same values. */
-export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onTextChange, onSubmit, onLeave, onUndo, context, projects, suggestions }: Props) {
+export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onTextChange, onSubmit, onUnsaved, onLeave, onUndo, context, projects, suggestions }: Props) {
   const [setup, setSetup] = useState(false);
   const [mod, setMod] = useState("Ctrl");
-  const draft = useComposer({ text, onTextChange, today, context, projects, onSubmit });
+  const [caret, setCaret] = useState<number | null>(null);
+  const draft = useComposer({ text, onTextChange, today, context, projects, onSubmit, onUnsaved });
   const { field, choice, values, capturing, submit } = draft;
   const lines = text.split(/\r?\n/u).filter((line) => line.trim()).length;
-  const warnings = quickAddApi.warnings(text, today, projects);
-  const problem = draft.problem;
+  // Once saving was refused, everything unread is shown, the word under the caret included.
+  const warnings = quickAddApi.warnings(text, today, projects, { caret: draft.problem ? null : caret });
 
   useEffect(() => { setMod(/Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl"); }, []);
 
@@ -61,15 +64,15 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
           field.current?.focus();
         }}>
           <Icon name="plus" size={20} className="composer-symbol" />
-          <CommandField id="task-entry" inputRef={field} value={text} onChange={onTextChange} label={t.composerPlaceholder} placeholder={example}
+          <CommandField id="task-entry" inputRef={field} value={text} onChange={draft.change} label={t.composerPlaceholder} placeholder={example}
             hint={`${t.composerPlaceholder} ${t.composerExample}`}
             sources={{ today, language: locale, tags: suggestions, projects }} usedTags={values.tags} t={t} locale={locale}
-            disabled={capturing} describedBy="composer-feedback"
+            busy={capturing} describedBy="composer-feedback" onCaret={setCaret}
             onKey={(event, shortcuts) => {
               if (shortcuts.includes("submitWithAi")) { event.preventDefault(); void submit(aiEnabled ? "ai" : "add"); }
               else if (shortcuts.includes("submitTask")) { event.preventDefault(); void submit("add"); }
-              // With nothing typed there is no text to undo, so the key reaches the list's last action.
-              else if (shortcuts.includes("undoFromField") && !text) { if (onUndo()) event.preventDefault(); }
+              // With no text and none of the person's to bring back, the key reaches the list's last action.
+              else if (shortcuts.includes("undoFromField") && !text && !draft.hasOwnUndo()) { if (onUndo()) event.preventDefault(); }
               else if (shortcuts.includes("leaveComposer")) {
                 event.preventDefault();
                 if (draft.pristine) onLeave();
@@ -77,31 +80,24 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
               }
             }} />
         </div>
-        <button type="submit" className="btn btn-secondary quick-submit" disabled={draft.disabled}>
+        <button type="submit" className="btn btn-secondary quick-submit" disabled={draft.disabled || draft.blocked}>
           {t.add} <Icon name="corner-down-left" size={14} />
         </button>
       </div>
       <ComposerChips t={t} locale={locale} dateFormat={dateFormat} today={today} values={values} projects={projects} savedTags={suggestions}
         disabled={capturing}
         onPriority={(priority) => draft.choose({ ...choice, priority: priority ?? undefined }, "priority")}
-        onDue={(due) => draft.choose({ ...choice, due: due ?? undefined }, "due")}
+        // The typed date and time are one token, so the chip keeps whichever of the two the pointer did not change.
+        onDue={(due) => draft.choose({ ...choice, due: due ?? undefined, partOfDay: due ? choice.partOfDay ?? values.partOfDay ?? undefined : undefined }, "due")}
+        onPartOfDay={(partOfDay) => draft.choose({ ...choice, partOfDay: partOfDay ?? undefined, due: choice.due ?? values.due ?? undefined }, "due")}
         onPlanned={(plannedFor) => draft.choose({ ...choice, plannedFor })}
         onProject={(projectId) => draft.choose({ ...choice, projectId }, "project")}
         onEstimate={(estimateHours) => draft.choose({ ...choice, estimateHours: estimateHours ?? undefined }, "estimate")}
         onRepeat={(repeat) => draft.choose({ ...choice, repeat: repeat ?? undefined })}
         onAddTag={draft.addTag}
         onRemoveTag={(tag) => draft.choose(withoutTag(choice, tag, context.tag), "tag", tag)} />
-      <div id="composer-feedback" className="composer-feedback">
-        {warnings.map((warning) => <p className="hint" aria-live="polite" key={`${warning.start}-${warning.text}`}>
-          <Icon name="info" size={14} />{warning.kind === "date" ? t.composerInvalidDate(warning.text) : t.composerUnknownProject(warning.text)}
-        </p>)}
-        {problem && <p className="hint is-error" role="alert">{problem.kind === "line_limit" ? t.quickLineLimit
-          : problem.kind === "text_limit" ? t.quickTextLimit
-            : problem.kind === "tag_limit" ? t.quickTagsOnLine(problem.line) : t.quickInvalidLine("line" in problem ? problem.line : 1)}</p>}
-        {draft.tagLimit && <p className="hint is-error" role="alert">{t.composerTagLimit}</p>}
-      </div>
       {values.batch && <ComposerBatch drafts={draft.drafts} count={lines} today={today} locale={locale} dateFormat={dateFormat} projects={projects} t={t}
-        disabled={capturing} onJoin={() => { draft.rewrite(text.split(/\s*\r?\n\s*/u).filter(Boolean).join(" ")); draft.refocus(); }} />}
+        disabled={capturing} blocked={draft.blocked} onJoin={() => { draft.rewrite(text.split(/\s*\r?\n\s*/u).filter(Boolean).join(" ")); draft.refocus(); }} />}
       <div className="capture-options">
         <button type="button" className="capture-option" disabled={!aiEnabled || draft.disabled}
           title={aiEnabled ? t.composerHint.replace("{mod}", mod) : t.aiOff} onClick={() => void submit("ai")}>
@@ -118,6 +114,7 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
         <p>{t.aiOff}</p>
         <Link href="/settings#ai-settings-heading">{t.settings}</Link>
       </section>}
+      <ComposerFeedback t={t} warnings={warnings} problem={draft.problem} lines={lines} tagLimit={draft.tagLimit} />
     </form>
   );
 }

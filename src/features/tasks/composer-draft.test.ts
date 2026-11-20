@@ -46,6 +46,13 @@ describe("what the chips show", () => {
     expect(composerValues("Water the plants", today, { tags: [], repeat: "daily", due: "2026-12-01" }, [])).toMatchObject({ due: "2026-12-01" });
   });
 
+  it("shows a picked part of the day on the typed date, or today, and lets a typed time replace it", () => {
+    expect(composerDefaults({}, { tags: [], partOfDay: "afternoon" })).toEqual({ tags: [], partOfDay: "afternoon" });
+    expect(composerValues("Call Ana", today, { tags: [], partOfDay: "afternoon" }, [])).toMatchObject({ due: today, partOfDay: "afternoon", time: null });
+    expect(composerValues("Call Ana @sex", today, { tags: [], partOfDay: "afternoon" }, [])).toMatchObject({ due: "2026-11-20", partOfDay: "afternoon" });
+    expect(composerValues("Call Ana @sex 9h", today, { tags: [], partOfDay: "afternoon" }, [])).toMatchObject({ partOfDay: "morning", time: "09:00" });
+  });
+
   it("counts a tag once whether it was typed, picked or comes from the view", () => {
     expect(composerValues("Plan #Work #team", today, { tags: ["team", "work"], tag: "work" }, []).tags).toEqual(["work", "team"]);
   });
@@ -64,6 +71,11 @@ describe("chips that AI capture has no field for", () => {
     // A repeating task with no date starts today, as a typed one does.
     expect(chipsAfterCapture({ repeat: "monthly", estimateHours: 2 }, { due: null }, today))
       .toEqual({ estimateHours: 2, due: today, repeat: { frequency: "monthly", day: 17 } });
+  });
+
+  it("give a captured task the part of the day, on its own date or today", () => {
+    expect(chipsAfterCapture({ partOfDay: "evening" }, { due: null }, today)).toEqual({ due: today, partOfDay: "evening" });
+    expect(chipsAfterCapture({ partOfDay: "morning" }, { due: "2026-11-20" }, today)).toEqual({ due: "2026-11-20", partOfDay: "morning" });
   });
 
   it("change nothing when capture already carried every chip", () => {

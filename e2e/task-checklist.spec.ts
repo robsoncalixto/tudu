@@ -103,7 +103,7 @@ for (const l of languages) {
     await fail();
     await input.fill("Keep this draft");
     await submit.click();
-    await expect(page.getByRole("status")).toHaveText(l.error);
+    await expect(page.getByRole("status")).toContainText(l.error);
     await expect(input).toHaveValue("Keep this draft");
     await expect(children.getByRole("checkbox", { name: "Keep this draft", exact: true })).toHaveCount(0);
     await recover();
