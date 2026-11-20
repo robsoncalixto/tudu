@@ -72,9 +72,13 @@ proposals) and `mcp`. Imports use the `@/` alias for `src/`.
    its own keys with `shortcutsApi.match`. The help sheet and every key hint
    render that list, so no component names a key on its own. A single-character
    shortcut never fires while typing and stays behind the per-device switch.
-10. **Act, then offer Undo.** Completing and deleting happen at once and put
-    Undo in the board notice; there is no confirmation dialog. A deletion is
-    sent only when its notice is gone (`removeLater` in `use-tasks.ts`).
+10. **Act, then offer Undo.** Completing, deleting and changing a due date in
+    the list happen at once and put Undo in the board notice; there is no
+    confirmation dialog. `use-task-actions.ts` keeps the run of actions that
+    Undo can take back, newest first. A deletion, and the completion of a
+    repeating task, are only shown until that notice is gone and are sent then
+    (`changeLater` in `use-tasks.ts`), so undoing them leaves nothing on the
+    server.
 
 Dependency direction: `app` → `features` → `i18n`, `lib`.
 
@@ -153,8 +157,9 @@ proposal API with that synthetic provider.
   `.section-title` and `.nav-item` before adding classes.
 - Color carries meaning: `--success` done, `--warning` high priority, `--error`
   overdue and failures, `--accent` focus and recognized tokens.
-- A message never moves the page: the board notice floats, and loading
-  placeholders take the exact place of what they stand for.
+- A message never moves the page: the board notice floats, the task field
+  keeps one line free for what it has to say, and loading placeholders take
+  the exact place of what they stand for.
 - Every screen works at phone width without horizontal scroll; interactive
   elements have a visible focus state and an accessible name.
 
