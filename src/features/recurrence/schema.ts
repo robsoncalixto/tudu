@@ -13,3 +13,13 @@ export const repeatRuleSchema = z.discriminatedUnion("frequency", [
 ]);
 
 export type RepeatRule = z.infer<typeof repeatRuleSchema>;
+export type RepeatFrequency = RepeatRule["frequency"];
+export const REPEAT_FREQUENCIES = ["daily", "weekdays", "weekly", "monthly"] as const satisfies readonly RepeatFrequency[];
+
+/** The plain rule of a frequency for a task due on `date`: weekly on that weekday, monthly on that day. */
+export function repeatFrom(frequency: RepeatFrequency, date: string): RepeatRule {
+  const day = new Date(`${date}T12:00:00Z`);
+  if (frequency === "weekly") return { frequency, days: [day.getUTCDay()] };
+  if (frequency === "monthly") return { frequency, day: day.getUTCDate() };
+  return { frequency };
+}

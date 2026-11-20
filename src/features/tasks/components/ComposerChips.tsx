@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import type { Project } from "@/features/projects/schema";
+import { REPEAT_FREQUENCIES, type RepeatFrequency } from "@/features/recurrence/schema";
 import type { Dictionary, Locale } from "@/i18n";
 import { dueLabel, type DateFormat } from "@/lib/dates";
 import type { IconName } from "@/lib/Icon";
@@ -29,6 +30,7 @@ interface Props {
   onPlanned: (value: string | null) => void;
   onProject: (value: string | null) => void;
   onEstimate: (value: number | null) => void;
+  onRepeat: (value: RepeatFrequency | null) => void;
   onAddTag: (tag: string) => void;
   onRemoveTag: (tag: string) => void;
 }
@@ -93,6 +95,13 @@ export function ComposerChips({ t, locale, dateFormat, today, values, projects, 
       }))} clearLabel={t.composerClear(t.priority)} onClear={() => on.onPriority(null)} />
     <ChipMenu icon="clock" label={t.taskResources.estimate} value={values.estimateHours === null ? null : durationLabel(values.estimateHours, locale)}
       options={estimateOptions} disabled={disabled} clearLabel={t.composerClear(t.taskResources.estimate)} onClear={() => on.onEstimate(null)} />
+    <ChipMenu icon="repeat" label={t.repeat} value={values.repeat ? t.repeatFrequencies[values.repeat] : null} disabled={disabled}
+      options={[
+        { key: "never", label: t.repeatFrequencies.never, checked: values.repeat === null, onSelect: () => on.onRepeat(null) },
+        ...REPEAT_FREQUENCIES.map((frequency) => ({
+          key: frequency, label: t.repeatFrequencies[frequency], checked: values.repeat === frequency, onSelect: () => on.onRepeat(frequency),
+        })),
+      ]} clearLabel={t.composerClear(t.repeat)} onClear={() => on.onRepeat(null)} />
     <TagPicker t={t} tags={values.tags} saved={savedTags} disabled={disabled} onAdd={on.onAddTag} onRemove={on.onRemoveTag} />
   </div>;
 }

@@ -210,8 +210,9 @@ it cannot read, and offers saved tags, projects, days and priorities as you
 type `#`, `+`, `@` or `!`.
 
 The chips under the field show the same values and can set them with the
-pointer: project, planned day, due date, priority, estimate and tags. A chip
-takes its field over from the text. In **Today**, in a project or in a tag, a
+pointer: project, planned day, due date, priority, estimate, repeat and tags.
+A chip takes its field over from the text. A repeating task starts from its due
+date, or from today when it has none. In **Today**, in a project or in a tag, a
 new task starts with that view's value, which the chip can clear. With several
 lines, the chips are defaults for every line.
 

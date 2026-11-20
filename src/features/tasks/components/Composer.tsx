@@ -88,6 +88,7 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
         onPlanned={(plannedFor) => draft.choose({ ...choice, plannedFor })}
         onProject={(projectId) => draft.choose({ ...choice, projectId }, "project")}
         onEstimate={(estimateHours) => draft.choose({ ...choice, estimateHours: estimateHours ?? undefined }, "estimate")}
+        onRepeat={(repeat) => draft.choose({ ...choice, repeat: repeat ?? undefined })}
         onAddTag={draft.addTag}
         onRemoveTag={(tag) => draft.choose(withoutTag(choice, tag, context.tag), "tag", tag)} />
       <div id="composer-feedback" className="composer-feedback">

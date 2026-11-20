@@ -82,6 +82,18 @@ describe("controlled quick-add details", () => {
   });
 });
 
+it("turns a picked frequency into a rule that repeats from each line's own date", () => {
+  expect(quickAddApi.previewDrafts("Stand-up\nReview @sex\nRent 2026-12-05", today, { repeat: "weekly" }, [])).toMatchObject([
+    { title: "Stand-up", due: today, repeat: { frequency: "weekly", days: [2] } },
+    { title: "Review", due: "2026-11-20", repeat: { frequency: "weekly", days: [5] } },
+    { title: "Rent", due: "2026-12-05", repeat: { frequency: "weekly", days: [6] } },
+  ]);
+  expect(quickAddApi.previewDrafts("Rent 2026-12-05", today, { repeat: "monthly" }, [])?.[0].repeat).toEqual({ frequency: "monthly", day: 5 });
+  expect(quickAddApi.previewDrafts("Stretch", today, { repeat: "daily", due: "2026-11-19" }, [])?.[0]).toMatchObject({ due: "2026-11-19", repeat: { frequency: "daily" } });
+  expect(quickAddApi.previewDrafts("Stretch", today, { repeat: "weekdays" }, [])?.[0].repeat).toEqual({ frequency: "weekdays" });
+  expect(quickAddApi.previewDrafts("Stretch", today, {}, [])?.[0].repeat).toBeNull();
+});
+
 it("removes a token with one neighbouring space, wherever it sits and on every line", () => {
   const project = { id: "00000000-0000-4000-8000-000000000002", name: "Acme Web" };
   expect(quickAddApi.stripTokens("Draft @amanha 14h now\nPlan @sex", today, [], "due")).toBe("Draft now\nPlan");
