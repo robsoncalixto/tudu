@@ -11,6 +11,8 @@ export const proposedPatchSchema = taskPatchSchema.pick({
 export const proposalActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("create_task"), task: proposedTaskSchema }).strict(),
   z.object({ kind: z.literal("update_task"), taskId: z.string().min(1).max(100), patch: proposedPatchSchema }).strict(),
+  z.object({ kind: z.literal("flag_duplicate"), taskId: z.string().min(1).max(100), otherTaskId: z.string().min(1).max(100),
+    otherTitle: taskInputSchema.shape.title }).strict().refine((action) => action.taskId !== action.otherTaskId),
   z.object({ kind: z.literal("create_project"), name: projectInputSchema.shape.name }).strict(),
   z.object({ kind: z.literal("rename_project"), projectId: z.uuid(), name: projectInputSchema.shape.name }).strict(),
 ]);
@@ -21,8 +23,8 @@ export const proposalDraftSchema = z.object({
 });
 export type ProposalDraft = z.infer<typeof proposalDraftSchema>;
 export const proposalSourceSchema = z.object({
-  note: z.string().trim().min(1).max(8000), today: z.iso.date(), provider: aiProviderSchema, model: z.string().min(1).max(160),
-});
+  note: z.string().trim().max(8000), review: z.literal(true).optional(), today: z.iso.date(), provider: aiProviderSchema, model: z.string().min(1).max(160),
+}).refine((source) => source.review || source.note.length > 0);
 export type ProposalSource = z.infer<typeof proposalSourceSchema>;
 const resultSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("task"), task: storedTaskSchema }),
@@ -39,7 +41,7 @@ export const proposalSchema = proposalDraftSchema.extend({
   const approved = ["applying", "accepted", "unconfirmed"].includes(proposal.status);
   if (decided !== Boolean(proposal.decidedAt) || approved !== Boolean(proposal.approved)
     || (proposal.status === "accepted" ? !proposal.result || !proposal.appliedAt : proposal.result !== null || proposal.appliedAt !== null)
-    || (proposal.action.kind === "update_task" ? proposal.taskBefore?.id !== proposal.action.taskId : proposal.taskBefore !== null)
+    || (proposal.action.kind === "update_task" || proposal.action.kind === "flag_duplicate" ? proposal.taskBefore?.id !== proposal.action.taskId : proposal.taskBefore !== null)
     || (proposal.action.kind === "rename_project" ? proposal.projectBefore?.id !== proposal.action.projectId : proposal.projectBefore !== null)) {
     context.addIssue({ code: "custom", message: "Invalid proposal decision state" });
   }
@@ -49,7 +51,10 @@ export const agentStateSchema = z.object({
   proposals: z.array(proposalSchema), projects: z.array(projectSchema), enabled: z.boolean(),
 });
 export type AgentState = z.infer<typeof agentStateSchema>;
-export const proposalRequestSchema = z.object({ text: z.string().trim().min(1).max(8000), today: z.iso.date() }).strict();
+export const proposalRequestSchema = z.object({
+  text: z.string().trim().max(8000), today: z.iso.date(), review: z.literal(true).optional(),
+}).strict().refine((input) => input.review || input.text.length > 0);
+export const taskReviewResponseSchema = z.object({ summary: z.string(), proposals: z.array(proposalSchema) });
 export const proposalDecisionSchema = z.discriminatedUnion("decision", [
   z.object({ decision: z.literal("accept"), action: proposalActionSchema }).strict(),
   z.object({ decision: z.literal("reject") }).strict(),

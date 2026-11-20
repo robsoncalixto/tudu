@@ -11,19 +11,19 @@ import { useToday } from "@/lib/use-today";
 import type { Task } from "../schema";
 import { buildTaskView, type TaskFilter, type TaskSort } from "../selectors";
 import { useProjects } from "../use-projects";
-import { useTaskShortcuts } from "../use-task-shortcuts";
+import { useTaskActions } from "../use-task-actions";
 import { useBoardNavigation } from "../use-board-navigation";
 import { useTasks } from "../use-tasks";
 import { useTaskInspector } from "../use-task-inspector";
 import { BoardHeader } from "./BoardHeader";
 import { Composer, type ComposerMode } from "./Composer";
 import { Sidebar } from "./Sidebar";
-import { TaskContextMenu } from "./TaskContextMenu";
+import { postponementDate, type Postponement } from "../planning";
 import { TaskEmpty } from "./TaskEmpty";
 import { TaskList } from "./TaskList";
 import { TaskPanel } from "./TaskPanel";
 import { TaskPanelFrame } from "./TaskPanelFrame";
-import { TaskShortcuts } from "./TaskShortcuts";
+import { TaskDeleteDialog } from "./TaskDeleteDialog";
 import "./board.css";
 
 type Notice = { kind: "ok" | "error"; text: string } | null;
@@ -47,7 +47,7 @@ export function Board({ settings }: { settings: Settings }) {
     }
   });
   const selectedTask = tasks?.find((task) => task.id === inspector.selectedId);
-  const shortcuts = useTaskShortcuts(tasks, patch, async (id) => {
+  const actions = useTaskActions(tasks, patch, async (id) => {
     const removed = await remove(id);
     if (removed) inspector.setSelectedId((current) => current === id ? null : current);
     return removed;
@@ -77,15 +77,23 @@ export function Board({ settings }: { settings: Settings }) {
     } catch (error) { fail(errorCode(error)); return false; }
   }
 
+  async function postpone(id: string, when: Postponement) {
+    if (!today) return;
+    setNotice(null);
+    const plannedFor = postponementDate(today, when);
+    if (await actions.patchFromRow(id, { plannedFor })) {
+      setNotice({ kind: "ok", text: t.taskPostponed(longDate(plannedFor, locale, settings.dateFormat).rest) });
+    }
+  }
+
   function clearSearch() { setQuery(""); search.current?.focus(); }
   const searching = Boolean(query.trim());
-  const list = { today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: shortcuts.patchFromRow,
-    selectedId: inspector.selectedId, onShowPanel: inspector.toggle, onTag: (tag: string) => select({ kind: "tag", tag }) };
+  const list = { today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: actions.patchFromRow,
+    onPostpone: postpone, selectedId: inspector.selectedId, onShowPanel: inspector.toggle, onTag: (tag: string) => select({ kind: "tag", tag }) };
 
-  return <div className={`shell${selectedTask ? " has-inspector" : ""}`} ref={shortcuts.root}>
-    <TaskContextMenu board={shortcuts.root} t={t} />
-    <TaskShortcuts t={t} {...shortcuts.dialogProps} />
-    <Sidebar t={t} view={view} filter={filter} onFilter={select} onOpenSettings={rememberForSettings} onShortcuts={shortcuts.showHelp}
+  return <div className={`shell${selectedTask ? " has-inspector" : ""}`} ref={actions.root}>
+    <TaskDeleteDialog t={t} {...actions.dialogProps} />
+    <Sidebar t={t} view={view} filter={filter} onFilter={select} onOpenSettings={rememberForSettings}
       projectManager={{ projects, error: projectError ? errorMessage(t, projectError) : "",
         clearError: clearProjectError, onCreate: createProject, onRename: renameProject, onDelete: async (id) => {
           if (!await deleteProject(id)) return false;
@@ -121,7 +129,7 @@ export function Board({ settings }: { settings: Settings }) {
             </div>
             {view.open.length ? <TaskList tasks={view.open} header fresh={fresh} {...list} /> :
               !(searching && view.done.length) && <TaskEmpty t={t} filter={filter} searching={searching}
-                onAction={searching ? clearSearch : () => shortcuts.root.current?.querySelector("textarea")?.focus()} />}
+                onAction={searching ? clearSearch : () => actions.root.current?.querySelector("textarea")?.focus()} />}
           </section>
           {view.done.length > 0 && <details key={searching ? "matches" : "done"} className="done" open={searching || undefined}>
             <summary className="section-title">{t.done} <span>{view.done.length}</span></summary><TaskList tasks={view.done} {...list} />
@@ -129,9 +137,9 @@ export function Board({ settings }: { settings: Settings }) {
         </>}
       </div>
     </main>
-    {selectedTask && <TaskPanelFrame label={t.taskDetails} taskId={selectedTask.id} onClose={inspector.close}>
+    {selectedTask && <TaskPanelFrame label={t.taskDetails} resizeLabel={t.resizeTaskPanel} taskId={selectedTask.id} onClose={inspector.close}>
       <TaskPanel task={selectedTask} projects={projects} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat}
-        t={t} onPatch={patch} onDelete={shortcuts.requestDelete} onClose={inspector.close} />
+        t={t} onPatch={patch} onDelete={actions.requestDelete} onClose={inspector.close} />
     </TaskPanelFrame>}
   </div>;
 }

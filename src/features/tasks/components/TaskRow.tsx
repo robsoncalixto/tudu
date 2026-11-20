@@ -10,6 +10,7 @@ import { nextSubtaskVisibility, stepProgress, type SubtaskVisibility } from "../
 import { repeatDescription } from "../recurrence";
 import { isPlannedForToday } from "../selectors";
 import type { TaskActions } from "./TaskList";
+import { TaskContextMenu } from "./TaskContextMenu";
 import { TaskChecklist } from "./TaskChecklist";
 
 interface Props extends TaskActions {
@@ -22,7 +23,7 @@ interface Props extends TaskActions {
   t: Dictionary;
 }
 
-export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, onPatch, selectedId, onShowPanel, onTag }: Props) {
+export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, onPatch, onPostpone, selectedId, onShowPanel, onTag }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.title);
   const selected = selectedId === task.id;
@@ -31,6 +32,7 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
   const subtasksId = useId();
   const addButton = useRef<HTMLButtonElement>(null);
   const subtaskInput = useRef<HTMLInputElement>(null);
+  const row = useRef<HTMLLIElement>(null);
   const titleButton = useRef<HTMLButtonElement>(null);
   const overdue = !task.done && task.due !== null && dayDiff(task.due, today) < 0;
   const project = projects.find((item) => item.id === task.projectId);
@@ -42,6 +44,11 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
   const planLabel = planned ? t.removeFromToday : t.addToToday;
   const hasMetadata = project || task.tags.length > 0 || steps.total > 0 || task.repeat || earlierPlan;
 
+  function addSubtask() {
+    setVisibility("all"); setAdding(true);
+    requestAnimationFrame(() => subtaskInput.current?.focus());
+  }
+
   function commit() {
     const title = draft.trim();
     setEditing(false);
@@ -49,7 +56,7 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
   }
 
   return (
-    <li className={`task${task.done ? " is-done" : ""}${fresh ? " is-new" : ""}`} data-priority={task.priority}
+    <li ref={row} className={`task${task.done ? " is-done" : ""}${fresh ? " is-new" : ""}`} data-priority={task.priority}
       data-task-id={task.id} data-inspected={selected || undefined} tabIndex={-1} aria-label={task.title}>
       <button type="button" className="check" role="checkbox" aria-checked={task.done}
         aria-label={task.done ? t.markOpen : t.markDone} onClick={() => onPatch(task.id, { done: !task.done })}>
@@ -106,17 +113,16 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
       </div>
 
       <div className="task-tools">
-        <button type="button" className="subtask-add" data-add-subtask aria-label={t.addStep}
+        <button type="button" className="subtask-add" aria-label={t.addStep}
           title={steps.total >= 100 ? t.stepLimit : t.addStep} ref={addButton} disabled={steps.total >= 100}
-          aria-controls={subtasksId} onClick={() => {
-            setVisibility("all"); setAdding(true);
-            requestAnimationFrame(() => subtaskInput.current?.focus());
-          }}><Icon name="subtask-add" size={18} /></button>
+          aria-controls={subtasksId} onClick={addSubtask}><Icon name="subtask-add" size={18} /></button>
         {!task.done && <button type="button" className="plan-today" aria-pressed={planned}
           aria-label={planLabel} title={planLabel} disabled={!today}
           onClick={() => onPatch(task.id, { plannedFor: planned ? null : today })}><Icon name="sun" size={16} /></button>}
-        <button type="button" className="task-disclosure" title={`${t.taskDetails} (I)`} aria-label={t.taskDetails}
-          data-open-panel aria-keyshortcuts="I" aria-expanded={selected} aria-controls={selected ? "task-inspector" : undefined}
+        <TaskContextMenu row={row} t={t} addSubtask={steps.total < 100 ? addSubtask : null}
+          postpone={!task.done && today ? (when) => { void onPostpone(task.id, when); } : null} />
+        <button type="button" className="task-disclosure" title={t.taskDetails} aria-label={t.taskDetails}
+          aria-expanded={selected} aria-controls={selected ? "task-inspector" : undefined}
           onClick={(event) => onShowPanel(task.id, event.currentTarget)}>
           <Icon name={selected ? "x" : "panel-right"} size={18} />
         </button>

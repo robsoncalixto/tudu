@@ -108,10 +108,12 @@ The sidebar opens **All tasks**, **Today**, projects, tags, **Work log** and
 **Assistant**. On a phone, use **More views**. **Today** shows tasks planned
 for today, unfinished tasks planned earlier, and tasks due today or overdue.
 Use the sun button to plan a task for today or clear its existing plan.
-Your open-task sort is remembered on the device. The board refreshes tasks
-and projects on focus and periodically while the tab is visible.
+The task actions menu can move the planned day to tomorrow or the next Monday
+while keeping the deadline. Your open-task sort is remembered on the device.
+The board refreshes tasks and projects on focus and periodically while the
+tab is visible.
 
-Open the task panel (the icon at the right of a row, or `i`) to edit the title,
+Open the task panel (the icon at the right of a row) to edit the title,
 notes, subtasks, priority, project, tags, planned day, due date, repeat rule,
 time estimate, real execution time and links. Both time fields offer a unit selector
 before the value: Minutes, Hours or Days. Fractional hours are supported, and
@@ -123,6 +125,11 @@ execution time.
 
 Repeating tasks can be daily, on weekdays, weekly on selected days, or monthly.
 Completing one creates the next occurrence.
+
+**Assistant** can review open tasks with **Review my tasks**, with or without a
+note. It summarizes what it reviewed and proposes changes with reasons. Every
+change requires approval. Possible duplicate flags record the decision without
+modifying either task.
 
 **Work log** lists the tasks completed on a chosen day, grouped by project or
 tag, with recorded time, estimates alongside recorded time, and totals per
@@ -148,19 +155,6 @@ priority, due tomorrow.
 
 Prefix a token with a backslash to keep it as text: `Discuss \#bug` saves
 **Discuss #bug**. Open **Quick-add shortcuts** in the composer for details.
-
-### Keyboard shortcuts
-
-| Key | Action |
-| --- | --- |
-| `n` or `/` | Focus the composer |
-| `j` / `↓`, `k` / `↑` | Move to the next or previous task |
-| `a` | Add a subtask to the focused task |
-| `i` | Open or close the task panel |
-| `x` | Complete or reopen the focused task |
-| Delete or Backspace | Delete the focused task (asks for confirmation) |
-| `?` | Show shortcut help |
-| Escape | Leave the composer, clear search, or close a dialog |
 
 ## MCP server
 

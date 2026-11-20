@@ -1,4 +1,4 @@
-import { closeTaskPanel, composer, expect, listTasks, openApp, row, seed, setLanguage, sidebar, taskDetails, taskPanel, test, TODAY } from "./support";
+import { closeTaskPanel, composer, expect, listTasks, openApp, row, saveSettings, seed, setLanguage, sidebar, taskDetails, taskPanel, test, TODAY } from "./support";
 
 for (const l of [
   { code: "en", priority: "Priority", due: "Due date", planned: "Planned day", today: "Today", search: "Search this list" },
@@ -33,8 +33,7 @@ for (const l of [
     const boardBounds = await first.boundingBox();
     const panelBounds = await panel.boundingBox();
     expect(boardBounds!.x + boardBounds!.width).toBeLessThanOrEqual(panelBounds!.x + 1);
-    await second.focus();
-    await second.press("i");
+    await taskDetails(second).press("Enter");
     await expect(panel.getByRole("heading", { name: "Design review", exact: true })).toBeVisible();
     await expect(taskDetails(first)).toHaveAttribute("aria-expanded", "false");
     await expect(taskDetails(second)).toHaveAttribute("aria-expanded", "true");
@@ -42,14 +41,13 @@ for (const l of [
     await closeTaskPanel(page).click();
     await expect(panel).toBeHidden();
     await expect(taskDetails(second)).toBeFocused();
-    await first.focus();
-    await first.press("i");
+    await taskDetails(first).press("Enter");
     await expect(panel.getByRole("heading", { name: "Launch review", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
     await expect(taskDetails(first)).toBeFocused();
-    await first.press("i");
-    await closeTaskPanel(page).press("i");
+    await taskDetails(first).press("Enter");
+    await closeTaskPanel(page).press("Enter");
     await expect(panel).toBeHidden();
     await expect(taskDetails(first)).toBeFocused();
     await composer(page).focus();
@@ -102,5 +100,58 @@ for (const l of [
       await expect(panel).toBeHidden();
       await expect(opener).toBeFocused();
     });
+  });
+}
+
+for (const l of [
+  { locale: "en", resize: "Resize task details" },
+  { locale: "pt-BR", resize: "Redimensionar detalhes da tarefa" },
+] as const) {
+  test(`resizes the panel by drag and keyboard, remembers it and resets in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    await seed(request, [{ title: "Resizable panel" }]);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    const task = row(page, "Resizable panel");
+    await taskDetails(task).click();
+    const panel = page.getByRole("dialog");
+    const handle = panel.getByRole("separator", { name: l.resize });
+    await expect(handle).toBeVisible();
+    const initial = (await panel.boundingBox())!.width;
+    const grip = (await handle.boundingBox())!;
+    await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(grip.x + grip.width / 2 - 80, grip.y + grip.height / 2, { steps: 5 });
+    await page.mouse.up();
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(initial + 80, 0);
+    await handle.press("ArrowLeft");
+    await expect(handle).toBeFocused();
+    await expect(handle).toHaveCSS("outline-style", "solid");
+    const chosen = (await panel.boundingBox())!.width;
+    expect(chosen).toBeCloseTo(initial + 96, 0);
+
+    await page.reload();
+    await taskDetails(task).click();
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(chosen, 0);
+    await page.setViewportSize({ width: 960, height: 900 });
+    await expect(handle).toHaveAttribute("aria-valuenow", "344");
+    expect(await page.locator("main").evaluate((element) => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(380);
+    await page.setViewportSize({ width: 320, height: 760 });
+    await expect(handle).toBeHidden();
+    await expect.poll(() => panel.evaluate((element) => element.matches(":modal"))).toBe(true);
+    expect((await panel.boundingBox())!.width).toBe(320);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(chosen, 0);
+    await handle.dblclick();
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(initial, 0);
+    const left = (await handle.boundingBox())!;
+    await page.mouse.move(left.x + left.width / 2, left.y + left.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(left.x - 600, left.y + left.height / 2, { steps: 5 });
+    await page.mouse.up();
+    await expect(panel).toBeVisible();
+    await expect(handle).toHaveAttribute("aria-valuenow", "720");
+    await handle.press("Enter");
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(initial, 0);
   });
 }
