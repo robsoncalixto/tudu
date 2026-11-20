@@ -1,5 +1,5 @@
 import { dictionaries, type Locale } from "@/i18n";
-import { dueLabel } from "@/lib/dates";
+import { calendarDayOrNull, dueLabel } from "@/lib/dates";
 import { taskSchema, type Task } from "@/features/tasks/schema";
 import { proposalDraftSchema, type ProposalDraft } from "../schema";
 import { DEFAULT_EFFORT, recommendPlacement, upcomingWorkload, type CapacitySettings } from "../workload";
@@ -48,11 +48,16 @@ export function scheduleReviewDrafts(drafts: ProposalDraft[], tasks: Task[], tod
 
   for (const overloaded of overCapacity) {
     if (scheduled.length >= 3) break;
-    const movable = pool.filter((task) => !task.done && task.plannedFor && (task.plannedFor < today ? today : task.plannedFor) === overloaded.day
-        && (!task.due || task.due > overloaded.day) && !pending.has(task.id))
+    const movable = pool.filter((task) => {
+      const plan = calendarDayOrNull(task.plannedFor);
+      const due = calendarDayOrNull(task.due);
+      return !task.done && plan && (plan < today ? today : plan) === overloaded.day
+        && (!due || due > overloaded.day) && !pending.has(task.id);
+    })
       .sort((a, b) => (["low", "medium", "high"].indexOf(a.priority) - ["low", "medium", "high"].indexOf(b.priority)));
     for (const task of movable) {
-      const future = upcomingWorkload(pool, today, settings, 35).filter((day) => day.day > overloaded.day && (!task.due || day.day <= task.due));
+      const due = calendarDayOrNull(task.due);
+      const future = upcomingWorkload(pool, today, settings, 35).filter((day) => day.day > overloaded.day && (!due || day.day <= due));
       const placement = recommendPlacement(task, future, { deferLow: false });
       if (!placement) continue;
       const t = dictionaries[locale];
@@ -63,7 +68,7 @@ export function scheduleReviewDrafts(drafts: ProposalDraft[], tasks: Task[], tod
   }
   for (const task of tasks) {
     if (scheduled.length >= 3) break;
-    if (task.done || task.due || task.plannedFor || pending.has(task.id)) continue;
+    if (task.done || calendarDayOrNull(task.due) || calendarDayOrNull(task.plannedFor) || pending.has(task.id)) continue;
     const placement = recommendPlacement(task, upcomingWorkload(pool, today, settings));
     if (placement) append(task, { plannedFor: placement.day, partOfDay: placement.partOfDay }, explain(placement, locale, today, settings));
   }

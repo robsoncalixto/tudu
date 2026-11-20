@@ -8,6 +8,13 @@ const stored = (id: string, fields = {}) => taskSchema.parse({
 });
 
 describe("review context budget", () => {
+  it("ranks genuine deadlines ahead of historical dates that need correction", () => {
+    const invalid = stored("Invalid", { due: "2026-02-30", plannedFor: "0000-01-01" });
+    const actual = stored("Actual", { due: today });
+    expect(taskReviewContext([invalid, actual], [], today, "").tasks)
+      .toMatchObject([{ id: actual.id, due: today }, { id: invalid.id, due: null, plannedFor: null }]);
+    expect(invalid).toMatchObject({ due: "2026-02-30", plannedFor: "0000-01-01" });
+  });
   it("keeps overdue and carried-over work at the front and leaves room for an optional note", () => {
     const tasks = [...Array.from({ length: 200 }, (_, index) => stored(`Backlog ${index}`)),
       stored("Earlier plan", { plannedFor: "2026-11-15", estimateHours: 2, realTimeHours: 0.5 }),

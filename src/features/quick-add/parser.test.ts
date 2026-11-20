@@ -29,7 +29,7 @@ describe("quick-add shortcuts", () => {
       .toMatchObject({ title: "Report", priority: "low", due: "2026-12-01", tags: ["work", "client"] });
   });
   it("keeps unknown or invalid tokens and punctuation as title text", () => {
-    const text = "Discuss C# owner#team # !urgent #work, tomorrow. 2026-02-30 constructor toString __proto__";
+    const text = "Discuss C# owner#team # !urgent #work, tomorrow. 2026-02-30 0000-01-01 constructor toString __proto__";
     expect(parseQuickTask(text, TODAY)).toMatchObject({ title: text, tags: [], due: null });
   });
   it("escapes valid shortcuts and preserves unrelated backslashes", () => {
@@ -44,6 +44,7 @@ describe("quick-add shortcuts", () => {
     expect(parseQuickTask("a".repeat(300), TODAY).title).toHaveLength(300);
     expect(parseQuickTask(`Task ${Array.from({ length: 10 }, (_, i) => `#tag${i}`).join(" ")}`, TODAY).tags).toHaveLength(10);
     expect(() => parseQuickTask("Task", "2026-02-30")).toThrow();
+    expect(() => parseQuickTask("Task", "0000-01-01")).toThrow();
   });
 });
 

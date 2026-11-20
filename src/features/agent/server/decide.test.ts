@@ -51,6 +51,16 @@ beforeEach(async () => {
 afterEach(() => rm(dir, { recursive: true, force: true }));
 
 describe("proposal approval and audit history", () => {
+  it("keeps a legacy proposal with an invalid deadline pending until corrected", async () => {
+    const proposal = await pending({ kind: "create_task", task: { ...creation, due: "0000-11-17" } });
+    await expect(decideProposal(repo, proposal.id, { decision: "accept", action: proposal.action }, operations))
+      .rejects.toMatchObject({ code: "agent_invalid_proposal" });
+    expect((await repo.listProposals())[0]).toEqual(proposal);
+    expect(operations.createTask).not.toHaveBeenCalled();
+    const action = { kind: "create_task", task: { ...creation, due: "2028-02-29" } } as const;
+    expect(await decideProposal(repo, proposal.id, { decision: "accept", action }, operations))
+      .toMatchObject({ status: "accepted", action: proposal.action, approved: action });
+  });
   it("stores only pending suggestions before approval and records the original plus edited accepted values", async () => {
     const proposal = await pending({ kind: "create_task", task: creation });
     expect(tasks).toEqual([task]); expect(projects).toEqual([project]);

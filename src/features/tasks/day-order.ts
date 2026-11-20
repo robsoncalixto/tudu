@@ -1,8 +1,11 @@
 import type { Task } from "./schema";
+import { calendarDayOrNull } from "@/lib/dates";
 
 function arrival(task: Task, day: string) {
   const placed = task.planChangedAt ?? task.createdAt;
-  const carried = task.plannedFor && task.plannedFor < day && (!task.due || task.due > day);
+  const plan = calendarDayOrNull(task.plannedFor);
+  const due = calendarDayOrNull(task.due);
+  const carried = plan && plan < day && (!due || due > day);
   return carried ? [placed, `${day}T00:00:00.000Z`].sort()[1] : placed;
 }
 

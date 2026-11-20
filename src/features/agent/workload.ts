@@ -1,4 +1,5 @@
 import type { Settings } from "@/features/settings/schema";
+import { calendarDayOrNull } from "@/lib/dates";
 import { PARTS_OF_DAY, type PartOfDay, type Priority, type Task } from "@/features/tasks/schema";
 
 export const DEFAULT_EFFORT = 1;
@@ -25,7 +26,7 @@ export function workloadForDay(tasks: ScheduledTask[], day: string, settings: Ca
   const capacity = settings.workingDays.includes(weekday) ? settings.workHoursPerDay : 0;
   const load: DayWorkload = { day, capacity, hours: 0, unestimated: 0, periods: { morning: 0, afternoon: 0, evening: 0 } };
   for (const task of tasks) {
-    const assigned = task.plannedFor ?? task.due;
+    const assigned = calendarDayOrNull(task.plannedFor) ?? calendarDayOrNull(task.due);
     if (task.done || !assigned || (assigned < start ? start : assigned) !== day) continue;
     const effort = task.estimateHours ?? DEFAULT_EFFORT;
     load.hours += effort;

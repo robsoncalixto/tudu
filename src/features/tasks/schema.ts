@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { projectIdSchema } from "@/features/projects/schema";
 import { repeatRuleSchema } from "@/features/recurrence/schema";
+import { calendarDateSchema } from "@/lib/dates";
 
 export const PRIORITIES = ["low", "medium", "high"] as const;
 export type Priority = (typeof PRIORITIES)[number];
@@ -26,12 +27,7 @@ export const PARTS_OF_DAY = ["morning", "afternoon", "evening"] as const;
 export const partOfDaySchema = z.enum(PARTS_OF_DAY);
 export type PartOfDay = z.infer<typeof partOfDaySchema>;
 
-const plannedDay = z.iso.date().nullable();
-
-const dueDate = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/)
-  .nullable();
+const taskDate = calendarDateSchema.nullable();
 
 export const stepSchema = z.object({
   id: z.string().min(1).max(100),
@@ -49,7 +45,7 @@ export const taskInputSchema = z.object({
   title: z.string().trim().min(1).max(300),
   notes: z.string().trim().max(2000).default(""),
   priority: z.enum(PRIORITIES).default("medium"),
-  due: dueDate.default(null),
+  due: taskDate.default(null),
   tags: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
   steps: stepsSchema.default([]),
   projectId: projectIdSchema.default(null),
@@ -61,10 +57,10 @@ export const taskPatchSchema = z
     title: z.string().trim().min(1).max(300),
     notes: z.string().trim().max(2000),
     priority: z.enum(PRIORITIES),
-    due: dueDate,
+    due: taskDate,
     tags: z.array(z.string().trim().min(1).max(40)).max(10),
     done: z.boolean(),
-    plannedFor: plannedDay,
+    plannedFor: taskDate,
     partOfDay: partOfDaySchema.nullable().describe("Optional morning, afternoon or evening plan."),
     steps: stepsSchema,
     projectId: projectIdSchema,
@@ -74,10 +70,11 @@ export const taskPatchSchema = z
     links: linksSchema,
   })
   .partial();
+export const taskDatePatchSchema = taskPatchSchema.pick({ due: true, plannedFor: true });
 
 export type TaskInput = z.infer<typeof taskInputSchema>;
 const taskCreationInputSchema = taskInputSchema.extend({
-  plannedFor: plannedDay.optional(),
+  plannedFor: taskDate.optional(),
   partOfDay: taskPatchSchema.shape.partOfDay,
   estimateHours: taskPatchSchema.shape.estimateHours,
   realTimeHours: taskPatchSchema.shape.realTimeHours,
@@ -93,12 +90,12 @@ export function taskCreationSchema(defaultPriority: Priority) {
   return z.union([input, z.array(input).min(1).max(50)]);
 }
 
-export const taskSchema = taskInputSchema.extend({
+export const newTaskSchema = taskInputSchema.extend({
   id: z.string(),
   done: z.boolean(),
   createdAt: z.iso.datetime(),
   completedAt: z.iso.datetime().nullable(),
-  plannedFor: plannedDay.default(null),
+  plannedFor: taskDate.default(null),
   partOfDay: partOfDaySchema.nullable().default(null),
   dayRanks: z.record(z.iso.date(), z.number().int().nonnegative()).default({}),
   planChangedAt: z.iso.datetime().nullable().default(null),
@@ -108,6 +105,11 @@ export const taskSchema = taskInputSchema.extend({
   links: linksSchema.default([]),
 });
 
+// Preserve dates accepted by older JSON files so their tasks remain editable.
+export const taskSchema = newTaskSchema.extend({
+  due: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
+  plannedFor: z.iso.date().nullable().default(null),
+});
 export type Task = z.infer<typeof taskSchema>;
 export const taskContentSchema = taskSchema.omit({ dayRanks: true, planChangedAt: true });
 

@@ -9,6 +9,10 @@ const task = (id: string, fields = {}) => taskSchema.parse({
 });
 
 describe("daily workload", () => {
+  it("ignores impossible legacy dates and uses a valid deadline when a saved plan is invalid", () => {
+    const tasks = [task("Invalid due", { due: "2026-02-30" }), task("Invalid plan", { plannedFor: "0000-01-01", due: "2026-11-18" })];
+    expect(upcomingWorkload(tasks, day, capacity, 2).map(({ hours }) => hours)).toEqual([0, 1]);
+  });
   it("counts each open task once per day and uses a one-hour fallback", () => {
     const tasks = [task("Both", { due: day, plannedFor: day, estimateHours: 3, partOfDay: "morning" }),
       task("Missing", { due: day }), task("Closed", { done: true, due: day, estimateHours: 10 })];

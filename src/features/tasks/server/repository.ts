@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { dayOrderSchema, taskContentSchema, taskSchema, type DayOrder, type DayOrderRequest, type Task, type TaskCreationInput, type TaskPatch, type TaskUpdate } from "../schema";
+import { dayOrderSchema, newTaskSchema, taskContentSchema, taskDatePatchSchema, type DayOrder, type DayOrderRequest, type Task, type TaskCreationInput, type TaskPatch, type TaskUpdate } from "../schema";
 import { rankDayTasks } from "../day-order";
 import { isForToday } from "../selectors";
 import { nextDueDate, validateRepeat } from "../recurrence";
@@ -26,13 +26,14 @@ export function createRepository(store: TaskStore) {
         task.dayRanks = Object.fromEntries(Object.entries(current.dayRanks).filter(([day]) =>
           !task.done && isForToday(task, day)));
       }
-      validateRepeat(task.due, task.repeat);
+      if (patch.due !== undefined || patch.repeat !== undefined) validateRepeat(task.due, task.repeat);
+      taskDatePatchSchema.parse(patch);
       const completing = !current.done && task.done;
       if (task.done !== current.done) task.completedAt = task.done ? new Date().toISOString() : null;
       let nextTask: Task | null = null;
       // The link survives reopening or deleting the child, so retries cannot branch a series.
       if (completing && task.repeat && task.due && !task.nextOccurrenceId) {
-        nextTask = taskSchema.parse({
+        nextTask = newTaskSchema.parse({
           ...task, id: randomUUID(), due: nextDueDate(task.due, task.repeat),
           done: false, completedAt: null, createdAt: task.completedAt, plannedFor: null, partOfDay: null, dayRanks: {}, planChangedAt: null,
           realTimeHours: null,
@@ -72,7 +73,7 @@ export function createRepository(store: TaskStore) {
       const now = new Date().toISOString();
       const created = inputs.map((input) => {
         validateRepeat(input.due, input.repeat);
-        return taskSchema.parse({
+        return newTaskSchema.parse({
           ...input,
           id: randomUUID(),
           done: false,
@@ -86,7 +87,7 @@ export function createRepository(store: TaskStore) {
 
     async addApprovedTask(id: string, input: Omit<TaskCreationInput, "plannedFor">, plannedFor: string | null): Promise<Task> {
       validateRepeat(input.due, input.repeat);
-      const task = taskSchema.parse({ ...input, id, plannedFor, done: false, completedAt: null, createdAt: new Date().toISOString() });
+      const task = newTaskSchema.parse({ ...input, id, plannedFor, done: false, completedAt: null, createdAt: new Date().toISOString() });
       await store.insert([task]);
       const stored = (await store.list()).find((stored) => stored.id === id);
       if (!stored) throw new Error("Task write could not be confirmed");

@@ -68,6 +68,14 @@ describe("MCP task tools", () => {
     expect((await tools.update_task({ id: task.id, patch: {} })).isError).toBe(true);
     expect((await tools.update_task({ id: task.id, patch: { nextOccurrenceId: "override" } })).isError).toBe(true);
   });
+  it("rejects impossible deadlines before calling either write operation", async () => {
+    const due = "2026-02-30";
+    const failure = { isError: true, structuredContent: { error: "invalid_task" } };
+    expect(await tools.add_tasks({ tasks: [{ title: "Report" }, { title: "Bad deadline", due }] })).toMatchObject(failure);
+    expect(await tools.update_task({ id: task.id, patch: { due } })).toMatchObject(failure);
+    expect(operations.addTasks).not.toHaveBeenCalled();
+    expect(operations.updateTask).not.toHaveBeenCalled();
+  });
   it("completes through the atomic update contract and returns the linked occurrence", async () => {
     const next = { ...task, id: "next" };
     vi.mocked(operations.updateTask).mockResolvedValueOnce({ task: { ...task, done: true }, nextTask: next });

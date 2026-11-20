@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { proposalActionSchema, proposalDecisionSchema, proposalSchema, proposedTaskSchema } from "./schema";
+import { proposalActionSchema, proposalDecisionSchema, proposalRequestSchema, proposalSchema, proposedTaskSchema } from "./schema";
 
 const task = proposedTaskSchema.parse({ title: "Review", due: null, repeat: null, plannedFor: null });
 const pending = {
@@ -9,6 +9,12 @@ const pending = {
   status: "pending", approved: null, result: null, decidedAt: null, appliedAt: null,
 };
 describe("agent contracts", () => {
+  it("rejects year zero in new requests while preserving previously saved sources", () => {
+    const today = "0000-01-01";
+    expect(proposalRequestSchema.safeParse({ text: "Plan a task", today }).success).toBe(false);
+    expect(proposalDecisionSchema.safeParse({ decision: "accept", action: pending.action, today }).success).toBe(false);
+    expect(proposalSchema.parse({ ...pending, source: { ...pending.source, today } }).source.today).toBe(today);
+  });
   it("preserves minute estimates as hours in legacy proposal baselines and results", () => {
     const before = { title: "Existing task", id: "task", done: false, createdAt: "2026-11-01T12:00:00.000Z", completedAt: null, estimateMinutes: 90 };
     const action = { kind: "update_task", taskId: "task", patch: { priority: "high" } };

@@ -47,6 +47,15 @@ describe("dayDiff", () => {
 });
 
 describe("dueLabel", () => {
+  it("keeps the original text of an impossible legacy deadline instead of displaying another date", () => {
+    expect(dueLabel("2026-02-30", "2026-03-02", "en", en)).toBe("2026-02-30");
+    expect(dueLabel("2026-02-30", "2026-03-02", "pt-BR", pt)).toBe("2026-02-30");
+    expect(dayDiff("2026-02-30", TODAY)).toBeNaN();
+  });
+
+  it("uses the supplied year for deadlines before year 100", () => {
+    expect(dueLabel("0099-06-12", TODAY, "en", en)).toBe("Jun 12, 99");
+  });
   it("names today, tomorrow and yesterday in each language", () => {
     expect(dueLabel("2026-11-17", TODAY, "en", en)).toBe("Today");
     expect(dueLabel("2026-11-18", TODAY, "en", en)).toBe("Tomorrow");
@@ -64,6 +73,11 @@ describe("dueLabel", () => {
 });
 
 describe("longDate", () => {
+  it("shows the raw value for a calendar-invalid legacy plan in either locale", () => {
+    for (const locale of ["en", "pt-BR"] as const) {
+      expect(longDate("0000-01-01", locale)).toEqual({ weekday: "", rest: "0000-01-01" });
+    }
+  });
   it("splits weekday and date, localized", () => {
     expect(longDate(TODAY, "en")).toEqual({ weekday: "Tuesday", rest: "November 17" });
     expect(longDate(TODAY, "pt-BR")).toEqual({ weekday: "terça-feira", rest: "17 de novembro" });

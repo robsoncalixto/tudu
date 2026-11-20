@@ -10,6 +10,53 @@ const languages = [
 ];
 
 for (const l of languages) {
+  test(`opens and repairs historical task dates in ${l.code}`, async ({ page, request }) => {
+    const [existing] = await seed(request, [{ title: "Old calendar entry" }]);
+    await page.route("**/api/tasks", (route) => route.fulfill({ json: {
+      tasks: [{ ...existing, plannedFor: "0000-01-01", due: "2026-02-30" }],
+    } }));
+    await openApp(page);
+    await setLanguage(page, l.code);
+    await taskDetails(row(page, existing.title)).click();
+    const panel = taskPanel(page);
+    await expect(panel.getByText("0000-01-01", { exact: true })).toBeVisible();
+    await expect(panel.getByText("2026-02-30", { exact: true })).toBeVisible();
+    await page.unroute("**/api/tasks");
+    await panel.getByLabel(l.planned, { exact: true }).fill(TODAY);
+    await panel.getByLabel(l.due, { exact: true }).fill(TOMORROW);
+    await expect.poll(async () => (await listTasks(request))[0]).toMatchObject({ plannedFor: TODAY, due: TOMORROW });
+  });
+
+  test(`rejects an impossible deadline and lets the user save a corrected date in ${l.code}`, async ({ page, request }) => {
+    const [existing] = await seed(request, [{ title: "Leap day review", due: TODAY }]);
+    const invalidBatch = await request.post("/api/tasks", { data: [
+      { title: "Partial batch" }, { title: "Bad deadline", due: "2026-02-30" },
+    ] });
+    expect(invalidBatch.status()).toBe(400);
+    expect(await invalidBatch.json()).toEqual({ error: "invalid_task" });
+    await openApp(page);
+    await setLanguage(page, l.code);
+    await taskDetails(row(page, existing.title)).click();
+    const panel = taskPanel(page);
+    const due = panel.getByLabel(l.due, { exact: true });
+    const endpoint = `**/api/tasks/${existing.id}`;
+    await page.route(endpoint, (route) => route.continue({ postData: JSON.stringify({ due: "2026-02-30" }) }));
+    const response = page.waitForResponse((result) =>
+      result.url().endsWith(`/api/tasks/${existing.id}`) && result.request().method() === "PATCH");
+    await due.fill(TOMORROW);
+    const rejected = await response;
+    expect(rejected.status()).toBe(400);
+    expect(await rejected.json()).toEqual({ error: "invalid_task" });
+    await expect(panel.getByRole("alert").getByRole("button", { name: l.retry })).toBeVisible();
+    await expect(due).toHaveValue(TODAY);
+    expect(await listTasks(request)).toEqual([existing]);
+
+    await page.unroute(endpoint);
+    await due.fill("2028-02-29");
+    await expect.poll(async () => (await listTasks(request))[0].due).toBe("2028-02-29");
+    await page.reload();
+    await expect(row(page, existing.title).getByLabel(l.due, { exact: true })).toHaveValue("2028-02-29");
+  });
   test(`saves planning fields and keeps the board in sync in ${l.code}`, async ({ page, request }) => {
     const [project] = await seedProjects(request, ["Release"]);
     const [before] = await seed(request, [{ title: "Plan release" }]);
