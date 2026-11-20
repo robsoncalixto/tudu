@@ -328,9 +328,11 @@ for (const l of [
 
 for (const l of [
   { locale: "en", priority: "Priority", low: "Low", medium: "Medium", due: "Due date", dueField: "New task due date", tags: "Tags", tag: "New task tag",
-    project: "Project", estimate: "Estimate", tomorrow: "Tomorrow", sidebarProject: /^Project: Other,/, error: "Something went wrong. Try again.", ai: "Create with AI", minute: "30 minutes" },
+    project: "Project", estimate: "Estimate", tomorrow: "Tomorrow", sidebarProject: /^Project: Other,/, error: "Something went wrong. Try again.", ai: "Create with AI", minute: "30 minutes",
+    repeat: "Repeat", weekly: "Weekly" },
   { locale: "pt-BR", priority: "Prioridade", low: "Baixa", medium: "Média", due: "Prazo", dueField: "Prazo da nova tarefa", tags: "Etiquetas", tag: "Etiqueta da nova tarefa",
-    project: "Projeto", estimate: "Estimativa", tomorrow: "Amanhã", sidebarProject: /^Projeto: Other,/, error: "Algo deu errado. Tente novamente.", ai: "Criar com IA", minute: "30 minutos" },
+    project: "Projeto", estimate: "Estimativa", tomorrow: "Amanhã", sidebarProject: /^Projeto: Other,/, error: "Algo deu errado. Tente novamente.", ai: "Criar com IA", minute: "30 minutos",
+    repeat: "Repetir", weekly: "Semanalmente" },
 ] as const) {
   test(`combines typed tokens and chips with view defaults in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale, defaultPriority: "high" });
@@ -396,6 +398,41 @@ for (const l of [
     await expect(row(openSection(page), "Captured action")).toBeVisible();
     expect(await listTasks(request)).toMatchObject([{ title: "Captured action", ...defaults }]);
     await expect(composer(page)).toHaveValue("");
+  });
+
+  test(`applies the estimate and repeat chips to what AI capture created in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    await page.route("**/api/ai/capture", async (route) => {
+      if (route.request().method() === "GET") return route.fulfill({ json: { enabled: true } });
+      // The capture request has no field for these two chips.
+      expect(route.request().postDataJSON()).toEqual({ text: "Capture this note", today: TODAY });
+      const response = await request.post("/api/tasks", { data: [{ title: "Dated action", due: "2026-11-20" }, { title: "Undated action" }] });
+      await route.fulfill({ response });
+    });
+    await page.goto("/");
+    await composer(page).fill("Capture this note");
+    await pickChip(page, l.estimate, l.minute);
+    await pickChip(page, l.repeat, l.weekly);
+    await page.getByRole("button", { name: l.ai, exact: true }).click();
+    await expect(row(openSection(page), "Undated action")).toBeVisible();
+    const saved = async () => (await listTasks(request)).map(({ title, due, repeat, estimateHours }) => ({ title, due, repeat, estimateHours }));
+    await expect.poll(saved).toEqual([
+      { title: "Dated action", due: "2026-11-20", repeat: { frequency: "weekly", days: [5] }, estimateHours: 0.5 },
+      { title: "Undated action", due: TODAY, repeat: { frequency: "weekly", days: [2] }, estimateHours: 0.5 },
+    ]);
+
+    // When the follow-up change fails the captured task stays, and the failure is said.
+    await page.route("**/api/tasks/*", (route) => route.request().method() === "PATCH"
+      ? route.fulfill({ status: 500, json: { error: "generic" } }) : route.fallback());
+    await composer(page).fill("Capture this note");
+    await pickChip(page, l.estimate, l.minute);
+    await pickChip(page, l.repeat, l.weekly);
+    await page.getByRole("button", { name: l.ai, exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText(l.error);
+    expect((await saved()).slice(2)).toEqual([
+      { title: "Dated action", due: "2026-11-20", repeat: null, estimateHours: null },
+      { title: "Undated action", due: null, repeat: null, estimateHours: null },
+    ]);
   });
 }
 

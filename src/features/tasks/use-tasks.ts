@@ -15,8 +15,8 @@ import type { Priority, Task, TaskPatch } from "./schema";
 /**
  * Owns the task list. `add` shows the new tasks at once and `capture` waits for
  * the server; both reject with an ApiError so the caller can keep the user's
- * text. `patch` and `removeLater` update optimistically, roll back on failure
- * and report the error code through `onError`.
+ * text. `patch`, `removeLater` and what `capture` finishes update optimistically,
+ * roll back on failure and report the error code through `onError`.
  */
 export function useTasks(onError: (code: string) => void, onNext?: (task: Task) => void, onRefreshed?: (currentIds: ReadonlySet<string>) => void, provider?: string) {
   const [confirmed, setConfirmed] = useState<Task[] | null>(null);
@@ -91,11 +91,6 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
     return { shown, saved };
   }, [append]);
 
-  const capture = useCallback(
-    (text: string, today: string, defaults: CaptureDefaults) => captureApi.capture(text, today, defaults).then(append),
-    [append],
-  );
-
   const send = useCallback((mutation: PendingTaskMutation) => {
     const { id, patch: changes } = mutation;
     // Order writes to the same task while other tasks remain independent.
@@ -131,13 +126,27 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
     return request;
   }, []);
 
-  const patch = useCallback((id: string, changes: TaskPatch) => {
-    // A late save, such as notes still waiting when the task was deleted elsewhere, has nothing left to change.
-    if (known.current && !known.current.some((task) => task.id === id)) return Promise.resolve(false);
+  const change = useCallback((id: string, changes: TaskPatch) => {
     const mutation = { id, patch: changes };
     setPending((current) => [...current, mutation]);
     return send(mutation);
   }, [send]);
+
+  const patch = useCallback((id: string, changes: TaskPatch) => {
+    // A late save, such as notes still waiting when the task was deleted elsewhere, has nothing left to change.
+    if (known.current && !known.current.some((task) => task.id === id)) return Promise.resolve(false);
+    return change(id, changes);
+  }, [change]);
+
+  /** `finish` returns what the capture request could not carry for a task it created, saved as a change to it. */
+  const capture = useCallback(async (text: string, today: string, defaults: CaptureDefaults, finish?: (task: Task) => TaskPatch | null) => {
+    const created = append(await captureApi.capture(text, today, defaults));
+    for (const task of created) {
+      const changes = finish?.(task);
+      if (changes) void change(task.id, changes);
+    }
+    return created;
+  }, [append, change]);
 
   /** Hides the task now and deletes it only on `commit`, so `undo` has nothing to restore on the server. */
   const removeLater = useCallback((id: string) => {
