@@ -2,7 +2,10 @@ import type { Project } from "@/features/projects/schema";
 import { tasksApi } from "@/features/tasks/api";
 import { ApiError } from "@/lib/http";
 import { completionAt, isTyped, quickSuggestions } from "./completion";
-import { QuickDraftError, parseQuickAdd, parseQuickEdit, parseQuickTask, quickTaskDrafts, quickTextTokens, quickTextWarnings, stripQuickTokens } from "./parser";
+import {
+  QuickDraftError, parseQuickAdd, parseQuickEdit, parseQuickTask, quickTaskDrafts, quickTextTokens, quickTextWarnings, settledWarnings,
+  stripQuickTokens, titleWords,
+} from "./parser";
 import type { QuickAddDefaults, QuickAddProblem, QuickCompletion, QuickSuggestion, QuickTask, QuickTokenType, SuggestionSources } from "./schema";
 
 export const quickAddApi = {
@@ -18,8 +21,12 @@ export const quickAddApi = {
   },
   /** One line as typed: what was recognized, where, and what could not be read. */
   parse: (text: string, today: string, projects: readonly Project[] = []) => parseQuickAdd(text, { today, projects }),
-  tokens: (text: string, today: string, projects: readonly Project[] = []) => quickTextTokens(text, { today, projects }),
-  warnings: (text: string, today: string, projects: readonly Project[] = []) => quickTextWarnings(text, { today, projects }),
+  /** `editing` is the saved title being edited, whose words are never read as tokens. */
+  tokens: (text: string, today: string, projects: readonly Project[] = [], editing?: string) =>
+    quickTextTokens(text, { today, projects, ...(editing === undefined ? {} : { literals: titleWords(editing) }) }),
+  /** With a `caret`, the word being typed there is not reported yet. */
+  warnings: (text: string, today: string, projects: readonly Project[] = [], at: { caret?: number | null; editing?: string } = {}) => settledWarnings(
+    quickTextWarnings(text, { today, projects, ...(at.editing === undefined ? {} : { literals: titleWords(at.editing) }) }), at.caret ?? null),
   stripTokens: (text: string, today: string, projects: readonly Project[], type: QuickTokenType, value?: string) =>
     stripQuickTokens(text, { today, projects }, type, value),
   edit: (original: string, edited: string, today: string, projects: readonly Project[] = []) =>

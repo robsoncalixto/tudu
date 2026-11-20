@@ -37,6 +37,17 @@ function relativeDay(word: string, today: string, names: Record<string, number>)
   return undefined;
 }
 
+// "depois de amanhã" and "the day after tomorrow" are one expression that names the following day.
+const DAY_AFTER: Record<string, string[][]> = { amanha: [["depois", "de"]], tomorrow: [["the", "day", "after"], ["day", "after"]] };
+
+/** How many of the words written just before a date word turn it into "the day after", longest wording first. */
+export function dayAfterLead(word: string, before: readonly string[]): number {
+  const leads = Object.hasOwn(DAY_AFTER, wordKey(word)) ? DAY_AFTER[wordKey(word)] : [];
+  return leads.find((lead) => lead.length <= before.length && lead.every((item, index) => wordKey(before[before.length - lead.length + index]) === item))?.length ?? 0;
+}
+
+export const dayAfter = (date: string): string | null => shifted(date, 1);
+
 export function isDateWord(token: string): boolean {
   const word = wordKey(token);
   return isDate(token) || Object.hasOwn(RELATIVE_DAYS, word) || Object.hasOwn(WEEKDAYS, word);

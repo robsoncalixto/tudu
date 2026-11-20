@@ -100,6 +100,27 @@ describe("inline syntax", () => {
     expect(result.warnings).toEqual([{ kind, text: word, start: 13, end: 13 + word.length }]);
   });
 
+  it.each([
+    ["Entregar depois de amanhã", "Entregar", "2026-11-19"], ["Entregar depois de amanha cedo", "Entregar cedo", "2026-11-19"],
+    ["Ship the day after tomorrow", "Ship", "2026-11-19"], ["Ship day after tomorrow", "Ship", "2026-11-19"],
+    ["Depois de amanhã", "", "2026-11-19"],
+    // Without the whole expression right before it, the day is the day itself.
+    ["Entregar depois amanhã", "Entregar depois", "2026-11-18"], ["Falar de amanhã", "Falar de", "2026-11-18"],
+    ["Call the day after #x tomorrow", "Call the day after", "2026-11-18"],
+  ])("reads %s as the title %j due %s", (text, title, due) => {
+    expect(parse(text)).toMatchObject({ title, due });
+  });
+
+  it("marks the whole day-after expression as one token", () => {
+    const text = "Entregar depois de amanhã cedo";
+    const [token] = parse(text).tokens;
+    expect(text.slice(token.start, token.end)).toBe("depois de amanhã");
+  });
+
+  it.each([["t45min", 0.75], ["~45min", 0.75], ["t90mins", 1.5], ["~1h30min", 1.5], ["t2h15min", 2.25]])("reads the estimate %s as %d hours", (token, hours) => {
+    expect(parse(`Review ${token}`)).toMatchObject({ title: "Review", estimate: hours });
+  });
+
   it("does not take a time that is out of range after a date", () => {
     expect(parse("Call @amanha 25h")).toMatchObject({ title: "Call 25h", due: "2026-11-18", time: null });
   });
