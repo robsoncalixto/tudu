@@ -7,6 +7,7 @@ export function ProposalValues({ action, proposal, projects, locale, t, before =
   action: ProposalAction; proposal: Proposal; projects: Project[]; locale: Locale; t: Dictionary; before?: boolean;
 }) {
   if (action.kind === "create_project" || action.kind === "rename_project") return <p>{before ? proposal.projectBefore?.name : action.name}</p>;
+  if (action.kind === "flag_duplicate") return <p>{t.agentPossibleDuplicate(action.otherTitle)}</p>;
   const fields = action.kind === "create_task" ? action.task : action.patch;
   const values = before && proposal.taskBefore ? proposal.taskBefore : fields;
   const date = (value: string | null | undefined) => value ? dueLabel(value, proposal.source.today, locale, t, "iso") : t.noDate;
