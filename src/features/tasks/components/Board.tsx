@@ -61,7 +61,7 @@ export function Board() {
 
   return <div className="board-content" ref={actions.root}>
     <TaskDeleteDialog t={t} {...actions.dialogProps} />
-    <main className="panel">
+    <main id="main-content" tabIndex={-1} className="panel">
       <div className="board-bar">
         <div className="board-location"><Icon name="grid" size={16} /><span>{t.workspace}</span>
           <Icon name="chevron-right" size={13} /><strong>{t.tasksLabel}</strong></div>

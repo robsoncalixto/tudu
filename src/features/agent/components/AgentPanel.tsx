@@ -23,7 +23,7 @@ export function AgentPanel({ settings }: { settings: Settings }) {
   }
   const cards = (proposals: Proposal[]) => proposals.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal}
     projects={agent.state?.projects ?? []} locale={locale} t={t} busy={busy} saving={agent.busyId === proposal.id} error={agent.errors[proposal.id]} onDecision={decide} />);
-  return <main className="page-content agent-page" ref={root} aria-busy={busy}>
+  return <main id="main-content" tabIndex={-1} className="page-content agent-page" ref={root} aria-busy={busy}>
     <h1>{t.agent}</h1><p className="agent-intro">{t.agentIntro}</p>
     <form className="card agent-request" onSubmit={(event) => { event.preventDefault(); if (today) void agent.propose(today); }}>
       <label htmlFor="agent-note">{t.agentPrompt}</label>

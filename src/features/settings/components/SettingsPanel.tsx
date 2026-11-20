@@ -19,8 +19,8 @@ export function SettingsPanel({ initial, ai }: Props) {
   const { saved, draft, change, save, busy, dirty, error, savedNotice } = useSettings(initial);
   const { t } = useLocale(saved.locale);
   return (
-    <main className="page-content settings-page">
-    <h1>{t.settings}</h1>
+    <main id="main-content" tabIndex={-1} className="page-content settings-page">
+      <h1>{t.settings}</h1>
       <form className="card" onSubmit={(event) => { event.preventDefault(); void save(); }}>
         <fieldset disabled={busy} className="settings-fields">
           <legend className="sr-only">{t.preferences}</legend>

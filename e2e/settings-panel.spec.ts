@@ -121,6 +121,9 @@ for (const language of languages) {
     await page.goto("/settings");
     const all = sidebar(page).getByRole("button", { name: language.all });
     const menu = sidebar(page).getByRole("button", { name: /More views|Mais visualizações/ });
+    const skip = page.getByRole("link", { name: /Skip to content|Ir para o conteúdo/ });
+    await page.keyboard.press("Tab");
+    await expect(skip).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(menu).toBeFocused();
     expect((await all.boundingBox())!.height).toBeGreaterThanOrEqual(44);

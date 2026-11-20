@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Settings } from "@/features/settings/schema";
 import { errorMessage } from "@/i18n";
@@ -35,10 +35,10 @@ function useWorkspaceState(settings: Settings) {
   const taskData = useTasks(fail, scheduled, (currentIds) => {
     if (selectedId && !currentIds.has(selectedId)) {
       inspector.close();
-      setNotice({ kind: "ok", text: t.taskDeletedElsewhere });
+      if (page === "/") setNotice({ kind: "ok", text: t.taskDeletedElsewhere });
     }
   }, settings.aiProvider);
-  const projectData = useProjects(fail, taskData.clearProject, (ids) => {
+  const projectData = useProjects(taskData.clearProject, (ids) => {
     if (filter.kind !== "project" || ids.has(filter.id)) return;
     setSelectedId(null);
     setQuery("");
@@ -51,9 +51,17 @@ function useWorkspaceState(settings: Settings) {
     [tasks, filter, today, projects, query, sort]);
   const selectedTask = tasks?.find((task) => task.id === selectedId);
 
+  const previousPage = useRef(page);
+  const refreshTasks = taskData.retryLoad;
+  const refreshProjects = projectData.retryLoad;
   useEffect(() => {
+    if (previousPage.current === page) return;
+    previousPage.current = page;
+    setNotice(null);
     if (page !== "/") setSelectedId(null);
-  }, [page, setSelectedId]);
+    refreshTasks();
+    refreshProjects();
+  }, [page, setSelectedId, refreshTasks, refreshProjects]);
 
   function select(next: TaskFilter) {
     setSelectedId(null);
@@ -77,8 +85,11 @@ export function TaskWorkspace({ settings, children }: { settings: Settings; chil
   const workspace = useWorkspaceState(settings);
   const { page, navigation, projectData, t, view, select, selectedTask } = workspace;
   return <WorkspaceContext.Provider value={workspace}>
+    <a className="skip-link" href="#main-content">{t.skipToContent}</a>
     <div className={`shell${page === "/" && selectedTask ? " has-inspector" : ""}`}>
       <Sidebar t={t} view={view} filter={navigation.filter} page={page} onFilter={select}
+        taskLoadFailed={page !== "/" && workspace.taskData.loadFailed} onRetryTasks={workspace.taskData.retryLoad}
+        projectLoadFailed={projectData.loadFailed} onRetryProjects={projectData.retryLoad}
         projectManager={{ projects: projectData.projects, error: projectData.projectError ? errorMessage(t, projectData.projectError) : "",
           clearError: projectData.clearProjectError, onCreate: projectData.createProject, onRename: projectData.renameProject,
           onDelete: async (id) => {

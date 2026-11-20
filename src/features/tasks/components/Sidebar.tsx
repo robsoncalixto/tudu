@@ -16,9 +16,13 @@ interface Props {
   projectManager: Omit<ProjectManagerProps, "t">;
   onFilter: (filter: TaskFilter) => void;
   page: string;
+  taskLoadFailed: boolean;
+  projectLoadFailed: boolean;
+  onRetryTasks: () => void;
+  onRetryProjects: () => void;
 }
 
-export function Sidebar({ t, view, filter, projectManager, onFilter, page }: Props) {
+export function Sidebar({ t, view, filter, projectManager, onFilter, page, taskLoadFailed, projectLoadFailed, onRetryTasks, onRetryProjects }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [projectDialog, setProjectDialog] = useState<ProjectDialogMode | null>(null);
   const { layout, compact, update, toggleGroup } = useSidebarLayout();
@@ -42,7 +46,10 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, page }: Pro
   function pageLink(href: keyof typeof links) {
     const [label, icon] = links[href];
     return <Link href={href} className={`nav-item${page === href ? " is-active" : ""}`}
-      aria-current={page === href ? "page" : undefined} aria-label={label} title={label} onClick={() => setExpanded(false)}>
+      aria-current={page === href ? "page" : undefined} aria-label={label} title={label} onClick={() => {
+        if (expanded && href !== "/settings") toggle.current?.focus();
+        setExpanded(false);
+      }}>
       <Icon name={icon} /><span>{label}</span>
     </Link>;
   }
@@ -74,6 +81,10 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, page }: Pro
         ariaLabel={`${t.allTasks}, ${t.countOpen(view.openCount)}`} onClick={() => choose({ kind: "all" })} />
       <NavItem label={t.today} icon="sun" count={view.todayCount} active={active?.kind === "today"}
         ariaLabel={`${t.today}, ${t.countOpen(view.todayCount)}`} onClick={() => choose({ kind: "today" })} />
+      {(taskLoadFailed || projectLoadFailed) && <div className="sidebar-failures">
+        {taskLoadFailed && <LoadFailure message={t.taskLoadFailed} retry={t.retry} onRetry={onRetryTasks} />}
+        {projectLoadFailed && <LoadFailure message={t.projectLoadFailed} retry={t.retry} onRetry={onRetryProjects} />}
+      </div>}
       <div id="nav-library" className="nav-library">
         <div className="nav-tools">
           {pageLink("/work-log")}
@@ -128,4 +139,13 @@ function NavItem({ label, icon, count, active, onClick, ariaLabel }: {
     aria-current={active ? "page" : undefined} aria-label={ariaLabel} title={label} onClick={onClick}>
     {icon && <Icon name={icon} />}<span className="nav-text">{label}</span><span className="nav-count">{count}</span>
   </button>;
+}
+
+function LoadFailure({ message, retry, onRetry }: { message: string; retry: string; onRetry: () => void }) {
+  return <div>
+    <p role="alert">{message}</p>
+    <button type="button" className="nav-item" aria-label={`${retry} · ${message}`} onClick={onRetry}>
+      <span>{retry}</span>
+    </button>
+  </div>;
 }
