@@ -84,5 +84,5 @@ export function useTaskActions(tasks: Task[] | null, patch: (id: string, patch: 
       } else setDeleteFailed(true);
     } finally { pending.current = false; setDeleting(false); }
   }
-  return { root, requestDelete, patchFromRow, dialogProps: { dialog, deleting, deleteFailed, onClose: close, onClosed, onDelete: confirmDelete } };
+  return { root, rows, focusComposer, requestDelete, patchFromRow, dialogProps: { dialog, deleting, deleteFailed, onClose: close, onClosed, onDelete: confirmDelete } };
 }

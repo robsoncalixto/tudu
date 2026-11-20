@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { subscribeAgentUpdates } from "@/features/agent/api";
+import { shortcutsApi } from "@/features/shortcuts/api";
 import type { Settings } from "@/features/settings/schema";
 import { errorMessage } from "@/i18n";
 import { useLocale } from "@/i18n/use-locale";
@@ -73,8 +74,30 @@ function useWorkspaceState(settings: Settings) {
     if (page !== "/") router.push("/");
   }
 
+  // The board is not mounted on other pages, so it picks this up when it appears.
+  const focusRequest = useRef<"composer" | "search" | null>(null);
+  const go = useRef({ page, select, router });
+  go.current = { page, select, router };
+  useEffect(() => {
+    const openBoard = (field: "composer" | "search") => () => {
+      if (go.current.page === "/") return false;
+      focusRequest.current = field;
+      go.current.router.push("/");
+    };
+    const stops = [
+      shortcutsApi.subscribe("newTask", openBoard("composer")),
+      shortcutsApi.subscribe("search", openBoard("search")),
+      shortcutsApi.subscribe("goAll", () => go.current.select({ kind: "all" })),
+      shortcutsApi.subscribe("goToday", () => go.current.select({ kind: "today" })),
+      shortcutsApi.subscribe("goWorkLog", () => go.current.router.push("/work-log")),
+      shortcutsApi.subscribe("goAssistant", () => go.current.router.push("/agent")),
+      shortcutsApi.subscribe("goSettings", () => go.current.router.push("/settings")),
+    ];
+    return () => stops.forEach((stop) => stop());
+  }, []);
+
   return { page, settings, locale, t, today, navigation, taskData, projectData, selectedTask, inspector,
-    view, notice, setNotice, fail, select, suggestions };
+    view, notice, setNotice, fail, select, suggestions, focusRequest };
 }
 
 const WorkspaceContext = createContext<ReturnType<typeof useWorkspaceState> | null>(null);

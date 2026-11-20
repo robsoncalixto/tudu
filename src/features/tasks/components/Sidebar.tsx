@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState, type ReactNode } from "react";
+import { shortcutsApi } from "@/features/shortcuts/api";
 import type { Dictionary } from "@/i18n";
 import { Icon, type IconName } from "@/lib/Icon";
 import { boardFilterForPage } from "../board-navigation";
@@ -112,6 +113,10 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, page, pendi
       </div>
     </nav>
     <div className="sidebar-actions">
+      <button type="button" className="nav-item shortcut-help" aria-label={t.shortcuts.open} title={t.shortcuts.open}
+        aria-haspopup="dialog" onClick={() => { setExpanded(false); shortcutsApi.run("help"); }}>
+        <Icon name="keyboard" /><span>{t.shortcuts.open}</span>
+      </button>
       {pageLink("/settings")}
     </div>
     <ProjectManager {...projectManager} t={t} mode={projectDialog} onClose={() => setProjectDialog(null)} />

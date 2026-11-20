@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { TaskWorkspace } from "@/features/tasks/components/TaskWorkspace";
 import { Pwa } from "@/features/pwa/components/Pwa";
+import { Shortcuts } from "@/features/shortcuts/components/Shortcuts";
 import { appColors } from "@/features/pwa/theme";
 import { getSettings } from "@/features/settings/server/repository";
 
@@ -36,6 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <Pwa locale={locale} theme={theme} />
         <TaskWorkspace settings={settings}>{children}</TaskWorkspace>
+        <Shortcuts locale={locale} />
       </body>
     </html>
   );
