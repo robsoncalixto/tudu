@@ -38,7 +38,13 @@ function useWorkspaceState(settings: Settings) {
       setNotice({ kind: "ok", text: t.taskDeletedElsewhere });
     }
   }, settings.aiProvider);
-  const projectData = useProjects(fail, taskData.clearProject);
+  const projectData = useProjects(fail, taskData.clearProject, (ids) => {
+    if (filter.kind !== "project" || ids.has(filter.id)) return;
+    setSelectedId(null);
+    setQuery("");
+    setFilter({ kind: "all" });
+    setNotice(null);
+  });
   const { tasks } = taskData;
   const { projects } = projectData;
   const view = useMemo(() => buildTaskView(tasks ?? [], filter, today ?? "", projects, query, sort),

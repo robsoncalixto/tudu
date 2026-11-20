@@ -102,6 +102,14 @@ structured output.
   each proposal, then accept or reject it. Decisions are kept in a history that
   survives restarts.
 
+## Install TUDU
+
+Open TUDU on `localhost` or over HTTPS. On desktop, use the browser’s
+**Install app** option. On a phone, use **Add to Home Screen** or **Install**
+from your browser menu. The installed app opens in its own window and follows
+your **Start view** setting. When the connection drops, it shows an offline
+page until it can reach the server again.
+
 ## Using TUDU
 
 The same sidebar on every screen opens **All tasks**, **Today**, projects,
@@ -125,6 +133,11 @@ execution time.
 
 Repeating tasks can be daily, on weekdays, weekly on selected days, or monthly.
 Completing one creates the next occurrence.
+
+**Assistant** can review open tasks with **Review my tasks**, with or without a
+note. It summarizes what it reviewed and proposes changes with reasons. Every
+change requires approval. Possible duplicate flags record the decision without
+modifying either task.
 
 **Work log** lists the tasks completed on a chosen day, grouped by project or
 tag, with recorded time, estimates alongside recorded time, and totals per

@@ -84,6 +84,11 @@ for (const l of [
       await page.goto("/");
       const opener = row(page, task.title).getByRole("button", { name: l.menu });
       await opener.tap();
+      await expect(opener).toHaveAttribute("aria-expanded", "true");
+      await opener.tap();
+      await expect(opener).toHaveAttribute("aria-expanded", "false");
+      await expect(page.getByRole("menu", { name: l.menu })).toHaveCount(0);
+      await opener.tap();
       const item = page.getByRole("menu", { name: l.menu }).getByRole("menuitem", { name: l.nextWeek });
       await expect(item).toBeInViewport();
       expect((await item.boundingBox())?.height).toBeGreaterThanOrEqual(44);
