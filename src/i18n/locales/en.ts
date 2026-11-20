@@ -125,6 +125,7 @@ export const en = {
   markDone: "Mark as done",
   markOpen: "Mark as open",
   editTitle: "Edit title",
+  resizeTaskPanel: "Resize task details",
   taskDetails: "Task details",
   closeTaskDetails: "Close task details",
   editTaskTags: "Edit tags",

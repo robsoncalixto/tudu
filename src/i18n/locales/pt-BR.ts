@@ -127,6 +127,7 @@ export const ptBR: Dictionary = {
   markDone: "Marcar como concluída",
   markOpen: "Marcar como aberta",
   editTitle: "Editar título",
+  resizeTaskPanel: "Redimensionar detalhes da tarefa",
   taskDetails: "Detalhes da tarefa",
   closeTaskDetails: "Fechar detalhes da tarefa",
   editTaskTags: "Editar etiquetas",

@@ -1,12 +1,16 @@
 "use client";
 
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { isTypingTarget } from "@/lib/keyboard";
 
-export function TaskPanelFrame({ taskId, label, onClose, children }: {
-  taskId: string; label: string; onClose: () => void; children: ReactNode;
+import { usePanelWidth } from "../use-panel-width";
+import { TaskPanelResize } from "./TaskPanelResize";
+
+export function TaskPanelFrame({ taskId, label, resizeLabel, onClose, children }: {
+  taskId: string; label: string; resizeLabel: string; onClose: () => void; children: ReactNode;
 }) {
   const frame = useRef<HTMLDialogElement>(null);
+  const size = usePanelWidth(frame);
 
   useLayoutEffect(() => {
     const dialog = frame.current;
@@ -32,6 +36,7 @@ export function TaskPanelFrame({ taskId, label, onClose, children }: {
   }, [taskId]);
 
   return <dialog ref={frame} className="inspector-host" aria-label={label}
+    style={size.ready ? { "--inspector-width": `${size.width}px` } as CSSProperties : undefined}
     onCancel={(event) => { event.preventDefault(); onClose(); }}
     onKeyDown={(event) => {
       if (event.defaultPrevented || event.nativeEvent.isComposing) return;
@@ -50,6 +55,7 @@ export function TaskPanelFrame({ taskId, label, onClose, children }: {
       const bounds = event.currentTarget.getBoundingClientRect();
       if (event.clientX < bounds.left || event.clientX > bounds.right) onClose();
     }}>
+    <TaskPanelResize label={resizeLabel} size={size} />
     {children}
   </dialog>;
 }
