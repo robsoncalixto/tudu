@@ -1,6 +1,6 @@
 import { dictionaries, type Locale } from "@/i18n";
 import { dueLabel } from "@/lib/dates";
-import type { Task } from "@/features/tasks/schema";
+import { taskSchema, type Task } from "@/features/tasks/schema";
 import { proposalDraftSchema, type ProposalDraft } from "../schema";
 import { DEFAULT_EFFORT, recommendPlacement, upcomingWorkload, type CapacitySettings } from "../workload";
 
@@ -9,7 +9,10 @@ type Placement = NonNullable<ReturnType<typeof recommendPlacement>>;
 function explain(placement: Placement, locale: Locale, today: string, settings: CapacitySettings) {
   const t = dictionaries[locale];
   const day = dueLabel(placement.day, today, locale, t, settings.dateFormat);
-  const details = t.agentLoadReason(day, placement.free, placement.effort);
+  const free = Math.max(0, placement.free);
+  const details = free < placement.effort
+    ? t.agentOverCapacityPlacement(day, free, placement.effort)
+    : t.agentLoadReason(day, free, placement.effort);
   return placement.usedDefault ? `${details} ${t.agentDefaultEffort(DEFAULT_EFFORT)}` : details;
 }
 
@@ -19,13 +22,11 @@ export function scheduleNewDrafts(drafts: ProposalDraft[], tasks: Task[], today:
     if (draft.action.kind !== "create_task") return draft;
     const task = draft.action.task;
     const workload = upcomingWorkload(pool, today, settings);
-    const placement = task.due === null && task.plannedFor === null ? recommendPlacement(task, workload) : null;
+    const placement = task.due === null && task.plannedFor === null ? recommendPlacement(task, workload, { allowOverCapacity: true }) : null;
     const proposed = placement ? { ...task, due: placement.day, plannedFor: placement.day, partOfDay: placement.partOfDay } : task;
-    pool.push({
-      ...proposed, id: `proposed-${index}`, done: false, createdAt: "", completedAt: null,
-      partOfDay: proposed.partOfDay ?? null, estimateHours: proposed.estimateHours ?? null,
-      nextOccurrenceId: null, realTimeHours: null, links: [],
-    });
+    pool.push(taskSchema.parse({
+      ...proposed, id: `proposed-${index}`, done: false, createdAt: `${today}T00:00:00.000Z`, completedAt: null,
+    }));
     return placement ? proposalDraftSchema.parse({ ...draft, reason: `${draft.reason}\n${explain(placement, locale, today, settings)}`,
       action: { kind: "create_task", task: proposed } }) : draft;
   });
@@ -52,7 +53,7 @@ export function scheduleReviewDrafts(drafts: ProposalDraft[], tasks: Task[], tod
       .sort((a, b) => (["low", "medium", "high"].indexOf(a.priority) - ["low", "medium", "high"].indexOf(b.priority)));
     for (const task of movable) {
       const future = upcomingWorkload(pool, today, settings, 35).filter((day) => day.day > overloaded.day && (!task.due || day.day <= task.due));
-      const placement = recommendPlacement(task, future, false);
+      const placement = recommendPlacement(task, future, { deferLow: false });
       if (!placement) continue;
       const t = dictionaries[locale];
       const overload = t.agentOverloaded(dueLabel(overloaded.day, today, locale, t, settings.dateFormat), overloaded.hours, overloaded.capacity);
