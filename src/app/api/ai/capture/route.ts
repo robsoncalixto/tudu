@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { captureRequestSchema } from "@/features/capture/schema";
 import { captureTasks } from "@/features/capture/server/capture";
 import { AiError } from "@/features/ai/schema";
 import { aiPublicConfiguration } from "@/features/ai/server/configuration";
@@ -9,11 +9,6 @@ import { listProjects, ProjectError, withValidProjectIds } from "@/features/proj
 import { getSettings } from "@/features/settings/server/repository";
 
 export const dynamic = "force-dynamic";
-
-const bodySchema = z.object({
-  text: z.string().trim().min(1).max(8000),
-  today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-});
 
 export async function GET() {
   const settings = await getSettings();
@@ -25,14 +20,15 @@ export async function POST(request: Request) {
   if (!aiPublicConfiguration().available[settings.aiProvider]) {
     return NextResponse.json({ error: "ai_disabled" }, { status: 503 });
   }
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  const parsed = captureRequestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_note" }, { status: 400 });
   }
 
   try {
     const projects = await listProjects();
-    const drafts = await captureTasks(createGenerator(settings), parsed.data.text, parsed.data.today, projects, settings.defaultPriority);
+    const { text, today, defaults } = parsed.data;
+    const drafts = await captureTasks(createGenerator(settings), text, today, projects, defaults?.priority ?? settings.defaultPriority, defaults);
     if (drafts.length === 0) {
       return NextResponse.json({ error: "no_tasks" }, { status: 422 });
     }

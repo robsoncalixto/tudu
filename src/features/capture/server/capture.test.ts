@@ -52,3 +52,23 @@ describe("AI checklist capture", () => {
     expect(task.priority).toBe("low");
   });
 });
+
+it("applies composer defaults to generated drafts without replacing a date stated in the note", async () => {
+  const draft = { title: "Review", notes: "", priority: "low", due: null, tags: ["review"], steps: [], projectId: null };
+  generate.mockResolvedValue({ tasks: [draft, { ...draft, title: "Ship", due: "2026-11-20" }] });
+  const tasks = await captureTasks(run, "Review and ship Friday", "2026-11-17", [], "low", {
+    tags: ["work", "review"], plannedFor: "2026-11-17", due: "2026-11-18",
+  });
+  expect(tasks).toMatchObject([
+    { title: "Review", due: "2026-11-18", tags: ["work", "review"], plannedFor: "2026-11-17" },
+    { title: "Ship", due: "2026-11-20", tags: ["work", "review"], plannedFor: "2026-11-17" },
+  ]);
+});
+
+it("does not assign a capture default to a project that no longer exists", async () => {
+  generate.mockResolvedValue({ tasks: [{ title: "Review", notes: "", priority: "medium", due: null, tags: [], steps: [], projectId: null }] });
+  const tasks = await captureTasks(run, "Review", "2026-11-17", [], "medium", {
+    projectId: "00000000-0000-4000-8000-000000000001",
+  });
+  expect(tasks[0].projectId).toBeNull();
+});

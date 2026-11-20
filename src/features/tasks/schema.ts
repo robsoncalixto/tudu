@@ -9,6 +9,7 @@ export const MAX_DURATION_HOURS = 8760;
 export const DURATION_UNITS = ["minutes", "hours", "days"] as const;
 export const durationUnitSchema = z.enum(DURATION_UNITS);
 export type DurationUnit = z.infer<typeof durationUnitSchema>;
+export const HOURS_PER_UNIT: Record<DurationUnit, number> = { minutes: 1 / 60, hours: 1, days: 12 };
 export const durationHoursSchema = z.number().positive().max(MAX_DURATION_HOURS).nullable();
 export const durationDraftSchema = z.object({
   value: z.string(), unit: durationUnitSchema, hours: durationHoursSchema.optional(),
