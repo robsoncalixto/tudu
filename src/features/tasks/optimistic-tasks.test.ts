@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTaskMutations, type PendingTaskMutation } from "./optimistic-tasks";
+import { applyTaskMutations, isProvisional, provisionalTask, type PendingTaskMutation } from "./optimistic-tasks";
 import { taskSchema } from "./schema";
 
 const saved = taskSchema.parse({
@@ -34,4 +34,25 @@ it("reapplies pending changes while preserving fresh changes made elsewhere", ()
     { id: "one", patch: { notes: "Pending notes" } }, { id: "two", patch: null },
   ]);
   expect(result).toEqual([{ ...first, notes: "Pending notes" }, added]);
+});
+
+describe("tasks shown before they are saved", () => {
+  const now = new Date("2026-11-17T12:00:00Z");
+
+  it("fills a typed draft into a whole task, using the default priority only when none was typed", () => {
+    const shown = provisionalTask({ title: "Call Ana", tags: ["work"], due: "2026-11-18", plannedFor: "2026-11-17", estimateHours: 0.5 }, "high", now);
+    expect(shown).toMatchObject({
+      title: "Call Ana", tags: ["work"], due: "2026-11-18", plannedFor: "2026-11-17", estimateHours: 0.5, priority: "high",
+      done: false, createdAt: "2026-11-17T12:00:00.000Z", completedAt: null, notes: "", steps: [], projectId: null,
+    });
+    expect(provisionalTask({ title: "Call Ana", priority: "low" }, "high", now).priority).toBe("low");
+  });
+
+  it("gives each one its own id that no saved task can have", () => {
+    const first = provisionalTask({ title: "One" }, "medium", now);
+    const second = provisionalTask({ title: "Two" }, "medium", now);
+    expect(first.id).not.toBe(second.id);
+    expect(isProvisional(first)).toBe(true);
+    expect(isProvisional(saved)).toBe(false);
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeDurationUnit, durationToHours, formatDuration } from "./duration";
+import { changeDurationUnit, durationLabel, durationToHours, formatDuration } from "./duration";
 import type { DurationDraft } from "./schema";
 
 describe("task duration units", () => {
@@ -29,5 +29,14 @@ describe("task duration units", () => {
     expect(changeDurationUnit({ value: "", unit: "hours" }, "days")).toEqual({ value: "", unit: "days", hours: null });
     expect(changeDurationUnit({ value: "-1", unit: "hours" }, "days")).toEqual({ value: "-1", unit: "days" });
     expect(formatDuration(12, "days")).toBe("1");
+  });
+});
+
+describe("duration labels", () => {
+  it.each([
+    [0.25, "en", "15 minutes"], [0.5, "pt-BR", "30 minutos"], [1, "en", "1 hour"], [1.5, "pt-BR", "1,5 hora"],
+    [2, "pt-BR", "2 horas"], [12, "en", "1 day"], [24, "pt-BR", "2 dias"], [13, "en", "13 hours"],
+  ] as const)("writes %s hours in %s as %s", (hours, locale, label) => {
+    expect(durationLabel(hours, locale)).toBe(label);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dictionaries } from "@/i18n";
-import { dateInTimeZone, dayDiff, dueLabel, formatTimestamp, longDate, toISODate, weekdayName } from "./dates";
+import { dateInTimeZone, dayChoiceLabel, dayDiff, dueLabel, formatTimestamp, longDate, toISODate, weekdayName } from "./dates";
 
 it("formats decision timestamps in the requested language and time zone", () => {
   expect(formatTimestamp("2026-11-17T12:30:00Z", "en", "UTC")).toContain("Nov 17, 2026");
@@ -75,4 +75,17 @@ it("formats the heading and all task dates as ISO when requested", () => {
   expect(longDate("2026-11-17", "pt-BR", "iso")).toEqual({ weekday: "terça-feira", rest: "2026-11-17" });
   expect(dueLabel("2026-11-17", "2026-11-17", "en", dictionaries.en, "iso")).toBe("2026-11-17");
   expect(dueLabel("2026-11-16", "2026-11-17", "pt-BR", dictionaries["pt-BR"], "iso")).toBe("2026-11-16");
+});
+
+describe("dayChoiceLabel", () => {
+  it("names today and tomorrow, then the weekday, always with the date", () => {
+    expect(dayChoiceLabel("2026-11-17", TODAY, "en", en)).toBe("Today · Nov 17");
+    expect(dayChoiceLabel("2026-11-18", TODAY, "pt-BR", pt)).toBe("Amanhã · 18 de nov.");
+    expect(dayChoiceLabel("2026-11-20", TODAY, "en", en)).toBe("Friday · Nov 20");
+    expect(dayChoiceLabel("2026-11-20", TODAY, "pt-BR", pt)).toBe("Sexta-feira · 20 de nov.");
+  });
+
+  it("adds the year when it differs from today's", () => {
+    expect(dayChoiceLabel("2027-03-01", TODAY, "en", en)).toBe("Monday · Mar 1, 2027");
+  });
 });
