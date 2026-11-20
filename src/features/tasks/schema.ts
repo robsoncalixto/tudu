@@ -100,6 +100,8 @@ export const taskSchema = taskInputSchema.extend({
   completedAt: z.iso.datetime().nullable(),
   plannedFor: plannedDay.default(null),
   partOfDay: partOfDaySchema.nullable().default(null),
+  dayRanks: z.record(z.iso.date(), z.number().int().nonnegative()).default({}),
+  planChangedAt: z.iso.datetime().nullable().default(null),
   nextOccurrenceId: z.string().nullable().default(null),
   estimateHours: durationHoursSchema.default(null),
   realTimeHours: durationHoursSchema.default(null),
@@ -107,6 +109,7 @@ export const taskSchema = taskInputSchema.extend({
 });
 
 export type Task = z.infer<typeof taskSchema>;
+export const taskContentSchema = taskSchema.omit({ dayRanks: true, planChangedAt: true });
 
 // Old JSON files and proposal snapshots used minutes; never reinterpret them as hours.
 export const storedTaskSchema = z.object({
@@ -121,3 +124,10 @@ export const storedTaskSchema = z.object({
 export const taskListSchema = z.object({ tasks: z.array(taskSchema) });
 export const taskUpdateSchema = z.object({ task: taskSchema, nextTask: taskSchema.nullable().default(null) });
 export type TaskUpdate = z.infer<typeof taskUpdateSchema>;
+
+const dayTaskIds = z.array(z.string().min(1).max(100)).max(10_000).refine((ids) => new Set(ids).size === ids.length);
+export const dayOrderSchema = z.object({ day: z.iso.date(), taskIds: dayTaskIds }).strict();
+export const dayOrderRequestSchema = dayOrderSchema.extend({ expected: dayTaskIds.optional() }).strict();
+export const dayOrderResponseSchema = z.object({ order: dayOrderSchema });
+export type DayOrder = z.infer<typeof dayOrderSchema>;
+export type DayOrderRequest = z.infer<typeof dayOrderRequestSchema>;

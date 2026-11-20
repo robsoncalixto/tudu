@@ -1,3 +1,4 @@
+import { rankDayTasks } from "./day-order";
 import type { Task } from "./schema";
 import type { Project } from "@/features/projects/schema";
 
@@ -63,8 +64,9 @@ export function buildTaskView(tasks: Task[], filter: TaskFilter, today: string =
       projectNames.get(task.projectId ?? ""), ...task.steps.map((step) => step.title)].join(" "));
     return words.every((word) => content.includes(word));
   }) : scope;
+  const open = visible.filter((task) => !task.done);
   return {
-    open: visible.filter((task) => !task.done).sort((a, b) => {
+    open: sort === "manual" && filter.kind === "today" ? rankDayTasks(open, today) : open.sort((a, b) => {
       if (sort === "newest") return b.createdAt.localeCompare(a.createdAt);
       if (sort === "priority" && a.priority !== b.priority) return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
       return byUrgency(a, b);

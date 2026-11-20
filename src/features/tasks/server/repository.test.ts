@@ -66,6 +66,26 @@ describe.each(backends)("repository on $name", (backend) => {
 
   afterEach(() => close());
 
+  it("saves a day order atomically, appends new entries and closes gaps", async () => {
+    const day = "2026-11-17";
+    const [first, second] = await repo.addTasks([
+      { ...input("First"), plannedFor: day }, { ...input("Second"), plannedFor: day },
+    ]);
+    const initial = await repo.readDayOrder(day);
+    expect(initial.taskIds).toEqual([first.id, second.id]);
+    await repo.setDayOrder({ day, taskIds: [second.id, first.id], expected: initial.taskIds });
+    const changed = await repo.updateTaskIfUnchanged(first.id, { plannedFor: day }, first);
+    expect(changed?.dayRanks).toEqual({ [day]: 1 });
+
+    await expect(repo.setDayOrder({ day, taskIds: [first.id, second.id], expected: initial.taskIds })).rejects.toThrow();
+    const [added] = await repo.addTasks([{ ...input("Added"), plannedFor: day }]);
+    expect((await repo.readDayOrder(day)).taskIds).toEqual([second.id, first.id, added.id]);
+    await repo.updateTask(second.id, { done: true });
+    expect((await repo.readDayOrder(day)).taskIds).toEqual([first.id, added.id]);
+    await repo.updateTask(added.id, { plannedFor: "2026-11-18" });
+    expect((await repo.readDayOrder(day)).taskIds).toEqual([first.id]);
+  });
+
   it("persists a planned day on creation independently of the deadline", async () => {
     const [task] = await repo.addTasks([{ ...input("Review"), plannedFor: "2026-11-17", due: "2026-11-23" }]);
     expect(task).toMatchObject({ plannedFor: "2026-11-17", due: "2026-11-23" });
@@ -340,9 +360,9 @@ describe("default repository", () => {
       createdAt: "2026-11-01T12:00:00.000Z", completedAt: null,
     };
     await writeFile(path.join(dir, "tasks.json"), JSON.stringify([legacy]));
-    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateHours: null, realTimeHours: null, links: [], nextOccurrenceId: null, partOfDay: null, plannedFor: null }]);
+    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateHours: null, realTimeHours: null, links: [], nextOccurrenceId: null, partOfDay: null, dayRanks: {}, planChangedAt: null, plannedFor: null }]);
     await repo.updateTask("old", { plannedFor: "2026-11-17" });
-    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateHours: null, realTimeHours: null, links: [], nextOccurrenceId: null, partOfDay: null, plannedFor: "2026-11-17" }]);
+    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateHours: null, realTimeHours: null, links: [], nextOccurrenceId: null, partOfDay: null, dayRanks: {}, planChangedAt: expect.any(String), plannedFor: "2026-11-17" }]);
   });
 
   it("converts JSON minute estimates on read and writes only hours on the next edit", async () => {

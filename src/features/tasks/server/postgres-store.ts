@@ -38,6 +38,7 @@ const MIGRATIONS = [
     `ALTER TABLE tasks DROP COLUMN estimate_minutes`,
   ],
   `ALTER TABLE tasks ADD COLUMN part_of_day text CHECK (part_of_day IN ('morning', 'afternoon', 'evening'))`,
+  `ALTER TABLE tasks ADD COLUMN day_ranks jsonb NOT NULL DEFAULT '{}', ADD COLUMN plan_changed_at timestamptz`,
 ];
 
 // Any constant works; it only has to be the same for every TUDU process.
@@ -51,6 +52,7 @@ const SELECT = `
          repeat_rule AS repeat, next_occurrence_id AS "nextOccurrenceId", estimate_hours AS "estimateHours", real_time_hours AS "realTimeHours", links,
          to_char(due, 'YYYY-MM-DD') AS due,
          part_of_day AS "partOfDay",
+         day_ranks AS "dayRanks", to_char(plan_changed_at AT TIME ZONE 'UTC', ${ISO}) AS "planChangedAt",
          to_char(planned_for, 'YYYY-MM-DD') AS "plannedFor",
          to_char(created_at AT TIME ZONE 'UTC', ${ISO}) AS "createdAt",
          to_char(completed_at AT TIME ZONE 'UTC', ${ISO}) AS "completedAt"
@@ -58,8 +60,8 @@ const SELECT = `
 
 function insertTask(sql: Queryable, task: Task) {
   return sql.query(
-    `INSERT INTO tasks (id, title, notes, priority, due, tags, done, created_at, completed_at, planned_for, steps, project_id, repeat_rule, next_occurrence_id, estimate_hours, links, real_time_hours, part_of_day)
-     VALUES ($1, $2, $3, $4, $5::date, $6::jsonb, $7, $8::timestamptz, $9::timestamptz, $10::date, $11::jsonb, $12, $13::jsonb, $14, $15, $16::jsonb, $17, $18)
+    `INSERT INTO tasks (id, title, notes, priority, due, tags, done, created_at, completed_at, planned_for, steps, project_id, repeat_rule, next_occurrence_id, estimate_hours, links, real_time_hours, part_of_day, day_ranks, plan_changed_at)
+     VALUES ($1, $2, $3, $4, $5::date, $6::jsonb, $7, $8::timestamptz, $9::timestamptz, $10::date, $11::jsonb, $12, $13::jsonb, $14, $15, $16::jsonb, $17, $18, $19::jsonb, $20::timestamptz)
      ON CONFLICT (id) DO NOTHING`,
     [
       task.id,
@@ -80,6 +82,8 @@ function insertTask(sql: Queryable, task: Task) {
       JSON.stringify(task.links),
       task.realTimeHours,
       task.partOfDay,
+      JSON.stringify(task.dayRanks),
+      task.planChangedAt,
     ],
   );
 }
@@ -139,6 +143,18 @@ export function createPostgresStore(sql: Sql, options: { seed?: () => Promise<Ta
       return (await sql.query<Task>(`${SELECT} ORDER BY seq`)).rows;
     },
 
+    async changeOrder(change) {
+      await whenReady();
+      await sql.transaction(async (tx) => {
+        // Block phantoms while the repository validates the full day's membership.
+        await tx.query("LOCK TABLE tasks IN SHARE ROW EXCLUSIVE MODE");
+        const { rows } = await tx.query<Task>(`${SELECT} ORDER BY seq`);
+        for (const task of change(rows)) {
+          await tx.query("UPDATE tasks SET day_ranks = $2::jsonb WHERE id = $1", [task.id, JSON.stringify(task.dayRanks)]);
+        }
+      });
+    },
+
     async insert(created) {
       await whenReady();
       await sql.transaction(async (tx) => {
@@ -149,6 +165,7 @@ export function createPostgresStore(sql: Sql, options: { seed?: () => Promise<Ta
     async modify(id, change) {
       await whenReady();
       return sql.transaction(async (tx) => {
+        await tx.query("LOCK TABLE tasks IN ROW EXCLUSIVE MODE");
         const { rows } = await tx.query<Task>(`${SELECT} WHERE id = $1 FOR UPDATE`, [id]);
         if (rows.length === 0) return null;
         const result = change(rows[0]);
@@ -157,7 +174,7 @@ export function createPostgresStore(sql: Sql, options: { seed?: () => Promise<Ta
           `UPDATE tasks
               SET title = $2, notes = $3, priority = $4, due = $5::date, tags = $6::jsonb,
                   done = $7, completed_at = $8::timestamptz, planned_for = $9::date, steps = $10::jsonb, project_id = $11,
-                  repeat_rule = $12::jsonb, next_occurrence_id = $13, estimate_hours = $14, links = $15::jsonb, real_time_hours = $16, part_of_day = $17
+                  repeat_rule = $12::jsonb, next_occurrence_id = $13, estimate_hours = $14, links = $15::jsonb, real_time_hours = $16, part_of_day = $17, day_ranks = $18::jsonb, plan_changed_at = $19::timestamptz
             WHERE id = $1`,
           [
             id,
@@ -177,6 +194,8 @@ export function createPostgresStore(sql: Sql, options: { seed?: () => Promise<Ta
             JSON.stringify(next.links),
             next.realTimeHours,
             next.partOfDay,
+            JSON.stringify(next.dayRanks),
+            next.planChangedAt,
           ],
         );
         if (result.nextTask) await insertTask(tx, result.nextTask);

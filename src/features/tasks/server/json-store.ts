@@ -37,6 +37,11 @@ export function createJsonStore(dataDir: string): TaskStore {
 
   return {
     list: () => locked(read),
+    changeOrder: (change) => locked(async () => {
+      const tasks = await read();
+      const updates = new Map(change(tasks).map((task) => [task.id, task]));
+      await write(tasks.map((task) => updates.get(task.id) ?? task));
+    }),
     clearProject: (id) => locked(async () => {
       await write((await read()).map((task) => task.projectId === id ? { ...task, projectId: null } : task));
     }),

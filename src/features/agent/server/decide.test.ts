@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { taskSchema, type Task } from "@/features/tasks/schema";
+import { taskContentSchema, taskSchema, type Task } from "@/features/tasks/schema";
 import type { Project } from "@/features/projects/schema";
 import { AgentError, proposedTaskSchema, type ProposalAction, type ProposalDraft } from "../schema";
 import { createProposalRepository } from "./repository";
@@ -26,6 +26,8 @@ beforeEach(async () => {
   dir = await mkdtemp(path.join(tmpdir(), "tudu-test-proposals-")); repo = createProposalRepository(dir);
   tasks = [structuredClone(task)]; projects = [structuredClone(project)];
   operations = {
+    readDayOrder: vi.fn(async (day) => ({ day, taskIds: [] })),
+    setDayOrder: vi.fn(async (order) => order),
     listTasks: vi.fn(async () => tasks), listProjects: vi.fn(async () => projects),
     createTask: vi.fn(async (id, input) => {
       const created = taskSchema.parse({ ...input, id, done: false, completedAt: null, createdAt: "2026-11-17T12:00:00Z" });
@@ -34,8 +36,8 @@ beforeEach(async () => {
     updateTask: vi.fn(async (id, patch, expected) => {
       const current = tasks.find((task) => task.id === id);
       if (!current) return null;
-      if (JSON.stringify(current) !== JSON.stringify(expected)) throw new AgentError("agent_stale");
-      const changed = taskSchema.parse({ ...current, ...patch }); tasks = tasks.map((task) => task.id === id ? changed : task); return changed;
+      if (JSON.stringify(taskContentSchema.parse(current)) !== JSON.stringify(taskContentSchema.parse(expected))) throw new AgentError("agent_stale");
+      const changed = taskSchema.parse({ ...current, ...patch, ...(patch.plannedFor ? { planChangedAt: "2026-11-17T12:00:00.000Z" } : {}) }); tasks = tasks.map((task) => task.id === id ? changed : task); return changed;
     }),
     createProject: vi.fn(async (id, name) => { const created = { id, name }; projects.push(created); return created; }),
     renameProject: vi.fn(async (id, name, expectedName) => {
@@ -85,6 +87,23 @@ describe("proposal approval and audit history", () => {
     const rename = await pending({ kind: "rename_project", projectId: project.id, name: "Acme Q1" }, null, project);
     const result = await decideProposal(repo, rename.id, { decision: "accept", action: rename.action }, operations);
     expect(result.projectBefore).toEqual(project); expect(projects[0].name).toBe("Acme Q1");
+  });
+  it("accepts a plan change after a reorder and confirms generated timestamps", async () => {
+    const proposal = await pending({ kind: "update_task", taskId: task.id, patch: { plannedFor: source.today } }, task);
+    tasks[0] = { ...task, dayRanks: { [source.today]: 1 } };
+    const result = await decideProposal(repo, proposal.id, { decision: "accept", action: proposal.action }, operations);
+    expect(result).toMatchObject({ status: "accepted", result: { task: { plannedFor: source.today, dayRanks: { [source.today]: 1 } } } });
+  });
+
+  it("leaves yesterday's order suggestion pending and allows rejection", async () => {
+    const other = { ...task, id: "other" };
+    const proposal = await pending({ kind: "order_day", day: source.today, baseline: [task, other], items: [
+      { taskId: other.id, title: other.title, reason: "First." }, { taskId: task.id, title: task.title, reason: "Second." },
+    ] });
+    await expect(decideProposal(repo, proposal.id, { decision: "accept", action: proposal.action, today: "2026-11-18" }, operations)).rejects.toMatchObject({ code: "agent_stale" });
+    expect(operations.setDayOrder).not.toHaveBeenCalled();
+    expect((await repo.listProposals())[0].status).toBe("pending");
+    expect((await decideProposal(repo, proposal.id, { decision: "reject" }, operations)).status).toBe("rejected");
   });
   it("refuses stale task/project changes and leaves them pending so they can be rejected", async () => {
     const change = await pending({ kind: "update_task", taskId: task.id, patch: { priority: "high" } }, task);

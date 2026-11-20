@@ -24,7 +24,9 @@ export function AgentPanel({ settings }: { settings: Settings }) {
   const { pending, history } = splitProposals(agent.state?.proposals ?? []);
   const busy = agent.generating || agent.busyId !== null;
   async function decide(id: string, decision: ProposalDecision) {
-    if (await agent.decide(id, decision)) requestAnimationFrame(() => root.current?.querySelector<HTMLElement>(`[data-proposal-id="${id}"]`)?.focus());
+    const approval = decision.decision === "accept" && decision.action.kind === "order_day"
+      ? { ...decision, today: today ?? undefined } : decision;
+    if (await agent.decide(id, approval)) requestAnimationFrame(() => root.current?.querySelector<HTMLElement>(`[data-proposal-id="${id}"]`)?.focus());
   }
   const cards = (proposals: Proposal[]) => proposals.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal}
     projects={agent.state?.projects ?? []} locale={locale} t={t} busy={busy} saving={agent.busyId === proposal.id} error={agent.errors[proposal.id]} onDecision={decide} />);

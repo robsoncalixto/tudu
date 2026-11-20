@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { boardFilterForPage, restoreBoardReturn, type BoardReturn, restoreSidebarLayout, restoreTaskSort, TASK_SORTS, type TaskFilter } from "./board-navigation";
 
 describe("task sort preference", () => {
-  it.each(TASK_SORTS)("restores %s", (sort) => expect(restoreTaskSort(sort)).toBe(sort));
+  it.each(TASK_SORTS)("restores %s", (sort) => expect(restoreTaskSort(sort, sort === "manual" ? "manual" : "due")).toBe(sort));
   it.each([null, "", "unknown", "{}"])("falls back to due date for %s", (sort) => expect(restoreTaskSort(sort)).toBe("due"));
 });
 

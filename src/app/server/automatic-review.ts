@@ -6,7 +6,7 @@ import { aiPublicConfiguration } from "@/features/ai/server/configuration";
 import { createGenerator } from "@/features/ai/server/generate";
 import { listProjects } from "@/features/projects/server/repository";
 import { getSettings } from "@/features/settings/server/repository";
-import { listTasks } from "@/features/tasks/server/repository";
+import { dayTaskList, listTasks } from "@/features/tasks/server/repository";
 
 const server = globalThis as typeof globalThis & { tuduAutomaticReviewTimer?: ReturnType<typeof setInterval> };
 
@@ -44,7 +44,7 @@ export function startAutomaticReview() {
         try {
           await reviewState.write({ ...last, status });
           const projects = await listProjects();
-          const { drafts, summary } = await reviewOpenTasks(createGenerator(settings), "", day, tasks, projects, settings.locale, settings);
+          const { drafts, summary } = await reviewOpenTasks(createGenerator(settings), "", day, tasks, projects, settings.locale, settings, dayTaskList(tasks, day));
           await proposalRepository.addProposals(drafts, {
             note: "", today: day, review: true, provider: settings.aiProvider,
             model: settings.aiModel || config.models[settings.aiProvider],

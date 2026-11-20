@@ -2,11 +2,13 @@
 
 import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import { Icon } from "@/lib/Icon";
-import { dueLabel, longDate } from "@/lib/dates";
+import { longDate } from "@/lib/dates";
 import { useRef, useState } from "react";
 import { errorCode } from "@/lib/http";
 import type { Task } from "../schema";
-import { type TaskSort } from "../selectors";
+import { rankDayTasks } from "../day-order";
+import { useDayOrder } from "../use-day-order";
+import { isForToday, type TaskSort } from "../selectors";
 import { useTaskActions } from "../use-task-actions";
 import { BoardHeader } from "./BoardHeader";
 import { Composer, type ComposerMode } from "./Composer";
@@ -22,7 +24,7 @@ export function Board() {
   const { settings, locale, t, today, navigation, inspector, taskData, projectData, selectedTask,
     view, notice, setNotice, fail, select, suggestions } = useTaskWorkspace();
   const { filter, setFilter, query, setQuery, sort, setSort, text, setText } = navigation;
-  const { tasks, aiEnabled, add, capture, patch, remove, loadFailed, retryLoad } = taskData;
+  const { tasks, reorder, aiEnabled, add, capture, patch, remove, loadFailed, retryLoad } = taskData;
   const { projects } = projectData;
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const search = useRef<HTMLInputElement>(null);
@@ -66,7 +68,9 @@ export function Board() {
 
   function clearSearch() { setQuery(""); search.current?.focus(); }
   const searching = Boolean(query.trim());
-  const list = { suggestions: suggestions.byTask, today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: actions.patchFromRow,
+  const dayIds = today ? rankDayTasks((tasks ?? []).filter((task) => !task.done && isForToday(task, today)), today).map((task) => task.id) : [];
+  const order = useDayOrder(today, dayIds, filter.kind === "today" && sort === "manual", reorder, fail);
+  const list = { suggestions: suggestions.byTask, order: order && searching ? { ...order, ready: false } : order, today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: actions.patchFromRow,
     onPostpone: postpone, selectedId: inspector.selectedId, onShowPanel: inspector.toggle, onTag: (tag: string) => select({ kind: "tag", tag }) };
 
   return <div className="board-content" ref={actions.root}>
@@ -96,6 +100,7 @@ export function Board() {
               <h2 id="open-heading" className="section-title">{t.open} <span>{view.open.length}</span></h2>
               {view.scopeOpen > 0 && <label className="board-sort"><Icon name="sort" size={16} />
                 <select className="select-control" aria-label={t.sortTasks} value={sort} onChange={(event) => setSort(event.target.value as TaskSort)}>
+                  {filter.kind === "today" && <option value="manual">{t.sortManual}</option>}
                   <option value="due">{t.sortDue}</option><option value="priority">{t.sortPriority}</option><option value="newest">{t.sortNewest}</option>
                 </select></label>}
             </div>

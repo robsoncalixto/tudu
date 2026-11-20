@@ -1,5 +1,6 @@
 import type { Dictionary, Locale } from "@/i18n";
 import type { Task, TaskPatch } from "../schema";
+import type { DayOrderControl } from "../use-day-order";
 import type { Postponement } from "../planning";
 import type { ContextProposal } from "../task-suggestions";
 import { TaskRow } from "./TaskRow";
@@ -8,6 +9,7 @@ import type { DateFormat } from "@/lib/dates";
 import "./task-list.css";
 
 export interface TaskActions {
+  order?: DayOrderControl;
   suggestions: ReadonlyMap<string, ContextProposal[]>;
   onPatch: (id: string, patch: TaskPatch) => Promise<boolean>;
   onPostpone: (id: string, when: Postponement) => Promise<void>;

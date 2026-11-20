@@ -330,6 +330,9 @@ for (const language of [
     await todayButton.click();
     await expect(todayButton).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("heading", { name: language.today, level: 1, exact: true })).toBeVisible();
+    const sort = page.getByRole("combobox", { name: /Sort open tasks|Ordenar tarefas abertas/ });
+    await expect(sort).toHaveValue("manual");
+    await sort.selectOption("due");
     expect(await rowTitles(openSection(page))).toEqual(["Late", "Due now", "Future picked", "Picked"]);
     await expect(page.getByText(`${language.done} 1`, { exact: true })).toBeVisible();
     await expect(row(page, "Finished")).toBeHidden();

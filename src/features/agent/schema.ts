@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { taskInputSchema, taskPatchSchema, storedTaskSchema } from "@/features/tasks/schema";
+import { dayOrderSchema, taskInputSchema, taskPatchSchema, storedTaskSchema } from "@/features/tasks/schema";
 import { projectInputSchema, projectSchema } from "@/features/projects/schema";
 import { aiProviderSchema } from "@/features/ai/schema";
 
@@ -12,6 +12,15 @@ export const proposedPatchSchema = taskPatchSchema.pick({
 export const proposalActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("create_task"), task: proposedTaskSchema }).strict(),
   z.object({ kind: z.literal("update_task"), taskId: z.string().min(1).max(100), patch: proposedPatchSchema }).strict(),
+  z.object({ kind: z.literal("order_day"), day: z.iso.date(), baseline: z.array(storedTaskSchema).min(2).max(50),
+    items: z.array(z.object({ taskId: z.string().min(1).max(100), title: taskInputSchema.shape.title,
+      reason: z.string().trim().min(1).max(1000) }).strict()).min(2).max(50),
+  }).strict().refine(({ baseline, items }) => {
+    const expected = new Map(baseline.map(({ id, title }) => [id, title]));
+    return expected.size === baseline.length && items.length === expected.size &&
+      new Set(items.map(({ taskId }) => taskId)).size === expected.size &&
+      items.every(({ taskId, title }) => expected.get(taskId) === title);
+  }),
   z.object({ kind: z.literal("flag_duplicate"), taskId: z.string().min(1).max(100), otherTaskId: z.string().min(1).max(100),
     otherTitle: taskInputSchema.shape.title }).strict().refine((action) => action.taskId !== action.otherTaskId),
   z.object({ kind: z.literal("create_project"), name: projectInputSchema.shape.name }).strict(),
@@ -28,6 +37,7 @@ export const proposalSourceSchema = z.object({
 }).refine((source) => source.review || source.note.length > 0);
 export type ProposalSource = z.infer<typeof proposalSourceSchema>;
 const resultSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("day_order"), order: dayOrderSchema }),
   z.object({ kind: z.literal("task"), task: storedTaskSchema }),
   z.object({ kind: z.literal("project"), project: projectSchema }),
 ]);
@@ -62,7 +72,7 @@ export const proposalRequestSchema = z.object({
 }).strict().refine((input) => input.review || input.text.length > 0);
 export const taskReviewResponseSchema = z.object({ summary: z.string(), proposals: z.array(proposalSchema) });
 export const proposalDecisionSchema = z.discriminatedUnion("decision", [
-  z.object({ decision: z.literal("accept"), action: proposalActionSchema }).strict(),
+  z.object({ decision: z.literal("accept"), action: proposalActionSchema, today: z.iso.date().optional() }).strict(),
   z.object({ decision: z.literal("reject") }).strict(),
   z.object({ decision: z.literal("recheck") }).strict(),
   z.object({ decision: z.literal("dismiss") }).strict(),

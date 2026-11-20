@@ -1,7 +1,7 @@
 import { getSettings } from "@/features/settings/server/repository";
 import { aiPublicConfiguration } from "@/features/ai/server/configuration";
 import { createGenerator } from "@/features/ai/server/generate";
-import { listTasks } from "@/features/tasks/server/repository";
+import { dayTaskList, listTasks } from "@/features/tasks/server/repository";
 import { listProjects } from "@/features/projects/server/repository";
 import { proposalRepository } from "@/features/agent/server/repository";
 import { proposeChanges, reviewOpenTasks } from "@/features/agent/server/propose";
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       const [tasks, projects] = await Promise.all([listTasks(), listProjects()]);
       const { text, today, review } = parsed.data;
       const generate = createGenerator(settings);
-      const reviewed = review ? await reviewOpenTasks(generate, text, today, tasks, projects, settings.locale, settings) : null;
+      const reviewed = review ? await reviewOpenTasks(generate, text, today, tasks, projects, settings.locale, settings, dayTaskList(tasks, today)) : null;
       const drafts = reviewed?.drafts ?? await proposeChanges(generate, text, today, tasks, projects, settings.locale, settings.defaultPriority, settings);
       const proposals = await proposalRepository.addProposals(drafts, {
         note: text, today, ...(review ? { review } : {}), provider: settings.aiProvider,

@@ -1,4 +1,4 @@
-import { addApprovedTask, listTasks, TaskChangedError, updateTaskIfUnchanged } from "@/features/tasks/server/repository";
+import { addApprovedTask, readDayOrder, setDayOrder, listTasks, TaskChangedError, updateTaskIfUnchanged } from "@/features/tasks/server/repository";
 import { addProject, listProjects, ProjectChangedError, ProjectError, updateProject, withValidProjectIds } from "@/features/projects/server/repository";
 import { InvalidRepeatError } from "@/features/tasks/recurrence";
 import { AgentError } from "@/features/agent/schema";
@@ -14,7 +14,7 @@ async function guarded<T>(operation: () => Promise<T>): Promise<T> {
   }
 }
 export const proposalOperations: ProposalOperations = {
-  listTasks, listProjects,
+  listTasks, listProjects, readDayOrder, setDayOrder: (order, expected) => guarded(() => setDayOrder(order, expected)),
   createTask: (id, { plannedFor, ...input }) => guarded(() => withValidProjectIds([input.projectId], () => addApprovedTask(id, input, plannedFor))),
   updateTask: (id, patch, expected) => guarded(() => withValidProjectIds([patch.projectId], () => updateTaskIfUnchanged(id, patch, expected))),
   createProject: (id, name) => guarded(() => addProject({ name }, id)),
