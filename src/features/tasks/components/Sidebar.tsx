@@ -154,7 +154,7 @@ function NavItem({ label, icon, count, active, onClick, ariaLabel }: {
 }) {
   return <button type="button" className={`nav-item${active ? " is-active" : ""}`}
     aria-current={active ? "page" : undefined} aria-label={ariaLabel} title={label} onClick={onClick}>
-    {icon && <Icon name={icon} />}<span className="nav-text">{label}</span><span className="nav-count">{count}</span>
+    {icon && <Icon name={icon} />}<span className="nav-text">{label}</span>{" "}<span className="nav-count">{count}</span>
   </button>;
 }
 

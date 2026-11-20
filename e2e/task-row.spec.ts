@@ -274,7 +274,7 @@ for (const language of [
     await navigation.getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
     await row(page, "Daily pick").getByRole("button", { name: language.remove }).click();
     await expect(row(page, "Daily pick")).toHaveCount(0);
-    await expect(navigation.getByRole("button", { name: new RegExp(`^${language.today}`) })).toHaveText(`${language.today}0`);
+    await expect(navigation.getByRole("button", { name: new RegExp(`^${language.today}`) })).toHaveText(`${language.today} 0`);
     await expect.poll(async () => (await listTasks(request))[0].plannedFor).toBeNull();
     await navigation.getByRole("button", { name: new RegExp(`^${language.all}`) }).click();
     await expect(row(page, "Daily pick").getByRole("button", { name: language.add })).toHaveAttribute("aria-pressed", "false");
@@ -293,15 +293,15 @@ for (const language of [
       await row(page, title).getByRole("button", { name: language.remove }).click();
       await expect(row(page, title).getByRole("button", { name: language.add })).toBeVisible();
     }
-    await expect(todayButton).toHaveText(`${language.today}2`);
+    await expect(todayButton).toHaveText(`${language.today} 2`);
     await expect.poll(async () => (await listTasks(request)).map((task) => task.plannedFor)).toEqual([null, null]);
     expect((await listTasks(request)).map((task) => task.due)).toEqual([TODAY, YESTERDAY]);
     await row(page, "Deadline pick").getByRole("checkbox").click();
-    await expect(todayButton).toHaveText(`${language.today}1`);
+    await expect(todayButton).toHaveText(`${language.today} 1`);
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(true);
     await doneSection(page).locator(":scope > summary").click();
     await row(doneSection(page), "Deadline pick").getByRole("checkbox").click();
-    await expect(todayButton).toHaveText(`${language.today}2`);
+    await expect(todayButton).toHaveText(`${language.today} 2`);
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(false);
   });
 
@@ -314,7 +314,7 @@ for (const language of [
     await row(page, "Retry pick").getByRole("button", { name: language.add }).click();
     await expect(page.getByRole("status")).toHaveText(language.error);
     await expect(row(page, "Retry pick").getByRole("button", { name: language.add })).toBeVisible();
-    await expect(todayButton).toHaveText(`${language.today}0`);
+    await expect(todayButton).toHaveText(`${language.today} 0`);
     expect((await listTasks(request))[0].plannedFor).toBeNull();
     await page.unroute("**/api/tasks/*");
     await row(page, "Retry pick").getByRole("button", { name: language.add }).click();
@@ -323,7 +323,7 @@ for (const language of [
     await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
     await row(page, "Retry pick").getByRole("button", { name: language.remove }).click();
     await expect(row(page, "Retry pick").getByRole("button", { name: language.remove })).toBeVisible();
-    await expect(todayButton).toHaveText(`${language.today}1`);
+    await expect(todayButton).toHaveText(`${language.today} 1`);
     expect((await listTasks(request))[0].plannedFor).toBe(TODAY);
     await page.unroute("**/api/tasks/*");
     await row(page, "Retry pick").getByRole("button", { name: language.remove }).click();

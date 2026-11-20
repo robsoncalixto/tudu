@@ -109,7 +109,7 @@ export function Board() {
         <div className="board-location"><Icon name="grid" size={16} /><span>{t.workspace}</span>
           <Icon name="chevron-right" size={13} /><strong>{t.tasksLabel}</strong></div>
         <div className="board-search" role="search">
-          <label htmlFor="board-query" aria-label={t.taskSearch}><Icon name="search" size={17} /></label><input ref={search} type="search" id="board-query" value={query} aria-label={t.taskSearch}
+          <label htmlFor="board-query"><Icon name="search" size={17} /></label><input ref={search} type="search" id="board-query" value={query} aria-label={t.taskSearch}
             placeholder={t.taskSearch} onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
               const keys = shortcutsApi.match("search", event);
