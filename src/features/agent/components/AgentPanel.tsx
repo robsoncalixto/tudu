@@ -58,7 +58,8 @@ export function AgentPanel({ settings }: { settings: Settings }) {
           }
         }} />
       <p className="hint agent-keys" id="agent-keys">
-        {shortcutsApi.keys("assistant", mac).map(({ id, caps }) => <span key={id}>
+        {/* The keys are named only while there is something for them to send to. */}
+        {agent.state?.enabled && shortcutsApi.keys("assistant", mac).map(({ id, caps }) => <span key={id}>
           {caps.map((cap) => <kbd key={cap}>{Object.hasOwn(t.shortcuts.keys, cap) ? t.shortcuts.keys[cap as keyof typeof t.shortcuts.keys] : cap}</kbd>)}
           {t.shortcuts.labels[id]}
         </span>)}
