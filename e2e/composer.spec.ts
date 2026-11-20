@@ -131,7 +131,7 @@ test.describe("Composer", () => {
 
     test("turns a note into several tasks with the button", async ({ page }) => {
       await openApp(page);
-      await expect(page.getByRole("button", { name: "Create with AI" })).toHaveAttribute("title", /Enter adds one task/);
+      await expect(page.getByRole("button", { name: "Create with AI" })).toHaveAttribute("title", /Enter adds tasks/);
 
       await composer(page).fill("Send Ana the draft by tomorrow and book a room");
       await page.getByRole("button", { name: "Create with AI" }).click();
@@ -148,7 +148,7 @@ test.describe("Composer", () => {
 
     test("turns a note into tasks with Ctrl+Enter", async ({ page }) => {
       await openApp(page);
-      await expect(page.getByRole("button", { name: "Create with AI" })).toHaveAttribute("title", /Enter adds one task/);
+      await expect(page.getByRole("button", { name: "Create with AI" })).toHaveAttribute("title", /Enter adds tasks/);
       await composer(page).fill("Send Ana the draft by tomorrow and book a room");
       await composer(page).press("Control+Enter");
 
@@ -164,7 +164,7 @@ test.describe("Composer", () => {
         : route.fulfill({ status: 422, json: { error: "no_tasks" } }),
     );
     await openApp(page);
-    await expect(page.getByRole("button", { name: "Create with AI" })).toHaveAttribute("title", /Enter adds one task/);
+    await expect(page.getByRole("button", { name: "Create with AI" })).toHaveAttribute("title", /Enter adds tasks/);
 
     await composer(page).fill("just thinking out loud");
     await page.getByRole("button", { name: "Create with AI" }).click();
