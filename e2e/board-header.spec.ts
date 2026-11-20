@@ -1,8 +1,8 @@
 import { expect, openApp, openSection, row, rowTitles, seed, seedProjects, setLanguage, sidebar, taskRows, test } from "./support";
 
 for (const lang of [
-  { code: "en", search: "Search this list", sort: "Sort open tasks", project: "Project", all: "All tasks", progress: "Completion in this list" },
-  { code: "pt-BR", search: "Pesquisar nesta lista", sort: "Ordenar tarefas abertas", project: "Projeto", all: "Todas as tarefas", progress: "Conclusão nesta lista" },
+  { code: "en", search: "Search this list", sort: "Sort open tasks", project: "Project", all: "All tasks", today: "Today", progress: "Completion in this list" },
+  { code: "pt-BR", search: "Pesquisar nesta lista", sort: "Ordenar tarefas abertas", project: "Projeto", all: "Todas as tarefas", today: "Hoje", progress: "Conclusão nesta lista" },
 ]) {
   test(`search, sort and progress follow the selected view in ${lang.code}`, async ({ page, request }) => {
     const [project] = await seedProjects(request, ["Porto"]);
@@ -55,6 +55,39 @@ for (const lang of [
     } finally {
       await reopened.close();
     }
+  });
+
+  test(`keeps Today and list sorts across reloads when device writes fail in ${lang.code}`, async ({ page, request }) => {
+    await seed(request, [{ title: "Follow up", plannedFor: "2026-11-17" }]);
+    await page.addInitScript(() => {
+      const write = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (this === localStorage && sessionStorage.getItem("blockedSortKey") === key) {
+          throw new DOMException("Storage full", "QuotaExceededError");
+        }
+        write.call(this, key, value);
+      };
+    });
+    await openApp(page);
+    await setLanguage(page, lang.code);
+    const sort = page.getByRole("combobox", { name: lang.sort });
+    const today = sidebar(page).getByRole("button", { name: new RegExp(`^${lang.today}`) });
+    const all = sidebar(page).getByRole("button", { name: new RegExp(`^${lang.all}`) });
+    await sort.selectOption("priority");
+    await page.evaluate(() => sessionStorage.setItem("blockedSortKey", "tudu.taskSort"));
+    await sort.selectOption("newest");
+    await today.click();
+    await page.evaluate(() => sessionStorage.setItem("blockedSortKey", "tudu.todaySort"));
+    await sort.selectOption("priority");
+    await page.reload();
+    await expect(sort).toHaveValue("priority");
+    await all.click();
+    await expect(sort).toHaveValue("newest");
+    await sort.selectOption("due");
+    await page.reload();
+    await expect(sort).toHaveValue("due");
+    await today.click();
+    await expect(sort).toHaveValue("priority");
   });
 }
 
