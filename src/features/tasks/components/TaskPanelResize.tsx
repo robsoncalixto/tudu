@@ -33,6 +33,11 @@ export function TaskPanelResize({ label, size }: { label: string; size: ReturnTy
       onLostPointerCapture={() => { drag.current = null; size.setPreview(null); }}
       onDoubleClick={() => size.finish(null)}
       onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          size.finish(null);
+          return;
+        }
         const next = event.key === "ArrowLeft" ? size.width + STEP
           : event.key === "ArrowRight" ? size.width - STEP
           : event.key === "Home" ? size.range.min

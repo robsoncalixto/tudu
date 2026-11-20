@@ -146,5 +146,14 @@ for (const l of [
     await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(chosen, 0);
     await handle.dblclick();
     await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(initial, 0);
+    const left = (await handle.boundingBox())!;
+    await page.mouse.move(left.x + left.width / 2, left.y + left.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(left.x - 600, left.y + left.height / 2, { steps: 5 });
+    await page.mouse.up();
+    await expect(panel).toBeVisible();
+    await expect(handle).toHaveAttribute("aria-valuenow", "720");
+    await handle.press("Enter");
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(initial, 0);
   });
 }
