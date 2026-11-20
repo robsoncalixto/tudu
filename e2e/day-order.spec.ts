@@ -27,6 +27,25 @@ for (const locale of ["en", "pt-BR"] as const) {
     expect(result.order.taskIds).toEqual(["First task", "Third task"].map((title) => saved.find((item) => item.title === title)?.id));
   });
 
+  test.describe(`phone order in ${locale}`, () => {
+    test.use({ viewport: { width: 320, height: 812 }, hasTouch: true });
+
+    test("offers touch targets for moving a task without widening the board", async ({ page, request }) => {
+      await saveSettings(request, { locale, startView: "today" });
+      await request.post("/api/tasks", { data: [
+        { title: "First task", plannedFor: TODAY }, { title: "Second task", plannedFor: TODAY },
+      ] });
+      await page.goto("/");
+      const move = row(page, "Second task").getByRole("button", { name: t.moveTaskUp });
+      const bounds = await move.boundingBox();
+      expect(bounds?.height).toBeGreaterThanOrEqual(44);
+      expect(bounds?.width).toBeGreaterThanOrEqual(44);
+      await move.tap();
+      await expect.poll(() => rowTitles(openSection(page))).toEqual(["Second task", "First task"]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+    });
+  });
+
   test(`approves the Assistant's order as one journal decision in ${locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale, startView: "today", aiProvider: "openai", aiModel: "test-agent" });
     await request.post("/api/tasks", { data: [
