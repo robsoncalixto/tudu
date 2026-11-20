@@ -22,8 +22,8 @@ describe("chip choices over the current view", () => {
   });
 
   it("carries every picked value", () => {
-    expect(composerDefaults({}, { tags: ["a"], priority: "high", due: "2026-11-20", estimateHours: 0.5 }))
-      .toEqual({ tags: ["a"], priority: "high", due: "2026-11-20", estimateHours: 0.5 });
+    expect(composerDefaults({}, { tags: ["a"], priority: "high", due: "2026-11-20", estimateHours: 0.5, repeat: "weekly" }))
+      .toEqual({ tags: ["a"], priority: "high", due: "2026-11-20", estimateHours: 0.5, repeat: "weekly" });
   });
 });
 
@@ -31,12 +31,19 @@ describe("what the chips show", () => {
   it("shows the defaults while nothing is typed", () => {
     expect(composerValues("", today, { tags: ["team"], tag: "Work", plannedFor: today, priority: "low" }, [site])).toEqual({
       batch: false, priority: "low", due: null, time: null, partOfDay: null, plannedFor: today, projectId: null, tags: ["team", "Work"], estimateHours: null,
+      repeat: null,
     });
   });
 
   it("shows typed tokens over the defaults for a single line, even before there is a title", () => {
     expect(composerValues("#bug !alta @amanha 14h +website-redesign t30m", today, { tags: ["team"], priority: "low", due: today, projectId: other, estimateHours: 2 }, [site]))
-      .toEqual({ batch: false, priority: "high", due: "2026-11-18", time: "14:00", partOfDay: "afternoon", plannedFor: null, projectId: site.id, tags: ["bug", "team"], estimateHours: 0.5 });
+      .toEqual({ batch: false, priority: "high", due: "2026-11-18", time: "14:00", partOfDay: "afternoon", plannedFor: null, projectId: site.id, tags: ["bug", "team"], estimateHours: 0.5, repeat: null });
+  });
+
+  it("shows a repeating task as due today until a date is typed or picked", () => {
+    expect(composerValues("Water the plants", today, { tags: [], repeat: "weekly" }, [])).toMatchObject({ repeat: "weekly", due: today });
+    expect(composerValues("Water the plants @sex", today, { tags: [], repeat: "weekly" }, [])).toMatchObject({ repeat: "weekly", due: "2026-11-20" });
+    expect(composerValues("Water the plants", today, { tags: [], repeat: "daily", due: "2026-12-01" }, [])).toMatchObject({ due: "2026-12-01" });
   });
 
   it("counts a tag once whether it was typed, picked or comes from the view", () => {

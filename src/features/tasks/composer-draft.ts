@@ -1,6 +1,7 @@
 import type { Project } from "@/features/projects/schema";
 import { quickAddApi } from "@/features/quick-add/api";
 import { normalizeQuickTag, type QuickAddDefaults } from "@/features/quick-add/schema";
+import type { RepeatFrequency } from "@/features/recurrence/schema";
 import type { PartOfDay, Priority } from "./schema";
 
 export const MAX_DRAFT_TAGS = 10;
@@ -10,6 +11,7 @@ export interface ComposerChoice {
   priority?: Priority;
   due?: string;
   estimateHours?: number;
+  repeat?: RepeatFrequency;
   /** `null` drops the day or project that the current view would add. */
   plannedFor?: string | null;
   projectId?: string | null;
@@ -28,6 +30,7 @@ export function composerDefaults(view: QuickAddDefaults, choice: ComposerChoice)
     ...(choice.priority ? { priority: choice.priority } : {}),
     ...(choice.due ? { due: choice.due } : {}),
     ...(choice.estimateHours === undefined ? {} : { estimateHours: choice.estimateHours }),
+    ...(choice.repeat ? { repeat: choice.repeat } : {}),
     ...(plannedFor ? { plannedFor } : {}),
     ...(projectId ? { projectId } : {}),
     ...(view.tag && !choice.withoutViewTag ? { tag: view.tag } : {}),
@@ -46,6 +49,7 @@ export interface ComposerValues {
   projectId: string | null;
   tags: string[];
   estimateHours: number | null;
+  repeat: RepeatFrequency | null;
 }
 
 /** What the chips show: for one line, the typed tokens over the defaults. */
@@ -57,13 +61,15 @@ export function composerValues(text: string, today: string, defaults: QuickAddDe
   return {
     batch: lines.length > 1,
     priority: typed?.priority ?? defaults.priority ?? null,
-    due: typed?.due ?? defaults.due ?? null,
+    // Repeating starts from a date, so a task without one is due today.
+    due: typed?.due ?? defaults.due ?? (defaults.repeat && today ? today : null),
     time: typed?.time ?? null,
     partOfDay: typed?.partOfDay ?? null,
     plannedFor: defaults.plannedFor ?? null,
     projectId: typed?.project ?? defaults.projectId ?? null,
     tags: [...tags.values()].filter(Boolean),
     estimateHours: typed?.estimate ?? defaults.estimateHours ?? null,
+    repeat: defaults.repeat ?? null,
   };
 }
 

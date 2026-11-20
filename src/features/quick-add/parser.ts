@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Project } from "@/features/projects/schema";
+import { repeatFrom } from "@/features/recurrence/schema";
 import { durationHoursSchema, HOURS_PER_UNIT, type PartOfDay, type Priority } from "@/features/tasks/schema";
 import { clockTime, dateWord, dueExpression, isDateWord, wordKey } from "./due-words";
 import {
@@ -191,8 +192,10 @@ export function quickTaskDrafts(text: string, today: string, defaults: QuickAddD
       const tagsByKey = new Map([...task.tags, ...(defaults.tags ?? [])].map((tag) => [normalizeQuickTag(tag), normalizeQuickTag(tag)]));
       if (defaults.tag) tagsByKey.set(normalizeQuickTag(defaults.tag), defaults.tag);
       const tags = [...tagsByKey.values()].filter(Boolean);
+      // A repeating task needs a date to repeat from, so one without a date starts today.
+      const due = task.due ?? defaults.due ?? (defaults.repeat ? today : null);
       return quickTaskSchema.parse({
-        ...task, tags, due: task.due ?? defaults.due ?? null,
+        ...task, tags, due, ...(defaults.repeat && due ? { repeat: repeatFrom(defaults.repeat, due) } : {}),
         projectId: task.projectId ?? defaults.projectId ?? null,
         ...(priority ? { priority } : {}), ...(defaults.plannedFor ? { plannedFor: defaults.plannedFor } : {}),
         ...(estimateHours == null ? {} : { estimateHours }),

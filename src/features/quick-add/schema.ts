@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Project } from "@/features/projects/schema";
+import type { RepeatFrequency } from "@/features/recurrence/schema";
 import { taskDraftSchema, taskPatchSchema, type PartOfDay, type Priority } from "@/features/tasks/schema";
 
 export const quickAddInputSchema = z.object({ text: z.string().trim().min(1).max(40_000), today: z.iso.date() });
@@ -11,6 +12,8 @@ export type QuickAddDefaults = Pick<QuickTask, "priority" | "plannedFor" | "esti
   projectId?: QuickTask["projectId"];
   tags?: QuickTask["tags"];
   tag?: string;
+  /** Repeats from the task's due date, or from today when it has none. */
+  repeat?: RepeatFrequency;
 };
 
 export function normalizeQuickTag(value: string): string {
