@@ -108,6 +108,7 @@ export const en = {
   emptyBody: "Write the first thing on your mind above.",
   emptyFiltered: "No open tasks with this tag.",
   loading: "Loading…",
+  taskDeletedElsewhere: "That task was deleted elsewhere.",
   taskLoadFailed: "Couldn’t load your tasks.",
   retry: "Retry",
   today: "Today",
