@@ -30,6 +30,18 @@ const previous: BoardReturn = {
 };
 
 describe("returning to the board", () => {
+  it("restores the unfinished task's explicit fields and the tag still being typed", () => {
+    const details = { priority: "high", due: "2026-11-20", tags: ["review"], tagInput: " Team " };
+    const saved = { ...previous, details };
+    expect(restoreBoardReturn(JSON.stringify(saved), "all")).toEqual(saved);
+    expect(restoreBoardReturn(JSON.stringify(saved), "today")).toMatchObject({ text: previous.text, details });
+  });
+
+  it("keeps a text-only draft when older settings lack details or saved details are unreadable", () => {
+    expect(restoreBoardReturn(JSON.stringify(previous), "all")).toEqual(previous);
+    expect(restoreBoardReturn(JSON.stringify({ ...previous, details: { priority: "unknown" } }), "all")).toEqual(previous);
+  });
+
   it.each<TaskFilter>([
     { kind: "all" }, { kind: "today" }, { kind: "tag", tag: "work" },
     { kind: "project", id: "a3ec7d64-1468-4bf9-81df-5f6eafe1f642" },

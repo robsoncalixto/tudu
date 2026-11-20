@@ -23,7 +23,7 @@ import { useTaskWorkspace } from "./TaskWorkspace";
 export function Board() {
   const { settings, locale, t, today, navigation, inspector, taskData, projectData, selectedTask,
     view, notice, setNotice, fail, select, suggestions } = useTaskWorkspace();
-  const { filter, setFilter, query, setQuery, sort, setSort, text, setText } = navigation;
+  const { filter, setFilter, query, setQuery, sort, setSort, draft, setDraft } = navigation;
   const { tasks, reorder, aiEnabled, add, capture, patch, remove, loadFailed, retryLoad } = taskData;
   const { projects } = projectData;
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
@@ -89,7 +89,7 @@ export function Board() {
       <div className="content">
         <BoardHeader title={title} t={t} today={today ?? ""} date={today ? longDate(today, locale, settings.dateFormat) : null}
           loading={!tasks && !loadFailed} failed={loadFailed} open={view.scopeOpen} done={view.scopeDone} />
-        {tasks && <Composer t={t} text={text} onTextChange={setText} aiEnabled={aiEnabled} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat} onSubmit={submit}
+        {tasks && <Composer t={t} draft={draft} onDraftChange={setDraft} aiEnabled={aiEnabled} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat} onSubmit={submit}
           defaultPriority={settings.defaultPriority} context={composerContext} projects={projects} suggestions={view.tagCounts.map(([tag]) => tag)} />}
         <p className={`board-notice notice${notice ? ` is-${notice.kind}` : ""}`} role="status">{notice?.text}</p>
         {loadFailed && <div className="board-failure"><p role="alert">{t.taskLoadFailed}</p>

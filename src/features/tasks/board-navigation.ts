@@ -42,6 +42,12 @@ const boardReturnSchema = z.object({
   query: z.string(),
   sort: taskSortSchema.optional().catch(undefined),
   text: z.string(),
+  details: z.object({
+    priority: taskInputSchema.shape.priority.unwrap().optional(),
+    due: z.iso.date().optional(),
+    tags: taskInputSchema.shape.tags.unwrap(),
+    tagInput: z.string().max(40),
+  }).optional().catch(undefined),
 });
 export type BoardReturn = z.infer<typeof boardReturnSchema>;
 
