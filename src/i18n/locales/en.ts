@@ -96,6 +96,7 @@ export const en = {
   taskViews: "Task views",
   addToToday: "Add to today",
   removeFromToday: "Remove from today",
+  plannedEarlier: (date: string) => `Planned earlier · ${date}`,
   emptyToday: "Nothing planned for today.",
   emptyTodayBody: "Pick tasks with Add to today. Tasks due today or overdue appear automatically.",
   tags: "Tags",

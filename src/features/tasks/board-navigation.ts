@@ -6,6 +6,12 @@ import { taskInputSchema } from "./schema";
 export const TASK_SORTS = ["due", "priority", "newest"] as const;
 export type TaskSort = (typeof TASK_SORTS)[number];
 
+const taskSortSchema = z.enum(TASK_SORTS);
+
+export function restoreTaskSort(saved: string | null): TaskSort {
+  return taskSortSchema.safeParse(saved).data ?? "due";
+}
+
 const sidebarLayoutSchema = z.object({
   compact: z.boolean().default(false),
   projects: z.boolean().default(true),
@@ -33,7 +39,7 @@ const boardReturnSchema = z.object({
   startView: settingsSchema.shape.startView.unwrap(),
   filter: filterSchema,
   query: z.string(),
-  sort: z.enum(TASK_SORTS),
+  sort: taskSortSchema.optional().catch(undefined),
   text: z.string(),
 });
 export type BoardReturn = z.infer<typeof boardReturnSchema>;

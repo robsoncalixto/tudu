@@ -6,8 +6,13 @@ export type { TaskFilter, TaskSort } from "./board-navigation";
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 } as const;
 
-function isForToday(task: Task, today: string): boolean {
-  return Boolean(today) && (task.plannedFor === today || (task.due !== null && task.due <= today));
+export function isPlannedForToday(task: Task, today: string): boolean {
+  return Boolean(today) && task.plannedFor !== null &&
+    (task.plannedFor === today || (!task.done && task.plannedFor < today));
+}
+
+export function isForToday(task: Task, today: string): boolean {
+  return Boolean(today) && (isPlannedForToday(task, today) || (task.due !== null && task.due <= today));
 }
 
 function searchText(text: string) {

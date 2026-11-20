@@ -98,6 +98,7 @@ export const ptBR: Dictionary = {
   taskViews: "Visualizações de tarefas",
   addToToday: "Adicionar ao dia de hoje",
   removeFromToday: "Remover do dia de hoje",
+  plannedEarlier: (date: string) => `Planejada antes · ${date}`,
   emptyToday: "Nada planejado para hoje.",
   emptyTodayBody: "Escolha tarefas com Adicionar ao dia de hoje. Tarefas com prazo para hoje ou atrasadas aparecem automaticamente.",
   tags: "Etiquetas",

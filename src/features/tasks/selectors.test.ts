@@ -116,8 +116,8 @@ describe("Today view", () => {
       task({ title: "yesterday's pick", plannedFor: "2026-11-16" }),
       task({ title: "tomorrow's pick", plannedFor: "2026-11-18" }),
     ], todayFilter, today);
-    expect(titles(view.open)).toEqual(["overdue", "both", "future picked", "picked"]);
-    expect(view.todayCount).toBe(4);
+    expect(titles(view.open)).toEqual(["overdue", "both", "future picked", "picked", "yesterday's pick"]);
+    expect(view.todayCount).toBe(5);
     expect(view.openCount).toBe(8);
   });
 
@@ -125,6 +125,7 @@ describe("Today view", () => {
     const view = buildTaskView([
       task({ title: "open", plannedFor: today }),
       task({ title: "done", plannedFor: today, done: true, completedAt: "2026-11-17T14:00:00.000Z" }),
+      task({ title: "done yesterday", plannedFor: "2026-11-16", done: true }),
       task({ title: "unrelated done", done: true }),
     ], todayFilter, today);
     expect(titles(view.open)).toEqual(["open"]);
@@ -145,11 +146,11 @@ describe("Today view", () => {
     expect(buildTaskView(tasks, { kind: "all" }, today).open).toHaveLength(3);
   });
 
-  it("expires yesterday's picks but keeps overdue tasks when the date changes", () => {
+  it("carries unfinished picks forward when the date changes without rewriting the plan", () => {
     const tasks = [task({ title: "pick", plannedFor: today }), task({ title: "deadline", due: today })];
     expect(buildTaskView(tasks, todayFilter, today).todayCount).toBe(2);
     const nextDay = buildTaskView(tasks, todayFilter, "2026-11-18");
-    expect(titles(nextDay.open)).toEqual(["deadline"]);
+    expect(titles(nextDay.open)).toEqual(["deadline", "pick"]);
     expect(tasks[0].plannedFor).toBe(today);
   });
 
