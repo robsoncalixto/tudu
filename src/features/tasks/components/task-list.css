@@ -353,6 +353,7 @@
     grid-template-areas:
       "check title add disclosure"
       "metadata metadata actions plan"
+      "order order order order"
       "subtasks subtasks subtasks subtasks";
     gap: 0 4px;
     padding: 12px;
@@ -366,6 +367,7 @@
   .task-tools .plan-today { grid-area: plan; margin-top: 5px; }
   .task-schedule { grid-area: metadata; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; margin-top: 5px; }
   .task-priority { width: 102px; }
+  .task .task-order-control { grid-area: order; margin-block-start: var(--s-xs); }
   .subtasks { grid-area: subtasks; margin: 4px 0 0 calc(var(--row-target) / 2); }
 }
 
@@ -373,7 +375,9 @@
   .subtask-form .form-control { flex-basis: 100%; }
 }
 
-.task-order-control { display: flex; align-items: center; gap: var(--s-xs); flex-wrap: wrap; }
+.task-order-control { grid-column: 2 / -1; display: flex; align-items: center; gap: var(--s-xs); flex-wrap: wrap; }
+.task-order-control .icon-btn { inline-size: var(--row-target); min-block-size: var(--row-target); }
+.task-order-control [aria-disabled="true"] { opacity: .5; }
 .task-order-rank { font-variant-numeric: tabular-nums; min-width: 2rem; justify-content: center; }
 .task-order-rank[draggable="true"] { cursor: grab; }
 .task-order-up svg { transform: rotate(180deg); }

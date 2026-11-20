@@ -78,7 +78,6 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
         {task.done && <Icon name="check" size={14} />}
       </button>
       <div className="task-body">
-        {order && <TaskOrderControls id={task.id} t={t} order={order} />}
         {editing ? (
           <input className="form-control task-edit" value={draft} autoFocus maxLength={300} aria-label={t.editTitle}
             onChange={(event) => setDraft(event.target.value)} onBlur={commit}
@@ -146,6 +145,8 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
           <Icon name={selected ? "x" : "panel-right"} size={18} />
         </button>
       </div>
+
+      {order && <TaskOrderControls id={task.id} t={t} order={order} />}
 
       <TaskChecklist id={subtasksId} steps={task.steps} t={t} visibility={visibility} adding={adding}
         inputRef={subtaskInput} addButton={addButton} onCloseAdd={() => {
