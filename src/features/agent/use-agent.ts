@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorCode } from "@/lib/http";
-import { agentApi } from "./api";
+import { agentApi, watchAgent } from "./api";
 import { proposalDecisionSchema, type AgentState, type ProposalDecision } from "./schema";
 
 export function useAgent() {
@@ -34,7 +34,8 @@ export function useAgent() {
   }, []);
   useEffect(() => {
     mounted.current = true; void reload();
-    return () => { mounted.current = false; ++version.current; };
+    const stop = watchAgent(() => { if (!pending.current) void reload(); });
+    return () => { mounted.current = false; ++version.current; stop(); };
   }, [reload]);
 
   async function propose(today: string, review = false) {

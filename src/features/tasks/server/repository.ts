@@ -11,7 +11,7 @@ import type { TaskStore } from "./store";
 export class TaskChangedError extends Error {}
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-function dayTaskList(tasks: Task[], day: string) {
+export function dayTaskList(tasks: Task[], day: string) {
   return rankDayTasks(tasks.filter((task) => !task.done && isForToday(task, day)), day);
 }
 
@@ -34,7 +34,7 @@ export function createRepository(store: TaskStore) {
       if (completing && task.repeat && task.due && !task.nextOccurrenceId) {
         nextTask = taskSchema.parse({
           ...task, id: randomUUID(), due: nextDueDate(task.due, task.repeat),
-          done: false, completedAt: null, createdAt: task.completedAt, plannedFor: null, dayRanks: {}, planChangedAt: null,
+          done: false, completedAt: null, createdAt: task.completedAt, plannedFor: null, partOfDay: null, dayRanks: {}, planChangedAt: null,
           realTimeHours: null,
           steps: task.steps.map((step) => ({ ...step, done: false })), nextOccurrenceId: null,
         });
@@ -84,7 +84,7 @@ export function createRepository(store: TaskStore) {
       return created;
     },
 
-    async addApprovedTask(id: string, input: TaskInput, plannedFor: string | null): Promise<Task> {
+    async addApprovedTask(id: string, input: Omit<TaskCreationInput, "plannedFor">, plannedFor: string | null): Promise<Task> {
       validateRepeat(input.due, input.repeat);
       const task = taskSchema.parse({ ...input, id, plannedFor, done: false, completedAt: null, createdAt: new Date().toISOString() });
       await store.insert([task]);

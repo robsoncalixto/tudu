@@ -24,13 +24,13 @@ export function taskReviewContext(tasks: Task[], projects: Project[], today: str
   const open = tasks.filter((task) => !task.done);
   const ordered = open.sort((a, b) => urgency(a, today) - urgency(b, today)
     || (a.due ?? "9999").localeCompare(b.due ?? "9999") || a.createdAt.localeCompare(b.createdAt));
-  const candidates = ordered.map(({ id, title, notes, due, plannedFor, priority, projectId, estimateHours, realTimeHours, tags, steps }) => ({
-    id, title, notes: notes.slice(0, 700), due, plannedFor, priority, projectId, estimateHours, realTimeHours, tags,
+  const candidates = ordered.map(({ id, title, notes, due, plannedFor, partOfDay, priority, projectId, estimateHours, realTimeHours, tags, steps }) => ({
+    id, title, notes: notes.slice(0, 700), due, plannedFor, partOfDay, priority, projectId, estimateHours, realTimeHours, tags,
     stepCount: steps.length, steps: steps.slice(0, 8).map(({ title, done }) => ({ title: title.slice(0, 100), done })),
   }));
   const assigned = new Set(ordered.map((task) => task.projectId));
   const offeredProjects = withinBudget([...projects].sort((a, b) => Number(assigned.has(b.id)) - Number(assigned.has(a.id))), 8_000);
-  const offeredTasks = withinBudget(candidates, 59_000 - JSON.stringify(note).length - JSON.stringify(offeredProjects).length);
+  const offeredTasks = withinBudget(candidates, 55_000 - JSON.stringify(note).length - JSON.stringify(offeredProjects).length);
   return { today, projects: offeredProjects, tasks: offeredTasks, openTasks: open.length, omittedTasks: open.length - offeredTasks.length };
 }
 

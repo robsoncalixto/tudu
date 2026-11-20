@@ -9,7 +9,7 @@ const task = taskSchema.parse({ id: "task", title: "Report", notes: "Keep privat
   createdAt: "2026-11-01T12:00:00Z", completedAt: null, steps: [{ id: "old", title: "Draft", done: true }],
   links: ["https://example.org/private-reference"], estimateHours: 1.5, realTimeHours: 2.25 });
 const project = { id: "00000000-0000-4000-8000-000000000001", name: "Acme" };
-const newTask = { title: "Send report", notes: "Ask Ana", priority: "high", due: "2026-11-18", tags: ["work"], steps: ["Proofread"], projectId: project.id, plannedFor: "2026-11-17" };
+const newTask = { title: "Send report", notes: "Ask Ana", priority: "high", due: "2026-11-18", tags: ["work"], steps: ["Proofread"], projectId: project.id, plannedFor: "2026-11-17", estimateHours: null, partOfDay: null };
 beforeEach(() => vi.resetAllMocks());
 
 describe("agent proposal generation", () => {

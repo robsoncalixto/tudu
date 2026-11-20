@@ -81,7 +81,17 @@
   list-style: none;
 }
 
-.quick-preview li {
+.quick-task-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.quick-task-title { flex-basis: 100%; overflow-wrap: anywhere; }
+
+.quick-metadata {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -183,4 +193,44 @@
   .composer-field {
     padding-inline-start: 12px;
   }
+}
+
+.composer-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-sm);
+  align-items: end;
+  border: 0;
+  min-width: 0;
+  margin: var(--s-sm) 0 0;
+  padding: 0;
+}
+
+.composer-details label {
+  display: grid;
+  gap: 3px;
+  color: var(--text-muted);
+  font: 500 12px/18px var(--heading);
+  min-width: 0;
+}
+
+.composer-tags {
+  display: flex;
+  align-items: end;
+  flex: 1 1 160px;
+  gap: var(--s-sm);
+  min-width: 0;
+}
+
+.composer-tags label { flex: 1; }
+.composer-tags input { width: 100%; }
+.composer-add-tag { min-width: var(--touch-target); padding-inline: 0; }
+button.quick-metadata { min-height: var(--touch-target); padding-inline: var(--s-sm); }
+button.quick-metadata:hover { color: var(--text); }
+
+.composer-mobile-details.icon-btn { display: none; }
+
+@media (max-width: 560px) {
+  .composer-mobile-details.icon-btn { display: inline-grid; flex: 0 0 var(--touch-target); }
+  .composer-fields[data-expanded="false"] { display: none; }
 }

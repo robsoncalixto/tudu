@@ -9,6 +9,7 @@ export const MAX_DURATION_HOURS = 8760;
 export const DURATION_UNITS = ["minutes", "hours", "days"] as const;
 export const durationUnitSchema = z.enum(DURATION_UNITS);
 export type DurationUnit = z.infer<typeof durationUnitSchema>;
+export const HOURS_PER_UNIT: Record<DurationUnit, number> = { minutes: 1 / 60, hours: 1, days: 12 };
 export const durationHoursSchema = z.number().positive().max(MAX_DURATION_HOURS).nullable();
 export const durationDraftSchema = z.object({
   value: z.string(), unit: durationUnitSchema, hours: durationHoursSchema.optional(),
@@ -20,6 +21,10 @@ export const taskLinkSchema = z.string().trim().max(MAX_TASK_LINK_LENGTH)
   .regex(/^https?:\/\/[^/\s\\?#]+(?:[/?#][^\s\\]*)?$/i).pipe(z.url({ protocol: /^https?$/ }));
 const linksSchema = z.array(taskLinkSchema).max(MAX_TASK_LINKS)
   .refine((links) => new Set(links).size === links.length);
+
+export const PARTS_OF_DAY = ["morning", "afternoon", "evening"] as const;
+export const partOfDaySchema = z.enum(PARTS_OF_DAY);
+export type PartOfDay = z.infer<typeof partOfDaySchema>;
 
 const plannedDay = z.iso.date().nullable();
 
@@ -60,6 +65,7 @@ export const taskPatchSchema = z
     tags: z.array(z.string().trim().min(1).max(40)).max(10),
     done: z.boolean(),
     plannedFor: plannedDay,
+    partOfDay: partOfDaySchema.nullable().describe("Optional morning, afternoon or evening plan."),
     steps: stepsSchema,
     projectId: projectIdSchema,
     repeat: repeatRuleSchema.nullable(),
@@ -72,6 +78,7 @@ export const taskPatchSchema = z
 export type TaskInput = z.infer<typeof taskInputSchema>;
 const taskCreationInputSchema = taskInputSchema.extend({
   plannedFor: plannedDay.optional(),
+  partOfDay: taskPatchSchema.shape.partOfDay,
   estimateHours: taskPatchSchema.shape.estimateHours,
   realTimeHours: taskPatchSchema.shape.realTimeHours,
   links: linksSchema.optional(),
@@ -92,6 +99,7 @@ export const taskSchema = taskInputSchema.extend({
   createdAt: z.iso.datetime(),
   completedAt: z.iso.datetime().nullable(),
   plannedFor: plannedDay.default(null),
+  partOfDay: partOfDaySchema.nullable().default(null),
   dayRanks: z.record(z.iso.date(), z.number().int().nonnegative()).default({}),
   planChangedAt: z.iso.datetime().nullable().default(null),
   nextOccurrenceId: z.string().nullable().default(null),

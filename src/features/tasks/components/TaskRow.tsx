@@ -25,7 +25,7 @@ interface Props extends TaskActions {
   t: Dictionary;
 }
 
-export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, order, onPatch, onPostpone, selectedId, onShowPanel, onTag }: Props) {
+export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, order, suggestions, onPatch, onPostpone, selectedId, onShowPanel, onTag }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.title);
   const selected = selectedId === task.id;
@@ -44,7 +44,8 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
   const planned = isPlannedForToday(task, today);
   const earlierPlan = planned && task.plannedFor && task.plannedFor < today ? task.plannedFor : null;
   const planLabel = planned ? t.removeFromToday : t.addToToday;
-  const hasMetadata = project || task.tags.length > 0 || steps.total > 0 || task.repeat || earlierPlan;
+  const suggestionCount = suggestions.get(task.id)?.length ?? 0;
+  const hasMetadata = suggestionCount > 0 || project || task.tags.length > 0 || steps.total > 0 || task.repeat || earlierPlan;
 
   function addSubtask() {
     setVisibility("all"); setAdding(true);
@@ -96,6 +97,9 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
         )}
         {task.notes && <p className="task-notes is-preview">{task.notes}</p>}
         {hasMetadata && <div className="task-metadata">
+          {suggestionCount > 0 && <span className="task-suggestion-marker" aria-label={t.pendingAgentCount(suggestionCount)}>
+            <Icon name="assistant" size={14} />{t.taskHasSuggestions}
+          </span>}
           {earlierPlan && <span><Icon name="sun" size={13} />
             <time dateTime={earlierPlan}>{t.plannedEarlier(longDate(earlierPlan, locale, dateFormat).rest)}</time>
           </span>}

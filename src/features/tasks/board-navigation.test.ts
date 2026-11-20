@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { restoreBoardReturn, restoreSidebarLayout, restoreTaskSort, TASK_SORTS, type BoardReturn, type TaskFilter } from "./board-navigation";
-
-const previous: BoardReturn = {
-  startView: "all", filter: { kind: "today" }, query: "draft", sort: "priority", text: "Follow up",
-};
+import { boardFilterForPage, restoreBoardReturn, type BoardReturn, restoreSidebarLayout, restoreTaskSort, TASK_SORTS, type TaskFilter } from "./board-navigation";
 
 describe("task sort preference", () => {
   it.each(TASK_SORTS)("restores %s", (sort) => expect(restoreTaskSort(sort, sort === "manual" ? "manual" : "due")).toBe(sort));
@@ -20,6 +16,18 @@ describe("sidebar layout", () => {
     expect(restoreSidebarLayout(stored)).toEqual({ compact: false, projects: true, tags: true });
   });
 });
+
+describe("sidebar current page", () => {
+  const filter: TaskFilter = { kind: "tag", tag: "work" };
+  it("marks only the active route or a view on the board", () => {
+    expect(boardFilterForPage("/", filter)).toBe(filter);
+    for (const page of ["/settings", "/agent", "/work-log"]) expect(boardFilterForPage(page, filter)).toBeNull();
+  });
+});
+
+const previous: BoardReturn = {
+  startView: "all", filter: { kind: "today" }, query: "draft", sort: "priority", text: "Follow up",
+};
 
 describe("returning to the board", () => {
   it.each<TaskFilter>([

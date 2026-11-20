@@ -377,3 +377,4 @@
 .task-order-rank { font-variant-numeric: tabular-nums; min-width: 2rem; justify-content: center; }
 .task-order-rank[draggable="true"] { cursor: grab; }
 .task-order-up svg { transform: rotate(180deg); }
+.task-metadata .task-suggestion-marker { color: var(--accent); }

@@ -30,7 +30,7 @@ describe("agent contracts", () => {
       { kind: "delete_task", taskId: "task" }, { kind: "update_task", taskId: "task", patch: { done: true } },
       { kind: "update_task", taskId: "task", patch: { nextOccurrenceId: "forged" } },
       { kind: "update_task", taskId: "task", patch: { links: ["https://example.org/private"] } },
-      { ...pending.action, task: { ...task, estimateHours: 0.75 } },
+      { ...pending.action, task: { ...task, realTimeHours: 0.75 } },
       { kind: "update_task", taskId: "task", patch: {} },
       { ...pending.action, task: { ...task, id: "injected" } },
       { ...pending.action, task: { ...task, due: "2026-02-30" } },
