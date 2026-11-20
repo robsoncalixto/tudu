@@ -1,7 +1,6 @@
-import { z } from "zod";
 import type { RepeatRule } from "@/features/recurrence/schema";
 import type { Dictionary, Locale } from "@/i18n";
-import { weekdayName } from "@/lib/dates";
+import { calendarDateSchema, weekdayName } from "@/lib/dates";
 
 export function repeatDescription(repeat: RepeatRule | null, locale: Locale, t: Dictionary): string {
   if (!repeat) return t.repeatFrequencies.never;
@@ -18,7 +17,7 @@ export class InvalidRepeatError extends Error {
 }
 
 export function validateRepeat(due: string | null, repeat: RepeatRule | null): void {
-  if (repeat && !z.iso.date().safeParse(due).success) throw new InvalidRepeatError();
+  if (repeat && !calendarDateSchema.safeParse(due).success) throw new InvalidRepeatError();
 }
 
 /** Advance from the scheduled date, independent of completion time and timezone. */
@@ -47,6 +46,6 @@ export function nextDueDate(due: string, repeat: RepeatRule): string {
 
 function format(date: Date): string {
   const value = date.toISOString().slice(0, 10);
-  if (!z.iso.date().safeParse(value).success) throw new InvalidRepeatError();
+  if (!calendarDateSchema.safeParse(value).success) throw new InvalidRepeatError();
   return value;
 }

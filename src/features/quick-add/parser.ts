@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { calendarDateSchema } from "@/lib/dates";
 import type { Project } from "@/features/projects/schema";
 import { durationHoursSchema, HOURS_PER_UNIT, PRIORITIES, type Priority } from "@/features/tasks/schema";
 import { quickAddInputSchema, quickTaskSchema, normalizeQuickTag, type QuickAddDefaults, type QuickAddProblem, type QuickTask } from "./schema";
@@ -17,11 +18,11 @@ const wordKey = (token: string) => token.normalize("NFD").replace(/\p{M}/gu, "")
 
 function isDateShortcut(token: string): boolean {
   const word = wordKey(token);
-  return z.iso.date().safeParse(token).success || Object.hasOwn(RELATIVE_DAYS, word) || Object.hasOwn(WEEKDAYS, word);
+  return calendarDateSchema.safeParse(token).success || Object.hasOwn(RELATIVE_DAYS, word) || Object.hasOwn(WEEKDAYS, word);
 }
 
 function dateToken(token: string, today: string): string | null {
-  if (z.iso.date().safeParse(token).success) return token;
+  if (calendarDateSchema.safeParse(token).success) return token;
   const word = wordKey(token);
   const date = new Date(`${today}T12:00:00Z`);
   if (Object.hasOwn(RELATIVE_DAYS, word)) date.setUTCDate(date.getUTCDate() + RELATIVE_DAYS[word]);
@@ -29,7 +30,7 @@ function dateToken(token: string, today: string): string | null {
     date.setUTCDate(date.getUTCDate() + ((WEEKDAYS[word] - date.getUTCDay() + 7) % 7 || 7));
   } else return null;
   // Refuse calendar overflow instead of silently dropping a recognized shortcut.
-  return z.iso.date().parse(date.toISOString().slice(0, 10));
+  return calendarDateSchema.parse(date.toISOString().slice(0, 10));
 }
 
 function priorityToken(token: string): Priority | undefined {

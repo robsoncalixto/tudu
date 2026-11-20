@@ -47,6 +47,15 @@ describe("taskInputSchema", () => {
     expect(taskInputSchema.safeParse({ title: "x", due: "2026-11-17" }).success).toBe(true);
   });
 
+  it.each(["2026-02-29", "2026-02-30", "2026-04-31", "2026-13-01", "0000-01-01"])(
+    "rejects the impossible deadline %s in new tasks, batches and updates", (due) => {
+      const draft = { title: "Report", due };
+      expect(taskInputSchema.safeParse(draft).success).toBe(false);
+      expect(taskCreationSchema("medium").safeParse([{ title: "Other" }, draft]).success).toBe(false);
+      expect(taskPatchSchema.safeParse({ due }).success).toBe(false);
+    },
+  );
+
   it("rejects an unknown priority", () => {
     expect(taskInputSchema.safeParse({ title: "x", priority: "urgent" }).success).toBe(false);
   });
@@ -71,7 +80,7 @@ describe("taskPatchSchema", () => {
   });
 
   it("rejects malformed or impossible selection dates", () => {
-    for (const plannedFor of ["today", "17/11/2026", "2026-02-30", true]) {
+    for (const plannedFor of ["today", "17/11/2026", "2026-02-30", "0000-01-01", true]) {
       expect(taskPatchSchema.safeParse({ plannedFor }).success).toBe(false);
     }
   });

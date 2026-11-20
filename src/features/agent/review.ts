@@ -1,5 +1,6 @@
 import type { Project } from "@/features/projects/schema";
 import type { Task } from "@/features/tasks/schema";
+import { calendarDayOrNull } from "@/lib/dates";
 import type { Proposal, ProposalDraft } from "./schema";
 
 function urgency(task: Task, today: string) {
@@ -21,7 +22,9 @@ function withinBudget<T>(items: T[], limit: number): T[] {
 }
 
 export function taskReviewContext(tasks: Task[], projects: Project[], today: string, note: string) {
-  const open = tasks.filter((task) => !task.done);
+  const open = tasks.filter((task) => !task.done).map((task) => ({
+    ...task, due: calendarDayOrNull(task.due), plannedFor: calendarDayOrNull(task.plannedFor),
+  }));
   const ordered = open.sort((a, b) => urgency(a, today) - urgency(b, today)
     || (a.due ?? "9999").localeCompare(b.due ?? "9999") || a.createdAt.localeCompare(b.createdAt));
   const candidates = ordered.map(({ id, title, notes, due, plannedFor, partOfDay, priority, projectId, estimateHours, realTimeHours, tags, steps }) => ({

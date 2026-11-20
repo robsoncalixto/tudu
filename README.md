@@ -134,7 +134,8 @@ automatically. New repeating occurrences keep the estimate and start with no rea
 execution time.
 
 Repeating tasks can be daily, on weekdays, weekly on selected days, or monthly.
-Completing one creates the next occurrence.
+Completing one creates the next occurrence. If an older task has an invalid due
+date, correct the date or remove its repeat rule before marking it done.
 
 ### Assistant
 

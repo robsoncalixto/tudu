@@ -18,8 +18,8 @@ vi.mock("@/features/projects/server/repository", async (original) => ({
 import { POST } from "./route";
 
 const task = taskSchema.parse({ id: "created", title: "Report", createdAt: "2026-11-17T12:00:00Z", done: false, completedAt: null });
-const request = (text = "A note") => new Request("http://localhost/api/ai/capture", {
-  method: "POST", body: JSON.stringify({ text, today: "2026-11-17", aiProvider: "untrusted", aiModel: "injected-model", apiKey: "ignored-client-key" }),
+const request = (text = "A note", today = "2026-11-17") => new Request("http://localhost/api/ai/capture", {
+  method: "POST", body: JSON.stringify({ text, today, aiProvider: "untrusted", aiModel: "injected-model", apiKey: "ignored-client-key" }),
 });
 beforeEach(() => {
   vi.clearAllMocks(); createGenerator.mockReturnValue(generate);
@@ -45,6 +45,7 @@ describe("capture provider coordination", () => {
   });
   it("does not call a provider for invalid input and does not save empty captures", async () => {
     expect((await POST(request(""))).status).toBe(400);
+    expect((await POST(request("Schedule a review", "0000-01-01"))).status).toBe(400);
     expect(capture).not.toHaveBeenCalled();
     capture.mockResolvedValue([]);
     const response = await POST(request());

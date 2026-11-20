@@ -92,6 +92,17 @@ describe.each(backends)("repository on $name", (backend) => {
     expect(await repo.listTasks()).toEqual([task]);
   });
 
+  it("rejects impossible deadlines without partially writing a batch or changing an existing task", async () => {
+    const invalid = { ...input("Bad deadline"), due: "2026-02-30" };
+    const [existing] = await repo.addTasks([{ ...input("Report"), due: "2028-02-29" }]);
+    await expect(repo.addTasks([input("Other"), invalid])).rejects.toThrow();
+    await expect(repo.updateTask(existing.id, { due: invalid.due, title: "Changed" })).rejects.toThrow();
+    await expect(repo.addApprovedTask("approved", invalid, null)).rejects.toThrow();
+    await expect(repo.updateTask(existing.id, { plannedFor: "0000-01-01" })).rejects.toThrow();
+    await expect(repo.addTasks([{ ...input("Bad plan"), plannedFor: "0000-01-01" }])).rejects.toThrow();
+    expect(await repo.listTasks()).toEqual([existing]);
+  });
+
   it("creates an approved id once, preserving an existing task on concurrent retries", async () => {
     const id = "00000000-0000-4000-8000-000000000001";
     const results = await Promise.all(Array.from({ length: 4 }, () => repo.addApprovedTask(id, input("Approved"), "2026-11-17")));
@@ -331,6 +342,32 @@ describe("default repository", () => {
   afterEach(async () => {
     vi.unstubAllEnvs();
     await rm(dir, { recursive: true, force: true });
+  });
+
+  it.each([
+    { due: "2026-02-30", repeat: null },
+    { due: "0000-02-29", repeat: { frequency: "daily" as const } },
+  ])("keeps the legacy deadline $due readable and editable", async ({ due, repeat }) => {
+    const repo = await import("./repository");
+    const [task] = await repo.addTasks([input("Legacy deadline")]);
+    const legacy = { ...task, due, repeat, plannedFor: "0000-01-01" };
+    await writeFile(path.join(dir, "tasks.json"), JSON.stringify([legacy]));
+    expect(await repo.listTasks()).toEqual([legacy]);
+    expect(await repo.updateTask(task.id, { title: "Renamed" })).toEqual({ ...legacy, title: "Renamed" });
+    await repo.updateTask(task.id, { due: "2026-02-28", plannedFor: null });
+    expect(await repo.listTasks()).toEqual([{ ...task, title: "Renamed", due: "2026-02-28", repeat, planChangedAt: expect.any(String) }]);
+  });
+
+  it.each([null, "0000-02-29"])("keeps a legacy series with deadline %s open until it can schedule its next occurrence", async (due) => {
+    const repo = await import("./repository");
+    const [task] = await repo.addTasks([input("Daily report")]);
+    const legacy = { ...task, due, repeat: { frequency: "daily" } };
+    await writeFile(path.join(dir, "tasks.json"), JSON.stringify([legacy]));
+
+    await expect(repo.updateTask(task.id, { done: true })).rejects.toThrow("invalid_repeat");
+    expect(await repo.listTasks()).toEqual([legacy]);
+    const completed = await repo.updateTaskWithNext(task.id, { due: "2028-02-29", done: true });
+    expect(completed).toMatchObject({ task: { done: true }, nextTask: { due: "2028-03-01", done: false } });
   });
 
   it("uses tasks.json without DATABASE_URL and leaves no temporary files behind", async () => {

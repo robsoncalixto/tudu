@@ -27,6 +27,12 @@ function task(overrides: Partial<Task> = {}): Task {
 const titles = (tasks: Task[]) => tasks.map((item) => item.title);
 
 describe("buildTaskView", () => {
+  it("keeps impossible historical dates visible in All and out of Today or deadline priority", () => {
+    const invalid = task({ due: "2026-02-30", plannedFor: "0000-01-01" });
+    const later = task({ due: "2026-11-18" });
+    expect(buildTaskView([invalid, later], { kind: "today" }, "2026-11-17").open).toEqual([]);
+    expect(buildTaskView([invalid, later], { kind: "all" }, "2026-11-17").open).toEqual([later, invalid]);
+  });
   it("puts dated tasks before undated ones, earliest first", () => {
     const view = buildTaskView(
       [

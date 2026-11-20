@@ -44,6 +44,7 @@ describe("agent proposal generation", () => {
     { kind: "set_priority", taskId: "invented", priority: "high", reason: "Bad id" },
     { kind: "set_project", taskId: "task", projectId: "00000000-0000-4000-8000-000000000002", reason: "Bad project" },
     { kind: "set_due", taskId: "task", due: "2026-02-30", reason: "Bad day" },
+    { kind: "set_due", taskId: "task", due: "0000-11-17", reason: "Bad year" },
     { kind: "rename_project", projectId: "00000000-0000-4000-8000-000000000002", name: "Invented", reason: "Bad project" },
     { kind: "create_task", task: { ...newTask, title: "  " }, reason: "Blank task" },
     { kind: "delete_task", taskId: "task", reason: "Unsupported action" },

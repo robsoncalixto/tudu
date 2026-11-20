@@ -30,7 +30,7 @@ describe("repeat rules", () => {
   });
   it("requires a real scheduled date only when repeating", () => {
     validateRepeat(null, null);
-    for (const due of [null, "today", "2026-02-30", "2026-13-01"]) {
+    for (const due of [null, "today", "2026-02-30", "2026-13-01", "0000-01-01"]) {
       expect(() => validateRepeat(due, { frequency: "daily" })).toThrow("invalid_repeat");
     }
   });

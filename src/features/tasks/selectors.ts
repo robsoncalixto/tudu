@@ -1,4 +1,5 @@
 import { rankDayTasks } from "./day-order";
+import { calendarDayOrNull } from "@/lib/dates";
 import type { Task } from "./schema";
 import type { Project } from "@/features/projects/schema";
 
@@ -8,12 +9,13 @@ export type { TaskFilter, TaskSort } from "./board-navigation";
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 } as const;
 
 export function isPlannedForToday(task: Task, today: string): boolean {
-  return Boolean(today) && task.plannedFor !== null &&
-    (task.plannedFor === today || (!task.done && task.plannedFor < today));
+  const plan = calendarDayOrNull(task.plannedFor);
+  return Boolean(today) && plan !== null && (plan === today || (!task.done && plan < today));
 }
 
 export function isForToday(task: Task, today: string): boolean {
-  return Boolean(today) && (isPlannedForToday(task, today) || (task.due !== null && task.due <= today));
+  const due = calendarDayOrNull(task.due);
+  return Boolean(today) && (isPlannedForToday(task, today) || (due !== null && due <= today));
 }
 
 function searchText(text: string) {
@@ -22,10 +24,12 @@ function searchText(text: string) {
 
 /** Earliest due date first (undated last), then priority, then oldest. */
 function byUrgency(a: Task, b: Task): number {
-  if (a.due !== b.due) {
-    if (a.due === null) return 1;
-    if (b.due === null) return -1;
-    return a.due < b.due ? -1 : 1;
+  const aDue = calendarDayOrNull(a.due);
+  const bDue = calendarDayOrNull(b.due);
+  if (aDue !== bDue) {
+    if (aDue === null) return 1;
+    if (bDue === null) return -1;
+    return aDue < bDue ? -1 : 1;
   }
   if (a.priority !== b.priority) return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
   return a.createdAt.localeCompare(b.createdAt);

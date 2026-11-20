@@ -1,4 +1,14 @@
 import type { Dictionary, Locale } from "@/i18n";
+import { z } from "zod";
+
+// HTML date inputs and PostgreSQL both start the common era at year 1.
+const commonEra = /^(?!0000-)/;
+export const calendarDateSchema = z.iso.date().regex(commonEra);
+
+/** Read legacy values for calendar calculations without changing the saved text. */
+export function calendarDayOrNull(value: string | null): string | null {
+  return value && commonEra.test(value) && z.regexes.date.test(value) ? value : null;
+}
 
 export const DATE_FORMATS = ["locale", "iso"] as const;
 export type DateFormat = (typeof DATE_FORMATS)[number];
@@ -28,8 +38,7 @@ export function toISODate(date: Date): string {
 }
 
 function parse(iso: string): Date {
-  const [year, month, day] = iso.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  return calendarDayOrNull(iso) ? new Date(`${iso}T00:00:00Z`) : new Date(NaN);
 }
 
 export function dayDiff(iso: string, today: string): number {
@@ -38,22 +47,26 @@ export function dayDiff(iso: string, today: string): number {
 
 export function dueLabel(iso: string, today: string, locale: Locale, t: Dictionary, format: DateFormat = "locale"): string {
   if (format === "iso") return iso;
-  const diff = dayDiff(iso, today);
+  const date = parse(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const reference = parse(today);
+  const diff = (date.getTime() - reference.getTime()) / 86_400_000;
   if (diff === 0) return t.today;
   if (diff === 1) return t.tomorrow;
   if (diff === -1) return t.yesterday;
-  const date = parse(iso);
   return new Intl.DateTimeFormat(locale, {
+    timeZone: "UTC",
     day: "numeric",
     month: "short",
-    ...(date.getFullYear() !== parse(today).getFullYear() ? { year: "numeric" } : {}),
+    ...(date.getUTCFullYear() !== reference.getUTCFullYear() ? { year: "numeric" } : {}),
   }).format(date);
 }
 
 export function longDate(today: string, locale: Locale, format: DateFormat = "locale"): { weekday: string; rest: string } {
   const date = parse(today);
+  if (Number.isNaN(date.getTime())) return { weekday: "", rest: today };
   return {
-    weekday: new Intl.DateTimeFormat(locale, { weekday: "long" }).format(date),
-    rest: format === "iso" ? today : new Intl.DateTimeFormat(locale, { day: "numeric", month: "long" }).format(date),
+    weekday: new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(date),
+    rest: format === "iso" ? today : new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", timeZone: "UTC" }).format(date),
   };
 }

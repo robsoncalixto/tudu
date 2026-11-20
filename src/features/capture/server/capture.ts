@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { calendarDateSchema } from "@/lib/dates";
 import { randomUUID } from "node:crypto";
 import { PRIORITIES, taskInputSchema, type Priority, type TaskCreationInput } from "@/features/tasks/schema";
 import type { Project } from "@/features/projects/schema";
@@ -48,7 +49,7 @@ export async function captureTasks(generate: GenerateStructured, note: string, t
       projectId: projects.some((project) => project.id === task.projectId) ? task.projectId : defaultProject,
       notes: task.notes.trim().slice(0, 2000),
       priority: task.priority,
-      due: z.iso.date().safeParse(task.due).success ? task.due : defaults?.due ?? null,
+      due: calendarDateSchema.safeParse(task.due).success ? task.due : defaults?.due ?? null,
       tags: [...new Set([...(defaults?.tags ?? []),
         ...task.tags.map((tag) => tag.trim().toLowerCase().slice(0, 40)).filter(Boolean),
       ])].slice(0, 10),

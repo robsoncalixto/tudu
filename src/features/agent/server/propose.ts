@@ -7,7 +7,7 @@ import { scheduleNewDrafts, scheduleReviewDrafts } from "./schedule-drafts";
 import { upcomingWorkload, type CapacitySettings } from "../workload";
 import { agentPlanSchema, taskReviewModelSchema, type AgentPlan, type TaskReviewPlan } from "../model-schema";
 import { taskReviewContext } from "../review";
-import { AgentError, proposalDraftSchema, type ProposalDraft } from "../schema";
+import { AgentError, hasValidTaskDates, proposalDraftSchema, type ProposalDraft } from "../schema";
 
 export async function proposeChanges(generate: GenerateStructured, text: string, today: string, tasks: Task[], projects: Project[], locale: Locale, defaultPriority: Priority, settings?: CapacitySettings): Promise<ProposalDraft[]> {
   const context = { today, projects, tasks: tasks.filter((task) => !task.done)
@@ -95,6 +95,7 @@ function validatedDrafts(rawDrafts: (AgentPlan["proposals"][number] | TaskReview
       const cleanAction = raw.kind === "create_project" ? { kind: raw.kind, name: raw.name }
         : raw.kind === "rename_project" ? { kind: raw.kind, projectId: raw.projectId, name: raw.name } : action;
       const parsed = proposalDraftSchema.parse({ action: cleanAction, reason: raw.reason, taskBefore: task ?? null, projectBefore: project ?? null });
+      if (!hasValidTaskDates(parsed.action)) throw new AgentError("agent_invalid_proposal");
       const projectId = parsed.action.kind === "create_task" ? parsed.action.task.projectId
         : parsed.action.kind === "update_task" ? parsed.action.patch.projectId : null;
       if (projectId && !projects.some((project) => project.id === projectId)) throw new AgentError("agent_invalid_proposal");
