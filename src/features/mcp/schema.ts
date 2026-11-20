@@ -31,7 +31,7 @@ export const updateTaskToolSchema = z.object({
   id: z.string().min(1).max(100),
   patch: taskPatchSchema.extend({ steps: toolStepsSchema.optional() }).strict()
     .refine((patch) => Object.keys(patch).length > 0),
-  expected: taskSchema.optional().describe("The task exactly as last read. When given, the update is refused with task_changed if the task changed since."),
+  expected: taskSchema.optional().describe("The task as last read. An update returns task_changed when the saved task content has changed."),
 }).strict();
 export const completeTaskToolSchema = z.object({ id: z.string().min(1).max(100) }).strict();
 export const deleteTaskToolSchema = completeTaskToolSchema.extend({

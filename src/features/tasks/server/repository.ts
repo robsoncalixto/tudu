@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { dayOrderSchema, taskContentSchema, taskSchema, type DayOrder, type DayOrderRequest, type Task, type TaskCreationInput, type TaskInput, type TaskPatch, type TaskUpdate } from "../schema";
+import { dayOrderSchema, taskContentSchema, taskSchema, type DayOrder, type DayOrderRequest, type Task, type TaskCreationInput, type TaskPatch, type TaskUpdate } from "../schema";
 import { rankDayTasks } from "../day-order";
 import { isForToday } from "../selectors";
 import { nextDueDate, validateRepeat } from "../recurrence";
