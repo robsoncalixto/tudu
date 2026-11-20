@@ -23,6 +23,7 @@
 }
 
 .shortcut-sheet h2 { margin: 0; font: 650 21px/28px var(--heading); letter-spacing: -.03em; }
+.shortcut-sheet > header + section > h3 { margin-top: var(--s-lg); }
 .shortcut-sheet h3 { margin: var(--s-md) 0 6px; font: 600 12px/16px var(--heading); letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
 .shortcut-sheet > .hint { margin-top: var(--s-md); }
 
