@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { withoutPendingDuplicates } from "../review";
 import { AgentError, proposalSchema, proposalSourceSchema, type Proposal, type ProposalDraft, type ProposalSource } from "../schema";
 
 const state = globalThis as typeof globalThis & { __tuduProposalQueues?: Map<string, Promise<unknown>> };
@@ -27,11 +28,13 @@ export function createProposalRepository(dataDir: string) {
     listProposals: () => locked(read),
     addProposals: (drafts: ProposalDraft[], source: ProposalSource) => locked(async () => {
       const parsedSource = proposalSourceSchema.parse(source);
-      const created = drafts.map((draft) => proposalSchema.parse({
+      const previous = drafts.length ? await read() : [];
+      const remaining = parsedSource.review ? withoutPendingDuplicates(drafts, previous) : drafts;
+      const created = remaining.map((draft) => proposalSchema.parse({
         ...draft, id: randomUUID(), createdAt: new Date().toISOString(), source: parsedSource,
         status: "pending", approved: null, result: null, decidedAt: null, appliedAt: null,
       }));
-      if (created.length) await write([...(await read()), ...created]);
+      if (created.length) await write([...previous, ...created]);
       return created;
     }),
     change: <T>(id: string, operation: (proposal: Proposal, save: (next: Proposal) => Promise<Proposal>) => Promise<T>): Promise<T> => locked(async () => {
