@@ -123,7 +123,9 @@ Repeating tasks can be daily, on weekdays, weekly on selected days, or monthly.
 Completing one creates the next occurrence.
 
 **Work log** lists the tasks completed on a chosen day, grouped by project or
-tag, and copies them as plain text or Markdown.
+tag, with recorded time, estimates alongside recorded time, and totals per
+group and for the day. Both plain-text and Markdown copies include the times and totals.
+The daily total counts a multi-tag task once.
 
 **Settings** controls language, appearance (System, Light or Dark), initial
 view, default priority, date format and the AI provider and model.
