@@ -119,13 +119,12 @@ Use the sun button to plan a task for today or clear its existing plan.
 The task actions menu moves the planned day without changing the deadline.
 Your open-task sort is remembered on the device. **Today** starts in **My
 order**. Drag a task’s position or use **Move up** and **Move down** to save
-the order for that day. The Assistant can suggest a complete order with a
-reason for each position. Accept the suggestion to apply it in one step.
+the order for that day.
 The board refreshes tasks and projects on focus and periodically while the
 tab is visible.
 
 Open the task panel (the icon at the right of a row) to edit the title,
-notes, subtasks, priority, project, tags, planned day, due date, repeat rule,
+notes, subtasks, priority, project, tags, planned day, due date, part of day, repeat rule,
 time estimate, real execution time and links. Both time fields offer a unit selector
 before the value: Minutes, Hours or Days. Fractional hours are supported, and
 **1 day equals 12 hours**. Clear a field to remove its value. Changing units
@@ -137,17 +136,33 @@ execution time.
 Repeating tasks can be daily, on weekdays, weekly on selected days, or monthly.
 Completing one creates the next occurrence.
 
-**Assistant** can review open tasks with **Review my tasks**, with or without a
-note. It summarizes what it reviewed and proposes changes with reasons. Every
-change requires approval. Suggestions for an existing task also appear
-beside the affected fields in its details, where you can accept or reject
-them. Possible duplicate flags record the decision without
-modifying either task. You can enable automatic review in Settings and choose
-a local time. It runs at most once per day while TUDU is running and can use a
+### Assistant
+
+Choose **Review my tasks** on the Assistant screen for a summary and
+suggestions based on the open list. A note can guide the review. The Assistant
+screen also shows pending suggestions and decision history.
+
+Suggestions for an existing task appear beside the affected fields and
+subtasks in its details. Accept or reject each proposal there or on the
+Assistant screen. An order suggestion shows the full Today sequence with a
+reason for each position and applies as one decision. A possible duplicate
+flag records the decision without modifying either task.
+
+Set your working days and daily hours in **Settings**. The Assistant counts an
+open task against its planned day, or its due date when it has no plan, and
+carries earlier work into today's load. Work without an estimate counts as one
+hour. For a new task with no date, the Assistant suggests a deadline, planned
+day and morning, afternoon or evening. The reason shows the available hours and
+estimated effort. A review flags days over capacity and can propose moving work
+within its existing deadlines.
+
+Automatic review starts off. In **Settings**, enable it and choose a local
+time. The server runs at most once per day while TUDU is running and can use a
 paid model. It records a skip when there are no open tasks, the task list has
-not changed, or the selected provider is unavailable.
-The Assistant uses the working days and daily capacity from Settings to suggest
-dates and a part of the day. Work without an estimate counts as one hour.
+not changed, or the selected provider is unavailable. Suggestions wait for
+approval.
+
+### Work log and settings
 
 **Work log** lists the tasks completed on a chosen day, grouped by project or
 tag, with recorded time, estimates alongside recorded time, and totals per
@@ -155,7 +170,8 @@ group and for the day. Both plain-text and Markdown copies include the times and
 The daily total counts a multi-tag task once.
 
 **Settings** controls language, appearance (System, Light or Dark), initial
-view, default priority, date format and the AI provider and model.
+view, default priority, date format, work capacity, automatic review, and the
+AI provider and model.
 
 ### Quick-add shortcuts
 
@@ -202,7 +218,7 @@ claude mcp add --transport http tudu http://localhost:3000/api/mcp \
 | `list_projects` | List project names and IDs |
 | `create_project` | Create a project by name and return its ID and name |
 | `get_day_order` | Read the saved order for a day |
-| `set_day_order` | Set the order for a day using every current open task ID |
+| `set_day_order` | Set the order for a day using every current open task ID. Pass `expected` to reject a concurrent reorder. |
 | `list_tasks` | Filter and paginate tasks. The Today filter includes unfinished earlier plans. |
 | `add_tasks` | Add 1–50 tasks |
 | `update_task` | Update task fields, or reopen a task; pass `expected` to refuse changes made since the last read |
