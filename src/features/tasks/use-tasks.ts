@@ -3,27 +3,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { captureApi } from "@/features/capture/api";
 import { quickAddApi } from "@/features/quick-add/api";
-import { errorCode } from "@/lib/http";
+import { ApiError, errorCode } from "@/lib/http";
 import type { Project } from "@/features/projects/schema";
 import type { CaptureDefaults } from "@/features/capture/schema";
 import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import { useVisibleRefresh } from "@/lib/use-visible-refresh";
 import { tasksApi } from "./api";
-import { applyTaskMutations, type PendingTaskMutation } from "./optimistic-tasks";
-import type { Task, TaskPatch } from "./schema";
+import { applyTaskMutations, provisionalTask, type PendingTaskMutation } from "./optimistic-tasks";
+import type { Priority, Task, TaskPatch } from "./schema";
 
 /**
- * Owns the task list. `add` and `capture` reject with an ApiError so the
- * caller can keep the user's text; `patch` and `remove` update optimistically,
- * roll back on failure and report the error code through `onError`.
+ * Owns the task list. `add` shows the new tasks at once and `capture` waits for
+ * the server; both reject with an ApiError so the caller can keep the user's
+ * text. `patch` and `remove` update optimistically, roll back on failure and
+ * report the error code through `onError`.
  */
 export function useTasks(onError: (code: string) => void, onNext?: (task: Task) => void, onRefreshed?: (currentIds: ReadonlySet<string>) => void, provider?: string) {
   const [confirmed, setConfirmed] = useState<Task[] | null>(null);
   const [pending, setPending] = useState<PendingTaskMutation[]>([]);
+  const [unsaved, setUnsaved] = useState<Task[]>([]);
   const revision = useRef(0);
   const loaded = useRef(false);
   const lastWrite = useRef(new Map<string, Promise<boolean>>());
-  const tasks = useMemo(() => confirmed && applyTaskMutations(confirmed, pending), [confirmed, pending]);
+  const tasks = useMemo(() => confirmed && [...applyTaskMutations(confirmed, pending), ...unsaved], [confirmed, pending, unsaved]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -74,8 +76,18 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
     return created;
   }, []);
 
-  const add = useCallback((text: string, today: string, defaults: QuickAddDefaults, projects: Project[]) =>
-    quickAddApi.create(text, today, defaults, projects).then(append), [append]);
+  const add = useCallback((text: string, today: string, defaults: QuickAddDefaults, projects: Project[], priority: Priority) => {
+    const drafts = quickAddApi.previewDrafts(text, today, defaults, projects);
+    if (!drafts) throw new ApiError("invalid_quick_task", 400);
+    const now = new Date();
+    const shown = drafts.map((draft) => provisionalTask(draft, priority, now));
+    const settle = () => setUnsaved((current) => current.filter((task) => !shown.includes(task)));
+    setUnsaved((current) => [...current, ...shown]);
+    // The saved tasks take the place of the shown ones in a single render.
+    const saved = tasksApi.create(drafts.length === 1 ? drafts[0] : drafts)
+      .then((created) => { settle(); return append(created); }, (error: unknown) => { settle(); throw error; });
+    return { shown, saved };
+  }, [append]);
 
   const capture = useCallback(
     (text: string, today: string, defaults: CaptureDefaults) => captureApi.capture(text, today, defaults).then(append),

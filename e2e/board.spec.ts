@@ -42,7 +42,7 @@ test.describe("Board", () => {
 
   test("still shows saved tasks after a reload", async ({ page, request }) => {
     await openApp(page);
-    await page.getByRole("textbox", { name: /Write a task/ }).fill("Survive a reload");
+    await page.getByRole("combobox", { name: /Write a task/ }).fill("Survive a reload");
     await page.getByRole("button", { name: "Add", exact: true }).click();
     await expect(row(page, "Survive a reload")).toBeVisible();
 
