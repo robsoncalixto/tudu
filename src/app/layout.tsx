@@ -10,7 +10,13 @@ const body = Inter({ subsets: ["latin"], variable: "--font-body" });
 
 export const dynamic = "force-dynamic";
 
-export const viewport: Viewport = { viewportFit: "cover", themeColor: appColors.light };
+export async function generateViewport(): Promise<Viewport> {
+  const { theme } = await getSettings();
+  return { viewportFit: "cover", themeColor: theme === "system" ? [
+    { media: "(prefers-color-scheme: light)", color: appColors.light },
+    { media: "(prefers-color-scheme: dark)", color: appColors.dark },
+  ] : appColors[theme] };
+}
 
 export const metadata: Metadata = {
   title: "TUDU",
@@ -25,7 +31,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const { locale, theme } = await getSettings();
   return (
     <html lang={locale} data-theme={theme} className={`${heading.variable} ${body.variable}`}>
-      <body><Pwa locale={locale} />{children}</body>
+      <body><Pwa locale={locale} theme={theme} />{children}</body>
     </html>
   );
 }

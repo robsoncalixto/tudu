@@ -1,11 +1,14 @@
+export const workerSource = String.raw`
 /* CACHE is set by the service worker route for this build. */
-const offlinePage = (locale) => `/offline?lang=${locale}`;
-const preference = "/offline-locale";
+const languages = ["en", "pt-BR"];
+const themes = ["system", "light", "dark"];
+const offlinePage = (locale, theme) => "/offline?lang=" + locale + "&theme=" + theme;
+const preference = "/offline-preferences";
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await cache.addAll([offlinePage("en"), offlinePage("pt-BR"), "/brand/tudu-icon-192.png"]);
+    await cache.addAll([...languages.flatMap((locale) => themes.map((theme) => offlinePage(locale, theme))), "/brand/tudu-icon-192.png"]);
     await self.skipWaiting();
   })());
 });
@@ -19,9 +22,9 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  const locale = event.data?.locale;
-  if (locale !== "en" && locale !== "pt-BR") return;
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.put(preference, new Response(locale))).catch(() => undefined));
+  const { locale, theme } = event.data ?? {};
+  if (!languages.includes(locale) || !themes.includes(theme)) return;
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.put(preference, Response.json({ locale, theme }))).catch(() => undefined));
 });
 
 async function navigate(request) {
@@ -29,9 +32,9 @@ async function navigate(request) {
     return await fetch(request);
   } catch {
     const cache = await caches.open(CACHE);
-    const remembered = await (await cache.match(preference))?.text();
-    const locale = remembered === "pt-BR" || (!remembered && self.navigator.language.toLowerCase().startsWith("pt")) ? "pt-BR" : "en";
-    return (await cache.match(offlinePage(locale))) ?? Response.error();
+    const remembered = await (await cache.match(preference))?.json();
+    const locale = remembered?.locale ?? (self.navigator.language.toLowerCase().startsWith("pt") ? "pt-BR" : "en");
+    return (await cache.match(offlinePage(locale, remembered?.theme ?? "system"))) ?? Response.error();
   }
 }
 
@@ -55,3 +58,4 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(staticAsset(request));
   }
 });
+`;

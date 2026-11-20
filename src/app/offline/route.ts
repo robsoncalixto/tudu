@@ -2,14 +2,17 @@ import { dictionaries } from "@/i18n";
 import { appColors } from "@/features/pwa/theme";
 
 export function GET(request: Request) {
-  const locale = new URL(request.url).searchParams.get("lang") === "pt-BR" ? "pt-BR" : "en";
+  const params = new URL(request.url).searchParams;
+  const locale = params.get("lang") === "pt-BR" ? "pt-BR" : "en";
+  const theme = params.get("theme");
+  const scheme = theme === "dark" || theme === "light" ? theme : "light dark";
   const t = dictionaries[locale];
   return new Response(`<!doctype html>
 <html lang="${locale}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="${scheme}">
   <title>TUDU · ${t.offlineTitle}</title>
   <style>
     body { margin: 0; background: light-dark(${appColors.light}, ${appColors.dark});
