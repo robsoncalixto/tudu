@@ -1,5 +1,5 @@
 import { listTasks, addTasks, updateTaskWithNext, deleteTask, TaskChangedError } from "@/features/tasks/server/repository";
-import { listProjects, ProjectError, withValidProjectIds } from "@/features/projects/server/repository";
+import { addProject, listProjects, ProjectError, withValidProjectIds } from "@/features/projects/server/repository";
 import { InvalidRepeatError } from "@/features/tasks/recurrence";
 import { taskCreationSchema } from "@/features/tasks/schema";
 import { isForToday } from "@/features/tasks/selectors";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 async function guarded<T>(operation: () => Promise<T>): Promise<T> {
   try { return await operation(); }
   catch (error) {
-    if (error instanceof ProjectError) throw new McpToolError("invalid_project");
+    if (error instanceof ProjectError) throw new McpToolError(error.code);
     if (error instanceof InvalidRepeatError) throw new McpToolError("invalid_repeat");
     if (error instanceof TaskChangedError) throw new McpToolError("task_changed");
     throw error;
@@ -25,6 +25,7 @@ const handler = createTuduMcpHandler({
   listTasks,
   isForToday,
   listProjects,
+  createProject: (input) => guarded(() => addProject(input)),
   addTasks: (drafts) => guarded(async () => {
     const parsed = taskCreationSchema((await getSettings()).defaultPriority).parse(drafts);
     const inputs = Array.isArray(parsed) ? parsed : [parsed];
