@@ -3,13 +3,15 @@
 import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import { Icon } from "@/lib/Icon";
 import { longDate } from "@/lib/dates";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { shortcutsApi } from "@/features/shortcuts/api";
 import { errorCode } from "@/lib/http";
 import type { Task } from "../schema";
 import { rankDayTasks } from "../day-order";
 import { useDayOrder } from "../use-day-order";
 import { isForToday, type TaskSort } from "../selectors";
 import { useTaskActions } from "../use-task-actions";
+import { useTaskShortcuts } from "../use-task-shortcuts";
 import { BoardHeader } from "./BoardHeader";
 import { Composer, type ComposerMode } from "./Composer";
 import { postponementDate, type Postponement } from "../planning";
@@ -22,7 +24,7 @@ import { useTaskWorkspace } from "./TaskWorkspace";
 
 export function Board() {
   const { settings, locale, t, today, navigation, inspector, taskData, projectData, selectedTask,
-    view, notice, setNotice, fail, select, suggestions } = useTaskWorkspace();
+    view, notice, setNotice, fail, select, suggestions, focusRequest } = useTaskWorkspace();
   const { filter, setFilter, query, setQuery, sort, setSort, text, setText } = navigation;
   const { tasks, reorder, aiEnabled, add, capture, patch, remove, loadFailed, retryLoad } = taskData;
   const { projects } = projectData;
@@ -67,6 +69,18 @@ export function Board() {
   }
 
   function clearSearch() { setQuery(""); search.current?.focus(); }
+  useTaskShortcuts({
+    tasks, rows: actions.rows, focusComposer: actions.focusComposer, focusSearch: () => search.current?.focus(),
+    onToggle: (task) => { void actions.patchFromRow(task.id, { done: !task.done }); },
+    onDelete: actions.requestDelete, onUndo: () => false,
+  });
+  const loaded = tasks !== null;
+  useEffect(() => {
+    if (!loaded || !focusRequest.current) return;
+    if (focusRequest.current === "search") search.current?.focus();
+    else actions.focusComposer();
+    focusRequest.current = null;
+  }, [loaded, focusRequest, actions.focusComposer]);
   const searching = Boolean(query.trim());
   const dayIds = today ? rankDayTasks((tasks ?? []).filter((task) => !task.done && isForToday(task, today)), today).map((task) => task.id) : [];
   const order = useDayOrder(today, dayIds, filter.kind === "today" && sort === "manual", reorder, fail);
@@ -82,7 +96,11 @@ export function Board() {
         <div className="board-search" role="search">
           <label htmlFor="board-query" aria-label={t.taskSearch}><Icon name="search" size={17} /></label><input ref={search} type="search" id="board-query" value={query} aria-label={t.taskSearch}
             placeholder={t.taskSearch} onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => { if (event.key === "Escape" && query) clearSearch(); }} />
+            onKeyDown={(event) => {
+              const keys = shortcutsApi.match("search", event);
+              if (keys.includes("clearSearch") && query) clearSearch();
+              else if (keys.includes("searchResults") && actions.rows().length) { event.preventDefault(); actions.rows()[0].focus(); }
+            }} />
           {query && <button type="button" className="icon-btn" aria-label={t.clearSearch} onClick={clearSearch}><Icon name="x" size={14} /></button>}
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
+import { shortcutsApi } from "@/features/shortcuts/api";
 import { usePanelWidth } from "../use-panel-width";
 import { TaskPanelResize } from "./TaskPanelResize";
 
@@ -40,9 +41,10 @@ export function TaskPanelFrame({ taskId, label, resizeLabel, onClose, children }
     onKeyDown={(event) => {
       if (event.defaultPrevented || event.nativeEvent.isComposing) return;
       // The native picker consumes Escape itself while an option list is open.
-      if (event.key === "Escape" && CSS.supports("selector(select:open)") &&
+      const closing = shortcutsApi.match("panel", event).includes("closePanel");
+      if (closing && CSS.supports("selector(select:open)") &&
         event.target instanceof Element && event.target.closest("select:open")) return;
-      if (event.key === "Escape") {
+      if (closing) {
         event.preventDefault();
         event.stopPropagation();
         onClose();
