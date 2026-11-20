@@ -10,7 +10,7 @@ export const listTasksToolSchema = z.object({
   dueFrom: z.iso.date().optional().describe("Inclusive earliest due date; excludes undated tasks."),
   dueTo: z.iso.date().optional().describe("Inclusive latest due date; excludes undated tasks."),
   plannedFor: z.iso.date().optional(),
-  today: z.iso.date().optional().describe("Tasks selected for this day, due on it, or overdue, as in Today view."),
+  today: z.iso.date().optional().describe("Tasks planned for this day, unfinished tasks planned before it, and tasks due on or before it."),
   query: z.string().trim().min(1).max(300).optional().describe("Case-insensitive title or notes search."),
   offset: z.number().int().min(0).default(0),
   limit: z.number().int().min(1).max(200).default(100),

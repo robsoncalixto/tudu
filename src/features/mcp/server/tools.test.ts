@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { taskSchema } from "@/features/tasks/schema";
+import { isForToday } from "@/features/tasks/selectors";
 import { createTaskTools, McpToolError, type TaskOperations } from "./tools";
 
 const task = taskSchema.parse({ id: "t1", title: "Report", done: false, createdAt: "2026-11-01T12:00:00Z", completedAt: null });
@@ -9,6 +10,7 @@ let tools: ReturnType<typeof createTaskTools>;
 beforeEach(() => {
   operations = {
     listTasks: vi.fn(async () => [task]),
+    isForToday,
     listProjects: vi.fn(async () => []),
     createProject: vi.fn(async () => project),
     addTasks: vi.fn(async () => [task]),

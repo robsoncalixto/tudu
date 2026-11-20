@@ -8,6 +8,7 @@ import { filterTasks } from "../selectors";
 
 export interface TaskOperations {
   listTasks(): Promise<Task[]>;
+  isForToday(task: Task, today: string): boolean;
   listProjects(): Promise<Project[]>;
   createProject(input: ProjectInput): Promise<Project>;
   addTasks(inputs: TaskDraft[]): Promise<Task[]>;
@@ -47,7 +48,7 @@ export function createTaskTools(operations: TaskOperations) {
     }),
     list_tasks: (raw: unknown) => result("list_tasks", async () => {
       const filters = listTasksToolSchema.parse(raw);
-      return filterTasks(await operations.listTasks(), filters);
+      return filterTasks(await operations.listTasks(), filters, operations.isForToday);
     }),
     add_tasks: (raw: unknown) => result("add_tasks", async () => {
       const drafts = addTasksToolSchema.parse(raw).tasks.map((draft) => taskDraftSchema.strict().parse(withStepIds(draft)));

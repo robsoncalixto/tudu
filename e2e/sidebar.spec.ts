@@ -340,7 +340,7 @@ for (const language of [
   });
 
   test(`Today empty state in ${language.code}`, async ({ page, request }) => {
-    await seed(request, [{ title: "Unplanned" }, { title: "Old pick", plannedFor: "2026-11-16" }]);
+    await seed(request, [{ title: "Unplanned" }, { title: "Future pick", plannedFor: "2026-11-18" }]);
     await openApp(page);
     await setLanguage(page, language.code);
     await sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
