@@ -27,7 +27,9 @@ for (const locale of ["en", "pt-BR"] as const) {
     await expect(panel.getByRole("checkbox", { name: "Check credits" })).toHaveCount(0);
     expect((await listTasks(request))[0]).toMatchObject({ priority: "medium", due: null, projectId: null, plannedFor: null });
     const decisions = panel.getByRole("region", { name: t.agentPending });
-    await decisions.getByRole("button", { name: t.agentAccept }).click();
+    const accept = decisions.getByRole("button", { name: t.agentAccept });
+    await expect(accept).toHaveAccessibleDescription(new RegExp(t.agentPlannedFor));
+    await accept.click();
     await expect(item.getByText(t.taskHasSuggestions, { exact: true })).toHaveCount(0);
     await expect.poll(async () => (await listTasks(request))[0]).toMatchObject({
       priority: "high", due: TODAY, projectId: project.id, plannedFor: TODAY,
