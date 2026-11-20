@@ -29,12 +29,20 @@ export function AgentPanel({ settings }: { settings: Settings }) {
       <label htmlFor="agent-note">{t.agentPrompt}</label>
       <textarea className="form-control" id="agent-note" value={agent.text} maxLength={8000} rows={4} placeholder={t.agentPromptHint}
         disabled={busy} onChange={(event) => agent.setText(event.target.value)} />
-      <div className="proposal-actions"><button type="submit" className="btn btn-primary" disabled={!agent.state?.enabled || !today || !agent.text.trim() || busy} aria-describedby={!agent.state?.enabled ? "agent-ai-hint" : undefined}>
+      <div className="proposal-actions">
+        <button type="button" className="btn btn-primary" disabled={!agent.state?.enabled || !today || busy}
+          aria-describedby={!agent.state?.enabled ? "agent-ai-hint" : undefined} onClick={() => { if (today) void agent.propose(today, true); }}>
+          {t.agentReviewTasks}
+        </button><button type="submit" className="btn btn-secondary" disabled={!agent.state?.enabled || !today || !agent.text.trim() || busy} aria-describedby={!agent.state?.enabled ? "agent-ai-hint" : undefined}>
         {agent.generating ? t.agentProposing : t.agentPropose}
       </button><button type="button" className="btn btn-secondary" disabled={busy} onClick={() => { void agent.reload(); }}>{t.agentRefresh}</button></div>
       {agent.state && !agent.state.enabled && <p className="hint" id="agent-ai-hint">{t.aiOff}</p>}
     </form>
     <p className={`notice${agent.error ? " is-error" : ""}`} role="status">{agent.error ? errorMessage(t, agent.error) : agent.loading ? t.loading : agent.empty ? t.agentNoSuggestions : ""}</p>
+    {agent.summary && <section className="card work-log-summary" aria-labelledby="agent-review-summary">
+      <h2 className="section-title" id="agent-review-summary">{t.agentReviewSummary}</h2>
+      <p>{agent.summary}</p>
+    </section>}
     {agent.state && <>
       <section aria-labelledby="agent-pending"><h2 className="section-title" id="agent-pending">{t.agentPending} <span>{pending.length}</span></h2>
         {pending.length ? cards(pending) : <p className="card empty">{t.agentNoPending}</p>}
