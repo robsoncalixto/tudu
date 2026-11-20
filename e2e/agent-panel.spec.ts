@@ -1,6 +1,6 @@
 import { dictionaries } from "../src/i18n";
-import { fixture, createTask, pending } from "./agent-support";
-import { expect, listProjects, listTasks, saveSettings, test, TODAY } from "./support";
+import { fixture, fixtureUrl, createTask, pending } from "./agent-support";
+import { expect, listProjects, listTasks, saveSettings, seed, test, TODAY } from "./support";
 
 for (const locale of ["en", "pt-BR"] as const) {
   const t = dictionaries[locale];
@@ -45,5 +45,39 @@ for (const locale of ["en", "pt-BR"] as const) {
     await page.getByRole("textbox", { name: t.agentPrompt, exact: true }).focus();
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     expect(await listTasks(request)).toEqual([]); expect(await listProjects(request)).toEqual([]);
+  });
+}
+
+for (const locale of ["en", "pt-BR"] as const) {
+  const t = dictionaries[locale];
+  test(`reviews without a note and keeps duplicate suggestions pending only once in ${locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale, aiProvider: "openai", aiModel: "test-agent" });
+    const [overdue, matching] = await seed(request, [{ title: "Overdue invoice", due: "2026-11-16" }, { title: "Send invoice again" }]);
+    const summary = locale === "en" ? "One invoice is overdue." : "Uma fatura está atrasada.";
+    const reason = locale === "en" ? "The invoice needs attention." : "A fatura precisa de atenção.";
+    const plan = { summary, proposals: [
+      { kind: "set_priority", taskId: overdue.id, priority: "high", reason },
+      { kind: "flag_duplicate", taskId: matching.id, otherTaskId: overdue.id, reason },
+    ] };
+    const before = await listTasks(request);
+    expect((await request.put(fixtureUrl, { data: { plan } })).ok()).toBe(true);
+    await page.goto("/agent");
+    const review = page.getByRole("button", { name: t.agentReviewTasks, exact: true });
+    const note = page.getByRole("textbox", { name: t.agentPrompt, exact: true });
+    await expect(note).toHaveValue("");
+    await review.click();
+    await expect(page.getByRole("region", { name: t.agentReviewSummary })).toContainText(summary);
+    await expect(pending(page, locale).getByRole("article")).toHaveCount(2);
+    await expect(pending(page, locale).getByRole("article", { name: matching.title })).toContainText(t.agentPossibleDuplicate(overdue.title));
+    expect(await listTasks(request)).toEqual(before);
+    await note.fill("Focus on invoices");
+    await review.click();
+    await expect(page.getByRole("status")).toHaveText(t.agentNoSuggestions);
+    await expect(pending(page, locale).getByRole("article")).toHaveCount(2);
+    const { requests } = await (await request.get(fixtureUrl)).json();
+    expect(JSON.stringify(requests[1])).toContain("Focus on invoices");
+    await pending(page, locale).getByRole("article", { name: matching.title }).getByRole("button", { name: t.agentAccept }).click();
+    await expect(pending(page, locale).getByRole("article")).toHaveCount(1);
+    expect(await listTasks(request)).toEqual(before);
   });
 }

@@ -18,6 +18,7 @@ function editedAction(proposal: Proposal, edited: ProposalAction): ProposalActio
   if (action.kind !== original.kind
     || action.kind === "update_task" && (original.kind !== "update_task" || action.taskId !== original.taskId
       || !same(Object.keys(action.patch).sort(), Object.keys(original.patch).sort()))
+    || action.kind === "flag_duplicate" && !same(action, original)
     || action.kind === "rename_project" && (original.kind !== "rename_project" || action.projectId !== original.projectId)) {
     throw new AgentError("agent_invalid_proposal");
   }
@@ -30,6 +31,7 @@ function matches(proposal: Proposal, action: ProposalAction, result: ProposalRes
       && result.task.estimateHours === null && result.task.realTimeHours === null && result.task.links.length === 0
       && result.task.plannedFor === plannedFor && same(taskInputSchema.parse(result.task), input);
   }
+  if (action.kind === "flag_duplicate" && result.kind === "task") return same(result.task, proposal.taskBefore);
   if (action.kind === "update_task" && result.kind === "task" && proposal.taskBefore) {
     return same(taskSchema.parse(result.task), taskSchema.parse({ ...proposal.taskBefore, ...action.patch }));
   }
@@ -39,6 +41,10 @@ function matches(proposal: Proposal, action: ProposalAction, result: ProposalRes
 async function execute(proposal: Proposal, action: ProposalAction, operations: ProposalOperations): Promise<ProposalResult> {
   if (action.kind === "create_task") return { kind: "task", task: await operations.createTask(proposal.id, action.task) };
   if (action.kind === "create_project") return { kind: "project", project: await operations.createProject(proposal.id, action.name) };
+  if (action.kind === "flag_duplicate") {
+    const result = await outcome(proposal, action, operations);
+    if (result && matches(proposal, action, result)) return result;
+  }
   if (action.kind === "update_task" && proposal.taskBefore) {
     const task = await operations.updateTask(action.taskId, action.patch, proposal.taskBefore);
     if (task) return { kind: "task", task };
@@ -50,6 +56,12 @@ async function execute(proposal: Proposal, action: ProposalAction, operations: P
   throw new AgentError("agent_stale");
 }
 async function outcome(proposal: Proposal, action: ProposalAction, operations: ProposalOperations): Promise<ProposalResult | null> {
+  if (action.kind === "flag_duplicate") {
+    const tasks = await operations.listTasks();
+    const task = tasks.find((candidate) => candidate.id === action.taskId && !candidate.done);
+    const other = tasks.find((candidate) => candidate.id === action.otherTaskId && !candidate.done && candidate.title === action.otherTitle);
+    return task && other ? { kind: "task", task } : null;
+  }
   if (action.kind === "create_task" || action.kind === "update_task") {
     const task = (await operations.listTasks()).find((task) => task.id === (action.kind === "create_task" ? proposal.id : action.taskId));
     return task ? { kind: "task", task } : null;
