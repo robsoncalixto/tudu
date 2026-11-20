@@ -75,7 +75,8 @@ function useWorkspaceState(settings: Settings) {
 
   function select(next: TaskFilter) {
     setSelectedId(null);
-    setQuery(""); setFilter(next); setNotice(null);
+    // Changing list is no reason to lose the chance to undo what was just done.
+    setQuery(""); setFilter(next); setNotice((current) => current?.undo ? current : null);
     if (page !== "/") router.push("/");
   }
 

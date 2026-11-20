@@ -125,8 +125,11 @@ for (const l of [
     await expect(row(openSection(page), "Fragile")).toBeVisible();
     expect((await listTasks(request))[0].done).toBe(false);
     failing = false;
-    await status.getByRole("button", { name: l.retry, exact: true }).click();
+    await status.getByRole("button", { name: l.retry, exact: true }).focus();
+    await page.keyboard.press("Enter");
     await expect(row(openSection(page), "Fragile")).toHaveCount(0);
+    // The button went away with the notice; the keyboard is back on the board, not nowhere.
+    await expect(page.locator("main")).toBeFocused();
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(true);
     await expect(status).toHaveText("");
     // A refusal is not worth sending again, so it offers no Retry.
@@ -158,10 +161,47 @@ for (const l of [
     await date.fill("2026-11-25");
     await date.fill("2026-11-20");
     await expect(status).toHaveText("");
+    // From the date field itself, which keeps no history of its own, the undo chord takes the change back.
+    await date.fill("2026-11-26");
+    await expect.poll(async () => (await listTasks(request))[0].due).toBe("2026-11-26");
+    await date.focus();
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect.poll(async () => (await listTasks(request))[0].due).toBe("2026-11-20");
   });
 }
 
 const composerOrEmptyAction = (page: import("@playwright/test").Page) => page.getByRole("button", { name: /^(Add a task|Adicionar uma tarefa)$/ });
+
+test("every change held for Undo is sent when the page is reloaded or hidden", async ({ page, request }) => {
+  await seed(request, [
+    { title: "Delete one" }, { title: "Delete two" }, { title: "Repeats", due: "2026-11-17", repeat: { frequency: "daily" } }, { title: "Later" }, { title: "Stays" },
+  ]);
+  await page.goto("/");
+  const open = openSection(page);
+  const stored = async () => (await listTasks(request)).map((task) => `${task.title}:${task.done ? "done" : "open"}`).sort();
+  await row(open, "Repeats").focus();
+  await page.keyboard.press("Space");
+  await row(open, "Delete one").focus();
+  await page.keyboard.press("Delete");
+  await row(open, "Delete two").focus();
+  await page.keyboard.press("Delete");
+  // All three are only shown so far.
+  expect(await stored()).toEqual(["Delete one:open", "Delete two:open", "Later:open", "Repeats:open", "Stays:open"]);
+  await page.reload();
+  await expect.poll(stored).toEqual(["Later:open", "Repeats:done", "Repeats:open", "Stays:open"]);
+  await expect(row(open, "Delete one")).toHaveCount(0);
+
+  // A page that is hidden may never come back, so the wait for Undo ends there too.
+  await row(open, "Later").focus();
+  await page.keyboard.press("Delete");
+  await expect(page.getByRole("status")).toContainText("Deleted “Later”.");
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(page.getByRole("status")).toHaveText("");
+  await expect.poll(stored).toEqual(["Repeats:done", "Repeats:open", "Stays:open"]);
+});
 
 test("a notice leaves on its own, waits while the pointer is on it, and then lets a deletion through", async ({ page, request }) => {
   await seed(request, [{ title: "Short lived" }, { title: "Stays" }]);
@@ -215,6 +255,25 @@ test("the notice fits a phone and its controls are easy to touch", async ({ page
   expect(bounds!.x).toBeGreaterThanOrEqual(0);
   expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  // The message wraps instead of being cut, and a touch screen is not shown a key.
+  const text = status.locator(".board-notice-text");
+  expect(await text.evaluate((node) => node.scrollHeight <= node.clientHeight + 1 && node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+  await expect(text).toHaveAttribute("title", /long enough to wrap on a narrow phone screen/);
+  // Changing list keeps the chance to undo.
   await sidebar(page).getByRole("button", { name: /^Today,/ }).click();
-  await expect(status).toHaveText("");
+  await expect(status).toContainText("Completed “A task with a title long enough");
+  await status.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect.poll(async () => (await listTasks(request))[0].done).toBe(false);
+});
+
+test.describe("on a touch screen", () => {
+  test.use({ hasTouch: true, viewport: { width: 390, height: 844 } });
+  test("the notice names no key", async ({ page, request }) => {
+    await seed(request, [{ title: "Tap me" }]);
+    await page.goto("/");
+    await page.getByRole("checkbox", { name: "Mark as done" }).tap();
+    const undo = page.getByRole("status").getByRole("button", { name: "Undo", exact: true });
+    await expect(undo).toBeVisible();
+    await expect(undo.locator("kbd")).toBeHidden();
+  });
 });

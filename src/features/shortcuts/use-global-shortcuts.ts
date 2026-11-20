@@ -26,7 +26,9 @@ export function useGlobalShortcuts() {
     function onKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented || event.isComposing) return;
       const target = event.target instanceof HTMLElement ? event.target : null;
-      if (target?.isContentEditable || target?.closest(TYPING) || isCovered()) { forget(); return; }
+      // A date field holds no text of its own to undo, so a chord with Ctrl or ⌘ still reaches the page from there.
+      const chordFromDate = target instanceof HTMLInputElement && target.type === "date" && (event.ctrlKey || event.metaKey);
+      if (((target?.isContentEditable || target?.closest(TYPING)) && !chordFromDate) || isCovered()) { forget(); return; }
       const row = target?.closest<HTMLElement>("[data-task-id]") ?? null;
       const match = matchShortcut(chordOf(event), prefix, {
         characters: shortcutsApi.charactersEnabled(), within: row === null ? null : row === target ? "row" : "list", repeat: event.repeat,
