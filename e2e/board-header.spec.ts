@@ -39,4 +39,34 @@ for (const lang of [
     await expect(search).toHaveValue("");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(lang.all);
   });
+
+  test(`remembers the selected sort after reopening the board in ${lang.code}`, async ({ page, context, request }) => {
+    await seed(request, [{ title: "Early", due: "2026-11-18", priority: "low" }, { title: "Urgent", priority: "high" }]);
+    await openApp(page); await setLanguage(page, lang.code);
+    const sort = page.getByRole("combobox", { name: lang.sort });
+    await sort.selectOption("priority");
+    await page.reload();
+    await expect(sort).toHaveValue("priority");
+    const reopened = await context.newPage();
+    try {
+      await reopened.goto("/");
+      await expect(reopened.getByRole("combobox", { name: lang.sort })).toHaveValue("priority");
+      expect(await rowTitles(openSection(reopened))).toEqual(["Urgent", "Early"]);
+    } finally {
+      await reopened.close();
+    }
+  });
 }
+
+test("sorting remains usable when device storage is unavailable", async ({ page, request }) => {
+  await seed(request, [{ title: "Task" }]);
+  await page.addInitScript(() => Object.defineProperty(window, "localStorage", { get() { throw new DOMException("Disabled", "SecurityError"); } }));
+  await page.goto("/");
+  const sort = page.getByRole("combobox", { name: "Sort open tasks" });
+  await expect(sort).toHaveValue("due");
+  await sort.selectOption("newest");
+  await expect(sort).toHaveValue("newest");
+  await sidebar(page).getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("link", { name: "Back to tasks" }).click();
+  await expect(sort).toHaveValue("newest");
+});

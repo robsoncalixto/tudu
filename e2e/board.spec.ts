@@ -1,4 +1,4 @@
-import { sidebar, expect, listTasks, openApp, openSection, taskRows, doneSection, row, seed, saveSettings, test, TODAY, TOMORROW, setLanguage } from "./support";
+import { sidebar, expect, listTasks, openApp, openSection, taskRows, doneSection, row, seed, saveSettings, test, TODAY, TOMORROW, YESTERDAY, setLanguage } from "./support";
 
 test.describe("Board", () => {
   test("shows the app name, today's date and an empty state", async ({ page }) => {
@@ -128,7 +128,7 @@ test("refreshes Today at local midnight without reloading", async ({ page, reque
   await expect(taskRows(openSection(page))).toHaveCount(2);
   await page.clock.fastForward(2000);
   await expect(page.locator("header time")).toContainText("November 18");
-  await expect(row(openSection(page), "Yesterday's selection")).toHaveCount(0);
+  await expect(row(openSection(page), "Yesterday's selection").getByText("Planned earlier · November 17")).toBeVisible();
   await expect(row(openSection(page), "Deadline")).toBeVisible();
   await expect(row(openSection(page), "Next day")).toBeVisible();
   expect((await listTasks(request))[0].plannedFor).toBe(TODAY);
@@ -142,9 +142,30 @@ test("refreshes Today when returning to a suspended tab", async ({ page, request
   await page.clock.setFixedTime(new Date("2026-11-18T10:00:00-03:00"));
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.locator("header time")).toContainText("November 18");
-  await expect(row(page, "Old selection")).toHaveCount(0);
-  await expect(sidebar(page).getByRole("button", { name: /^Today/ })).toHaveText("Today0");
+  await expect(row(page, "Old selection").getByText("Planned earlier · November 17")).toBeVisible();
+  await expect(sidebar(page).getByRole("button", { name: /^Today/ })).toHaveText("Today1");
 });
+
+for (const l of [
+  { locale: "en", today: /^Today/, count: "Today1", planned: "Planned earlier · November 16", remove: "Remove from today" },
+  { locale: "pt-BR", today: /^Hoje/, count: "Hoje1", planned: "Planejada antes · 16 de novembro", remove: "Remover do dia de hoje" },
+] as const) {
+  test(`keeps unfinished plans in Today until cleared in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    await seed(request, [{ title: "Carry-over", plannedFor: YESTERDAY }, { title: "Future plan", plannedFor: TOMORROW }]);
+    await page.goto("/");
+    const today = sidebar(page).getByRole("button", { name: l.today });
+    await expect(today).toHaveText(l.count);
+    await today.click();
+    const carried = row(openSection(page), "Carry-over");
+    await expect(carried.getByText(l.planned)).toBeVisible();
+    await expect(carried.locator("time")).toHaveAttribute("datetime", YESTERDAY);
+    await expect(row(page, "Future plan")).toHaveCount(0);
+    await carried.getByRole("button", { name: l.remove }).click();
+    await expect(carried).toHaveCount(0);
+    await expect.poll(async () => (await listTasks(request)).find((task) => task.title === "Carry-over")?.plannedFor).toBeNull();
+  });
+}
 
 for (const l of [
   { locale: "en", failed: "Couldn’t load your tasks.", retry: "Retry" },

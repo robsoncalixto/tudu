@@ -2,6 +2,7 @@ import { listTasks, addTasks, updateTaskWithNext, deleteTask, TaskChangedError }
 import { listProjects, ProjectError, withValidProjectIds } from "@/features/projects/server/repository";
 import { InvalidRepeatError } from "@/features/tasks/recurrence";
 import { taskCreationSchema } from "@/features/tasks/schema";
+import { isForToday } from "@/features/tasks/selectors";
 import { getSettings } from "@/features/settings/server/repository";
 import { createTuduMcpHandler } from "@/features/mcp/server/handler";
 import { checkMcpAccess } from "@/features/mcp/server/access";
@@ -22,6 +23,7 @@ async function guarded<T>(operation: () => Promise<T>): Promise<T> {
 }
 const handler = createTuduMcpHandler({
   listTasks,
+  isForToday,
   listProjects,
   addTasks: (drafts) => guarded(async () => {
     const parsed = taskCreationSchema((await getSettings()).defaultPriority).parse(drafts);
