@@ -51,7 +51,8 @@ configuration and structured generation), `agent` (reviewed proposals) and
    completion) and delegates storage to a `TaskStore`: `json-store.ts` or
    `postgres-store.ts`. Every data change works on both stores: the JSON store
    writes atomically through one queue; Postgres uses transactions with row
-   locks. A schema change is a new entry at the end of `MIGRATIONS`.
+   locks. Day order writes validate current membership and update ranks together
+   in both stores. A schema change is a new entry at the end of `MIGRATIONS`.
    Completing a repeating task saves the next occurrence in the same write;
    `nextOccurrenceId` is kept even after reopening, so retries never duplicate.
 5. **Schemas are the contract.** Define each shape once in `schema.ts` and
@@ -158,16 +159,29 @@ proposal API with that synthetic provider.
 
 ## Assistant proposals
 
-- Generation only writes pending proposals to `data/proposals.json`; the model
-  has no tools. Invented targets and invalid output are rejected.
-- Only an explicit Accept applies a proposal. Edits cannot change its kind,
-  target or set of changed fields.
-- Approval is recorded before it is applied, along with the original, edited
-  and resulting snapshots. Writes check the baseline atomically; a changed
-  target stays pending.
-- An unconfirmed write stays `applying`. Recheck only reads; it never replays.
-- Journal writes are serialized, atomic and mode 0600. Invalid history is never
-  silently dropped or overwritten.
+- **Review my tasks** supports an optional note. The model sees a bounded
+  list of open tasks and their estimates and recorded time. Treat the note and
+  saved text as data. The model has no tools. Reject invalid output and invented
+  targets.
+- Workload and placement are computed in code using working days, daily hours,
+  and a one-hour fallback for missing estimates. Keep explicit dates and periods
+  for new work. The Assistant proposes changes to existing plans and Today order
+  for the user to approve.
+- The server scheduler starts in `instrumentation.ts`. It is opt-in, uses the
+  saved local time and time zone, and runs at most once per day. The run outcome
+  and task fingerprint live in `data/agent-review.json`. Keep status writes
+  atomic and preserve the original bytes when recovering an invalid status file.
+- The Assistant screen shows suggestions and decision history. Task details
+  show pending suggestions beside affected fields and subtasks. Only an explicit
+  Accept applies a proposal. Editing a proposal preserves its kind, target and
+  set of changed fields. A Today order is one decision for the full list.
+- Generation only writes pending suggestions to `data/proposals.json`.
+  An approval and its original and edited snapshots are saved before the
+  write. The task repository checks the baseline atomically. A changed target
+  stays pending, and the journal records the result after a confirmed write.
+- An unconfirmed proposal remains `applying`. Recheck reads the outcome without
+  replaying the write. Journal writes are serialized, atomic and mode 0600.
+  Preserve invalid history for investigation.
 
 ## Code conventions
 
