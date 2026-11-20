@@ -27,8 +27,8 @@ export async function POST(request: Request) {
     const [tasks, projects] = await Promise.all([listTasks(), listProjects()]);
     const { text, today, review } = parsed.data;
     const generate = createGenerator(settings);
-    const reviewed = review ? await reviewOpenTasks(generate, text, today, tasks, projects, settings.locale) : null;
-    const drafts = reviewed?.drafts ?? await proposeChanges(generate, text, today, tasks, projects, settings.locale, settings.defaultPriority);
+    const reviewed = review ? await reviewOpenTasks(generate, text, today, tasks, projects, settings.locale, settings) : null;
+    const drafts = reviewed?.drafts ?? await proposeChanges(generate, text, today, tasks, projects, settings.locale, settings.defaultPriority, settings);
     const proposals = await proposalRepository.addProposals(drafts, {
       note: text, today, ...(review ? { review } : {}), provider: settings.aiProvider,
       model: settings.aiModel || config.models[settings.aiProvider],

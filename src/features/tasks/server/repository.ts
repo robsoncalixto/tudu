@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { taskSchema, type Task, type TaskCreationInput, type TaskInput, type TaskPatch, type TaskUpdate } from "../schema";
+import { taskSchema, type Task, type TaskCreationInput, type TaskPatch, type TaskUpdate } from "../schema";
 import { nextDueDate, validateRepeat } from "../recurrence";
 import { createJsonStore } from "./json-store";
 import { connectPostgres, createPostgresStore } from "./postgres-store";
@@ -22,7 +22,7 @@ export function createRepository(store: TaskStore) {
       if (completing && task.repeat && task.due && !task.nextOccurrenceId) {
         nextTask = taskSchema.parse({
           ...task, id: randomUUID(), due: nextDueDate(task.due, task.repeat),
-          done: false, completedAt: null, createdAt: task.completedAt, plannedFor: null,
+          done: false, completedAt: null, createdAt: task.completedAt, plannedFor: null, partOfDay: null,
           realTimeHours: null,
           steps: task.steps.map((step) => ({ ...step, done: false })), nextOccurrenceId: null,
         });
@@ -52,7 +52,7 @@ export function createRepository(store: TaskStore) {
       return created;
     },
 
-    async addApprovedTask(id: string, input: TaskInput, plannedFor: string | null): Promise<Task> {
+    async addApprovedTask(id: string, input: Omit<TaskCreationInput, "plannedFor">, plannedFor: string | null): Promise<Task> {
       validateRepeat(input.due, input.repeat);
       const task = taskSchema.parse({ ...input, id, plannedFor, done: false, completedAt: null, createdAt: new Date().toISOString() });
       await store.insert([task]);

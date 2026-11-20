@@ -15,7 +15,7 @@ const task = (id: string, title: string): Task => ({
   projectId: null,
   repeat: null,
   nextOccurrenceId: null,
-  estimateHours: null, realTimeHours: null,
+  estimateHours: null, realTimeHours: null, partOfDay: null,
   links: [],
   done: true,
   createdAt: "2026-11-10T09:30:00.000Z",
@@ -37,7 +37,8 @@ describe("postgres store", () => {
     await db.query("ALTER TABLE tasks ADD COLUMN estimate_minutes integer");
     await db.query("UPDATE tasks SET estimate_minutes = 90 WHERE id = 'old'");
     await db.query("ALTER TABLE tasks DROP COLUMN estimate_hours, DROP COLUMN real_time_hours");
-    await db.query("DELETE FROM tudu_migrations WHERE version = 6");
+    await db.query("ALTER TABLE tasks DROP COLUMN part_of_day");
+    await db.query("DELETE FROM tudu_migrations WHERE version >= 6");
     const store = createPostgresStore(db);
     expect(await store.list()).toEqual([{ ...task("old", "Existing estimate"), estimateHours: 1.5 }, task("empty", "No estimate")]);
     const repo = createRepository(store);
@@ -59,14 +60,14 @@ describe("postgres store", () => {
   it("creates its schema on first use and records the version", async () => {
     await createPostgresStore(db).list();
     const { rows } = await db.query<{ version: number }>("SELECT version FROM tudu_migrations");
-    expect(rows).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }]);
+    expect(rows).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }]);
   });
 
   it("does not run migrations again for a later process", async () => {
     await createPostgresStore(db).insert([task("a", "kept")]);
     expect(await createPostgresStore(db).list()).toMatchObject([{ id: "a", title: "kept" }]);
     const { rows } = await db.query("SELECT version FROM tudu_migrations");
-    expect(rows).toHaveLength(6);
+    expect(rows).toHaveLength(7);
   });
 
   it("copies the seed tasks into a new database, keeping ids, dates and order", async () => {
@@ -95,23 +96,23 @@ describe("postgres store", () => {
   it("upgrades a version-one database without changing existing tasks", async () => {
     const legacy = task("old", "Existing report");
     await createPostgresStore(db).insert([legacy]);
-    await db.query("ALTER TABLE tasks DROP COLUMN steps, DROP COLUMN project_id, DROP COLUMN repeat_rule, DROP COLUMN next_occurrence_id, DROP COLUMN estimate_hours, DROP COLUMN real_time_hours, DROP COLUMN links");
+    await db.query("ALTER TABLE tasks DROP COLUMN steps, DROP COLUMN project_id, DROP COLUMN repeat_rule, DROP COLUMN next_occurrence_id, DROP COLUMN estimate_hours, DROP COLUMN real_time_hours, DROP COLUMN links, DROP COLUMN part_of_day");
     await db.query("DELETE FROM tudu_migrations WHERE version >= 2");
     expect(await createPostgresStore(db).list()).toEqual([{ ...legacy, steps: [] }]);
     expect((await db.query("SELECT version FROM tudu_migrations ORDER BY version")).rows)
-      .toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }]);
+      .toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }]);
   });
   it("upgrades a checklist database with no project column while keeping its steps", async () => {
     const existing = { ...task("old", "Existing checklist"), steps: [{ id: "step", title: "Draft", done: true }] };
     await createPostgresStore(db).insert([existing]);
-    await db.query("ALTER TABLE tasks DROP COLUMN project_id, DROP COLUMN repeat_rule, DROP COLUMN next_occurrence_id, DROP COLUMN estimate_hours, DROP COLUMN real_time_hours, DROP COLUMN links");
+    await db.query("ALTER TABLE tasks DROP COLUMN project_id, DROP COLUMN repeat_rule, DROP COLUMN next_occurrence_id, DROP COLUMN estimate_hours, DROP COLUMN real_time_hours, DROP COLUMN links, DROP COLUMN part_of_day");
     await db.query("DELETE FROM tudu_migrations WHERE version >= 3");
     expect(await createPostgresStore(db).list()).toEqual([existing]);
   });
   it("upgrades a project database without changing task content or completion", async () => {
     const existing = { ...task("old", "Project report"), projectId: "p1", steps: [{ id: "s", title: "Draft", done: true }] };
     await createPostgresStore(db).insert([existing]);
-    await db.query("ALTER TABLE tasks DROP COLUMN repeat_rule, DROP COLUMN next_occurrence_id, DROP COLUMN estimate_hours, DROP COLUMN real_time_hours, DROP COLUMN links");
+    await db.query("ALTER TABLE tasks DROP COLUMN repeat_rule, DROP COLUMN next_occurrence_id, DROP COLUMN estimate_hours, DROP COLUMN real_time_hours, DROP COLUMN links, DROP COLUMN part_of_day");
     await db.query("DELETE FROM tudu_migrations WHERE version >= 4");
     expect(await createPostgresStore(db).list()).toEqual([existing]);
   });

@@ -10,6 +10,7 @@ export function filterTasks(tasks: Task[], filter: TaskFilters, isForToday: (tas
     if (filter.dueFrom && (!task.due || task.due < filter.dueFrom)) return false;
     if (filter.dueTo && (!task.due || task.due > filter.dueTo)) return false;
     if (filter.plannedFor && task.plannedFor !== filter.plannedFor) return false;
+    if (filter.partOfDay !== undefined && task.partOfDay !== filter.partOfDay) return false;
     if (filter.today && !isForToday(task, filter.today)) return false;
     return !filter.query || `${task.title}\n${task.notes}`.toLowerCase().includes(filter.query.toLowerCase());
   });

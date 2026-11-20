@@ -15,7 +15,7 @@ function task(overrides: Partial<Task> = {}): Task {
     done: false,
     createdAt: `2026-01-01T00:00:${String(counter).padStart(2, "0")}.000Z`,
     completedAt: null,
-    plannedFor: null,
+    plannedFor: null, partOfDay: null,
     steps: [],
     projectId: null,
     repeat: null,

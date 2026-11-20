@@ -30,7 +30,7 @@ export function taskReviewContext(tasks: Task[], projects: Project[], today: str
   }));
   const assigned = new Set(ordered.map((task) => task.projectId));
   const offeredProjects = withinBudget([...projects].sort((a, b) => Number(assigned.has(b.id)) - Number(assigned.has(a.id))), 8_000);
-  const offeredTasks = withinBudget(candidates, 59_000 - JSON.stringify(note).length - JSON.stringify(offeredProjects).length);
+  const offeredTasks = withinBudget(candidates, 55_000 - JSON.stringify(note).length - JSON.stringify(offeredProjects).length);
   return { today, projects: offeredProjects, tasks: offeredTasks, openTasks: open.length, omittedTasks: open.length - offeredTasks.length };
 }
 

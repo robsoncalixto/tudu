@@ -126,7 +126,9 @@ Completing one creates the next occurrence.
 **Assistant** can review open tasks with **Review my tasks**, with or without a
 note. It summarizes what it reviewed and proposes changes with reasons. Every
 change requires approval. Possible duplicate flags record the decision without
-modifying either task.
+modifying either task. The Assistant uses the working days and daily capacity
+from Settings to suggest dates and a part of the day. Work without an estimate
+counts as one hour. All suggested changes still require approval.
 
 **Work log** lists the tasks completed on a chosen day, grouped by project or
 tag, with recorded time, estimates alongside recorded time, and totals per

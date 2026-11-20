@@ -5,7 +5,7 @@ import type { Project } from "@/features/projects/schema";
 import type { Dictionary, Locale } from "@/i18n";
 import { dueLabel, formatTimestamp, toISODate, type DateFormat } from "@/lib/dates";
 import { Icon, type IconName } from "@/lib/Icon";
-import { PRIORITIES, type DurationDraft, type Task, type TaskPatch } from "../schema";
+import { PARTS_OF_DAY, partOfDaySchema, PRIORITIES, type DurationDraft, type Task, type TaskPatch } from "../schema";
 import { useTaskDraft } from "../use-task-draft";
 import { TaskPanelSubtasks } from "./TaskChecklist";
 import { TaskPanelText } from "./TaskPanelText";
@@ -68,6 +68,15 @@ export function TaskPanel({ task, projects, today, locale, dateFormat, t, onPatc
       <TaskDuration key={`estimate-${task.id}`} field="estimateHours" {...textProps} {...estimate} />
       <TaskDuration key={`real-time-${task.id}`} field="realTimeHours" {...textProps} {...realTime} />
       {dateField("plannedFor", t.agentPlannedFor, "calendar")}
+      <label className="inspector-property">
+        <span className="inspector-label"><Icon name="clock" size={17} />{t.partOfDay}</span>
+        <select className="select-control" value={task.partOfDay ?? ""} onChange={(event) => {
+          void patch(task.id, { partOfDay: event.target.value ? partOfDaySchema.parse(event.target.value) : null });
+        }}>
+          <option value="">{t.anyPartOfDay}</option>
+          {PARTS_OF_DAY.map((part) => <option value={part} key={part}>{t.partsOfDay[part]}</option>)}
+        </select>
+      </label>
       {dateField("due", t.setDate, "flag")}
       <label className="inspector-property">
         <span className="inspector-label"><Icon name="sort" size={17} />{t.priority}</span>

@@ -4,9 +4,10 @@ import { projectInputSchema, projectSchema } from "@/features/projects/schema";
 import { aiProviderSchema } from "@/features/ai/schema";
 
 const day = z.iso.date().nullable();
-export const proposedTaskSchema = taskInputSchema.extend({ due: day, repeat: z.null(), plannedFor: day }).strict();
+export const proposedTaskSchema = taskInputSchema.extend({ due: day, repeat: z.null(), plannedFor: day,
+  partOfDay: taskPatchSchema.shape.partOfDay, estimateHours: taskPatchSchema.shape.estimateHours }).strict();
 export const proposedPatchSchema = taskPatchSchema.pick({
-  title: true, notes: true, priority: true, due: true, tags: true, steps: true, projectId: true, plannedFor: true,
+  title: true, notes: true, priority: true, due: true, tags: true, steps: true, projectId: true, plannedFor: true, partOfDay: true,
 }).extend({ due: day.optional() }).strict().refine((patch) => Object.keys(patch).length > 0);
 export const proposalActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("create_task"), task: proposedTaskSchema }).strict(),

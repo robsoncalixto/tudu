@@ -26,9 +26,9 @@ function editedAction(proposal: Proposal, edited: ProposalAction): ProposalActio
 }
 function matches(proposal: Proposal, action: ProposalAction, result: ProposalResult): boolean {
   if (action.kind === "create_task" && result.kind === "task") {
-    const { plannedFor, ...input } = action.task;
+    const { plannedFor, partOfDay, estimateHours, ...input } = action.task;
     return result.task.id === proposal.id && !result.task.done && result.task.completedAt === null
-      && result.task.estimateHours === null && result.task.realTimeHours === null && result.task.links.length === 0
+      && result.task.estimateHours === (estimateHours ?? null) && result.task.partOfDay === (partOfDay ?? null) && result.task.realTimeHours === null && result.task.links.length === 0
       && result.task.plannedFor === plannedFor && same(taskInputSchema.parse(result.task), input);
   }
   if (action.kind === "flag_duplicate" && result.kind === "task") return same(result.task, proposal.taskBefore);

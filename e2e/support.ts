@@ -1,5 +1,5 @@
 import { expect, test as base, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import type { Step } from "../src/features/tasks/schema";
+import type { PartOfDay, Step } from "../src/features/tasks/schema";
 import type { RepeatRule } from "../src/features/recurrence/schema";
 import type { Project } from "../src/features/projects/schema";
 import { DEFAULT_SETTINGS, type Settings, type SettingsPatch } from "../src/features/settings/schema";
@@ -18,6 +18,7 @@ export interface SeedTask {
   due?: string | null;
   tags?: string[];
   plannedFor?: string | null;
+  partOfDay?: PartOfDay | null;
   steps?: Step[];
   estimateHours?: number | null;
   realTimeHours?: number | null;

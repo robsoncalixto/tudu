@@ -21,6 +21,10 @@ export const taskLinkSchema = z.string().trim().max(MAX_TASK_LINK_LENGTH)
 const linksSchema = z.array(taskLinkSchema).max(MAX_TASK_LINKS)
   .refine((links) => new Set(links).size === links.length);
 
+export const PARTS_OF_DAY = ["morning", "afternoon", "evening"] as const;
+export const partOfDaySchema = z.enum(PARTS_OF_DAY);
+export type PartOfDay = z.infer<typeof partOfDaySchema>;
+
 const plannedDay = z.iso.date().nullable();
 
 const dueDate = z
@@ -60,6 +64,7 @@ export const taskPatchSchema = z
     tags: z.array(z.string().trim().min(1).max(40)).max(10),
     done: z.boolean(),
     plannedFor: plannedDay,
+    partOfDay: partOfDaySchema.nullable().describe("Optional morning, afternoon or evening plan."),
     steps: stepsSchema,
     projectId: projectIdSchema,
     repeat: repeatRuleSchema.nullable(),
@@ -72,6 +77,7 @@ export const taskPatchSchema = z
 export type TaskInput = z.infer<typeof taskInputSchema>;
 const taskCreationInputSchema = taskInputSchema.extend({
   plannedFor: plannedDay.optional(),
+  partOfDay: taskPatchSchema.shape.partOfDay,
   estimateHours: taskPatchSchema.shape.estimateHours,
   realTimeHours: taskPatchSchema.shape.realTimeHours,
   links: linksSchema.optional(),
@@ -92,6 +98,7 @@ export const taskSchema = taskInputSchema.extend({
   createdAt: z.iso.datetime(),
   completedAt: z.iso.datetime().nullable(),
   plannedFor: plannedDay.default(null),
+  partOfDay: partOfDaySchema.nullable().default(null),
   nextOccurrenceId: z.string().nullable().default(null),
   estimateHours: durationHoursSchema.default(null),
   realTimeHours: durationHoursSchema.default(null),

@@ -926,3 +926,8 @@ label.chip:hover {
     position: static;
   }
 }
+
+.work-capacity { min-width: 0; border: 0; padding: var(--s-sm) 0; margin: 0; }
+.work-days { display: flex; flex-wrap: wrap; gap: var(--s-xs) var(--s-md); margin-bottom: var(--s-md); }
+.settings-fields .work-days label { display: flex; flex-direction: row; align-items: center; min-height: 40px; }
+.work-days input { accent-color: var(--accent); }
