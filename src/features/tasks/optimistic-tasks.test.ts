@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTaskMutations, isProvisional, provisionalTask, type PendingTaskMutation } from "./optimistic-tasks";
+import { applyTaskMutations, arrivalTime, isProvisional, provisionalTask, type PendingTaskMutation } from "./optimistic-tasks";
 import { taskSchema } from "./schema";
 
 const saved = taskSchema.parse({
@@ -46,6 +46,16 @@ describe("tasks shown before they are saved", () => {
       done: false, createdAt: "2026-11-17T12:00:00.000Z", completedAt: null, notes: "", steps: [], projectId: null,
     });
     expect(provisionalTask({ title: "Call Ana", priority: "low" }, "high", now).priority).toBe("low");
+  });
+
+  it("arrives after every task already on the board, whichever clock is ahead", () => {
+    expect(arrivalTime([], now)).toEqual(now);
+    expect(arrivalTime([saved], new Date("2026-11-17T12:00:05Z"))).toEqual(new Date("2026-11-17T12:00:05Z"));
+    // The server stamped these later than this browser's clock reads.
+    const ahead = { ...saved, createdAt: "2026-11-20T09:00:00.000Z" };
+    const moved = { ...saved, planChangedAt: "2026-11-21T08:30:00.000Z" };
+    expect(arrivalTime([saved, ahead], now).toISOString()).toBe("2026-11-20T09:00:00.001Z");
+    expect(arrivalTime([ahead, moved], now).toISOString()).toBe("2026-11-21T08:30:00.001Z");
   });
 
   it("gives each one its own id that no saved task can have", () => {

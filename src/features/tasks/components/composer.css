@@ -139,7 +139,7 @@ span.chip-main { padding-inline-end: 4px; }
   color: var(--text);
 }
 
-.chip-menu > button, .tag-picker li {
+.chip-menu button, .tag-picker li {
   display: flex;
   align-items: center;
   gap: var(--s-sm);
@@ -152,11 +152,14 @@ span.chip-main { padding-inline-end: 4px; }
   cursor: pointer;
 }
 
-.chip-menu > button > span, .tag-picker li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.chip-menu > button > svg { flex-shrink: 0; color: var(--accent); }
-.chip-menu > button:hover, .chip-menu > button:focus-visible, .tag-picker li:hover, .tag-picker li[aria-selected="true"] { background: var(--selected-surface); }
-.chip-menu > button:focus-visible { outline-offset: -2px; }
-.chip-menu > button[aria-checked="true"] { color: var(--accent); font-weight: 600; }
+.chip-menu button > span, .tag-picker li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.chip-menu button > svg { flex-shrink: 0; color: var(--accent); }
+.chip-menu button:hover, .chip-menu button:focus-visible, .tag-picker li:hover, .tag-picker li[aria-selected="true"] { background: var(--selected-surface); }
+.chip-menu button:focus-visible { outline-offset: -2px; }
+.chip-menu button[aria-checked="true"] { color: var(--accent); font-weight: 600; }
+/* A second set of choices is set off by a line and named. */
+.chip-menu > [role="group"] + [role="group"] { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--border); }
+.chip-menu > [role="group"] > p { padding: 4px 10px 2px; color: var(--text-muted); font: 600 11px/16px var(--heading); letter-spacing: .06em; text-transform: uppercase; }
 
 .tag-picker { width: 260px; }
 .tag-picker .form-control { width: 100%; }
@@ -164,13 +167,15 @@ span.chip-main { padding-inline-end: 4px; }
 .tag-picker li svg { flex-shrink: 0; color: var(--text-muted); }
 .tag-picker li code { color: var(--text-muted); font: 400 12px/18px var(--body); }
 
-/* Feedback */
+/* Feedback: one line is always kept for it, inside the gap that separates the field from the list, so a message moves nothing. */
+
+.composer-feedback { display: grid; align-content: start; row-gap: 2px; min-height: 24px; margin-bottom: -24px; padding-top: 4px; }
 
 .composer-feedback .hint {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  margin-top: 6px;
+  margin: 0;
   overflow-wrap: anywhere;
 }
 
@@ -199,8 +204,12 @@ span.chip-main { padding-inline-end: 4px; }
 .quick-preview {
   display: grid;
   gap: 4px;
-  margin: 0;
-  padding: var(--s-sm) 0 0;
+  max-height: calc(6 * 28px);
+  margin: var(--s-sm) 0 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   list-style: none;
 }
 
@@ -261,7 +270,8 @@ span.chip-main { padding-inline-end: 4px; }
   color: var(--text);
 }
 
-.capture-option:disabled { opacity: .7; }
+/* Disabled, the label is still read: it says what AI could do and sits beside how to turn it on. */
+.capture-option:disabled { cursor: default; }
 
 .capture-guide {
   margin-top: 4px;
@@ -287,15 +297,13 @@ span.chip-main { padding-inline-end: 4px; }
   .composer-entry .quick-submit { margin-top: 4px; }
   .composer-chip, .chip-main, .chip-clear { min-height: var(--touch-target); }
   .chip-clear { width: var(--touch-target); }
-  .chip-menu > button, .tag-picker li { min-height: var(--touch-target); }
+  .chip-menu button, .tag-picker li { min-height: var(--touch-target); }
   .composer-batch .chip { min-height: var(--touch-target); }
   .capture-guide a { display: inline-flex; align-items: center; min-height: var(--touch-target); }
 }
 
-/* Narrow composer: empty chips keep their icon and accessible name, so the row stays on one line. */
+/* Narrow composer: the chips keep their labels and wrap; only the example in the placeholder gives way. */
 @container (max-width: 560px) {
-  .composer-chip:not([data-filled]) > .chip-main { min-width: var(--touch-target); justify-content: center; padding-inline: 8px; }
-  .composer-chip:not([data-filled]) .chip-text { display: none; }
   .command-example { display: none; }
 }
 

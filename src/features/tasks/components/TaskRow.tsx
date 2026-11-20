@@ -29,7 +29,7 @@ interface Props extends TaskActions {
   t: Dictionary;
 }
 
-export function TaskRow({ task, projects, savedTags, fresh, today, locale, dateFormat, t, order, suggestions, onPatch, onPostpone, selectedId, onShowPanel, onTag }: Props) {
+export function TaskRow({ task, projects, savedTags, fresh, today, locale, dateFormat, t, order, suggestions, onPatch, onDelete, onPostpone, selectedId, onShowPanel, onTag }: Props) {
   const selected = selectedId === task.id;
   const [visibility, setVisibility] = useState<SubtaskVisibility>("all");
   const [adding, setAdding] = useState(false);
@@ -60,6 +60,10 @@ export function TaskRow({ task, projects, savedTags, fresh, today, locale, dateF
     <li ref={row} className={`task${task.done ? " is-done" : ""}${fresh ? " is-new" : ""}`} data-priority={task.priority}
       data-task-id={unsaved ? undefined : task.id} data-inspected={selected || undefined} tabIndex={-1} aria-label={task.title}
       inert={unsaved} aria-hidden={unsaved || undefined}
+      onMouseDown={(event) => {
+        // The second press of a double-click would select the word under the pointer instead of only opening the details.
+        if (event.detail > 1 && !(event.target as Element).closest("input, select, textarea")) event.preventDefault();
+      }}
       onDoubleClick={(event) => {
         // Double-clicking the row itself opens its details; controls keep their own double-click.
         if (!(event.target as Element).closest("button, input, select, textarea, a, label, [data-subtasks]")) disclosure.current?.click();
@@ -127,7 +131,7 @@ export function TaskRow({ task, projects, savedTags, fresh, today, locale, dateF
           aria-label={planLabel} title={planLabel} disabled={!today}
           onClick={() => onPatch(task.id, { plannedFor: planned ? null : today })}><Icon name="sun" size={16} /></button>}
         <TaskContextMenu row={row} t={t} addSubtask={steps.total < 100 ? addSubtask : null}
-          postpone={!task.done && today ? (when) => { void onPostpone(task.id, when); } : null} />
+          postpone={!task.done && today ? (when) => { void onPostpone(task.id, when); } : null} onDelete={() => onDelete(task.id)} />
         <button type="button" className="task-disclosure" ref={disclosure} title={t.taskDetails} aria-label={t.taskDetails}
           aria-expanded={selected} aria-controls={selected ? "task-inspector" : undefined}
           onClick={(event) => onShowPanel(task.id, event.currentTarget)}>

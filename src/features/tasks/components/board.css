@@ -176,7 +176,8 @@ html:has(.inspector-host:modal) { overflow: hidden; }
 .board-notice:empty { opacity: 0; translate: -50% 8px; padding: 0; border-width: 0; pointer-events: none; }
 /* Centred on the board, not on the window that also holds the sidebar. */
 @media (min-width: 821px) { .board-notice { inset-inline-start: calc(50% + var(--sidebar-width) / 2); } }
-.board-notice-text { min-width: 0; padding-block: 8px; overflow-wrap: anywhere; }
+.board-notice-text { min-width: 0; padding-block: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-notice kbd { margin-inline-start: 6px; }
 .board-notice .chip { min-height: 36px; padding-block: 4px; background: var(--secondary); }
 .board-notice .chip:hover { background: var(--border); }
 .board-notice .icon-btn { width: 36px; height: 36px; }
@@ -200,11 +201,10 @@ html:has(.inspector-host:modal) { overflow: hidden; }
 /* Keys are for a keyboard; a touch screen has the button above. */
 @media (hover: none), (pointer: coarse) { .empty-keys { display: none; } }
 /* Loading: the same blocks the board will have, so the page does not move when the tasks arrive. */
-.task-skeleton > div, .skeleton-toolbar > span, .skeleton-row > span { border-radius: var(--r-md); background: var(--surface-muted); }
+.task-skeleton > div:not(.composer-chips), .skeleton-toolbar > span, .skeleton-row > span { border-radius: var(--r-md); background: var(--surface-muted); }
 /* A column of flex items, so the margins add up exactly as the real blocks do. */
 .task-skeleton { display: flex; flex-direction: column; container-type: inline-size; animation: skeleton-pulse 1.4s ease-in-out infinite; }
 .skeleton-entry { height: 54px; margin-top: var(--s-lg); border-radius: var(--r-lg); }
-.skeleton-line { width: min(440px, 80%); height: 28px; margin-top: 10px; }
 .skeleton-options { width: 130px; height: 24px; margin: 8px 0; }
 .task-skeleton > .skeleton-toolbar { display: flex; justify-content: space-between; align-items: center; height: 79px; margin-top: var(--s-lg); padding: 22px 0 12px; border-top: 1px solid var(--border); border-radius: 0; background: none; }
 .skeleton-toolbar > span { width: 84px; height: 25px; }
@@ -222,7 +222,6 @@ html:has(.inspector-host:modal) { overflow: hidden; }
   .skeleton-row > span:nth-child(n + 3) { display: none; }
 }
 @media (max-width: 820px), (pointer: coarse) {
-  .skeleton-line { height: 44px; margin-top: 6px; }
   .skeleton-options { height: 36px; margin: 6px 0; }
 }
 @media (max-width: 620px) { .skeleton-entry { margin-top: var(--s-md); } }
@@ -258,7 +257,8 @@ html:has(.inspector-host:modal) { overflow: hidden; }
 }
 @media (max-width: 510px) {
   .board-location span, .board-location svg:nth-of-type(2) { display: none; }
-  .board-search { width: min(180px, 65%); }
+  /* Room for the whole placeholder in either language. */
+  .board-search { flex: 0 1 230px; width: auto; }
   /* The totals always take their own line, so a long title or a loading board never moves what follows. */
   .board-header { flex-direction: column; align-items: flex-start; gap: 6px; }
   .view-tally { min-width: 0; }

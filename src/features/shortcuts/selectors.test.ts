@@ -56,6 +56,13 @@ describe("shortcuts heard on the page", () => {
       expect(matchShortcut(second, "g", anywhere)).toEqual({ kind: "run", id });
     });
 
+  it("steps back with Escape only from a task or a control inside one, with single keys on or off", () => {
+    expect(matchShortcut("Escape", null, onRow)).toEqual({ kind: "run", id: "backToList" });
+    expect(matchShortcut("Escape", null, inRow)).toEqual({ kind: "run", id: "backToList" });
+    expect(matchShortcut("Escape", null, { ...onRow, characters: false })).toEqual({ kind: "run", id: "backToList" });
+    expect(matchShortcut("Escape", null, anywhere)).toBeNull();
+  });
+
   it("reads a key on its own when it does not finish the sequence", () => {
     expect(matchShortcut("n", "g", anywhere)).toEqual({ kind: "run", id: "newTask" });
     expect(matchShortcut("x", "g", anywhere)).toBeNull();
@@ -106,7 +113,7 @@ describe("shortcuts a field handles itself", () => {
     expect(scopeShortcuts("composer", "Shift+Enter")).toEqual(["newTaskLine"]);
     expect(scopeShortcuts("composer", "Escape")).toEqual(["leaveComposer"]);
     expect(scopeShortcuts("composer", "Mod+z")).toEqual(["undoFromField"]);
-    expect(scopeShortcuts("search", "Escape")).toEqual(["clearSearch"]);
+    expect(scopeShortcuts("search", "Escape")).toEqual(["clearSearch", "leaveSearch"]);
     expect(scopeShortcuts("assistant", "ArrowUp")).toEqual(["recallNote"]);
     expect(scopeShortcuts("composer", "n")).toEqual([]);
     expect(scopeShortcuts("global", "g")).toEqual([]);

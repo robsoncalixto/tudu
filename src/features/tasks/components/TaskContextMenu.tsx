@@ -10,16 +10,16 @@ interface Props {
   t: Dictionary;
   addSubtask: (() => void) | null;
   postpone: ((when: Postponement) => void) | null;
+  onDelete: () => void;
 }
 
-export function TaskContextMenu({ row, t, addSubtask, postpone }: Props) {
+export function TaskContextMenu({ row, t, addSubtask, postpone, onDelete }: Props) {
   const id = useId();
   const menu = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const wasOpen = useRef(false);
   const [anchor, setAnchor] = useState<{ x: number; y: number; above: number } | null>(null);
-  const hasActions = Boolean(addSubtask || postpone);
 
   function close() {
     menu.current?.hidePopover();
@@ -63,9 +63,8 @@ export function TaskContextMenu({ row, t, addSubtask, postpone }: Props) {
       item.removeEventListener("contextmenu", openFromRow);
       item.removeEventListener("keydown", openFromRow);
     };
-  }, [row, hasActions]);
+  }, [row]);
 
-  if (!hasActions) return null;
   return <>
     <button ref={trigger} type="button" className="task-more" aria-label={t.taskActions} title={t.taskActions}
       aria-haspopup="menu" aria-controls={id} aria-expanded={anchor !== null}
@@ -98,12 +97,16 @@ export function TaskContextMenu({ row, t, addSubtask, postpone }: Props) {
       </button>}
       {postpone && <>
         <button type="button" role="menuitem" tabIndex={-1} onClick={() => { close(); postpone("tomorrow"); }}>
-          <Icon name="calendar" size={16} />{t.postponeTomorrow}
+          <Icon name="calendar" size={16} />{t.planTomorrow}
         </button>
         <button type="button" role="menuitem" tabIndex={-1} onClick={() => { close(); postpone("next-week"); }}>
-          <Icon name="calendar" size={16} />{t.postponeNextWeek}
+          <Icon name="calendar" size={16} />{t.planNextWeek}
         </button>
       </>}
+      {/* Undo is offered in the notice, so deleting needs no second step here. */}
+      <button type="button" role="menuitem" tabIndex={-1} className="is-destructive" onClick={() => { menu.current?.hidePopover(); setAnchor(null); onDelete(); }}>
+        <Icon name="trash" size={16} />{t.delete}
+      </button>
       </>}
     </div>
   </>;

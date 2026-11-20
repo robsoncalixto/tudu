@@ -98,6 +98,8 @@ for (const language of [
       await sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
       const task = row(page, "A longer task title for the daily plan");
       const control = task.getByRole("button", { name: language.add });
+      // The task field and its chips come first on a phone; the row is a scroll away.
+      await control.scrollIntoViewIfNeeded();
       await expect(control).toBeInViewport();
       await control.focus();
       await expect(control).toBeFocused();

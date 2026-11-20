@@ -1,21 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { shortcutsApi } from "@/features/shortcuts/api";
 import type { ShortcutId } from "@/features/shortcuts/schema";
 import type { Dictionary } from "@/i18n";
 import { Icon } from "@/lib/Icon";
 import type { TaskFilter } from "../selectors";
+import { useCharacterKeys } from "../use-character-keys";
 
 export function TaskEmpty({ filter, searching, t, onAction }: {
   filter: TaskFilter; searching: boolean; t: Dictionary; onAction: () => void;
 }) {
-  const [characters, setCharacters] = useState(true);
-  useEffect(() => {
-    const read = () => setCharacters(shortcutsApi.charactersEnabled());
-    read();
-    return shortcutsApi.watchCharacters(read);
-  }, []);
+  const characters = useCharacterKeys();
   const title = searching ? t.emptySearch : { all: t.emptyTitle, today: t.emptyToday, tag: t.emptyFiltered, project: t.emptyProject }[filter.kind];
   const detail = searching ? t.emptySearchHint : filter.kind === "today" ? t.emptyTodayBody : filter.kind === "all" ? t.emptyBody : "";
   // The keys come from the shortcut registry, so the hint cannot drift from what the keys do.

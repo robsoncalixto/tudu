@@ -4,7 +4,12 @@
   display: grid;
   flex: 1;
   min-width: 0;
-  max-height: 13em;
+  /* Eight lines, then the box scrolls. The mirror and the field are as tall as the text, so they move as one. */
+  max-height: calc(8 * 24px + 28px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 14px;
+  scrollbar-width: thin;
 }
 
 .command-field > .command-mirror,
@@ -18,8 +23,7 @@
   letter-spacing: inherit;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  overflow-y: auto;
-  scrollbar-width: none;
+  overflow: hidden;
 }
 
 .command-mirror { color: var(--text); pointer-events: none; }
@@ -36,7 +40,7 @@
 .command-field > textarea:focus { outline: none; }
 /* The mirror draws the placeholder with its example tokens marked; the real one stays for assistive technology. */
 .command-field > textarea::placeholder { color: transparent; }
-.command-field:has(textarea:disabled) .command-mirror { color: var(--text-muted); }
+.command-field:has(textarea:disabled) .command-mirror, .command-field:has(textarea[readonly]) .command-mirror { color: var(--text-muted); }
 
 /* Marks change colour only: any change in width would move the caret away from the text. */
 .command-token { border-radius: var(--r-sm); background: var(--selected-surface); color: var(--accent); }
@@ -50,8 +54,11 @@
   width: max-content;
   min-width: min(280px, 100%);
   max-width: min(420px, calc(100vw - 2 * var(--s-md)));
+  max-height: min(22rem, 60dvh);
   margin: 0;
   padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
   border: 1px solid var(--control-border);
   border-radius: var(--r-lg);
@@ -71,9 +78,11 @@
   cursor: pointer;
 }
 
-.command-suggestions li > span { min-width: 0; overflow-wrap: anywhere; }
+/* A long name is cut short on one line; what will be written keeps up to half of the row. */
+.command-suggestions li > span, .command-suggestions code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.command-suggestions li > span { flex: 1 1 auto; }
 .command-suggestions svg { flex-shrink: 0; color: var(--text-muted); }
-.command-suggestions code { margin-inline-start: auto; padding-inline-start: var(--s-md); color: var(--text-muted); font: 400 12px/18px var(--body); white-space: nowrap; }
+.command-suggestions code { flex: 0 1 auto; max-width: 50%; margin-inline-start: auto; padding-inline-start: var(--s-md); color: var(--text-muted); font: 400 12px/18px var(--body); }
 .command-suggestions li:hover { background: var(--surface-muted); }
 .command-suggestions li[aria-selected="true"] { background: var(--selected-surface); }
 .command-suggestions li[aria-selected="true"], .command-suggestions li[aria-selected="true"] svg { color: var(--accent); }

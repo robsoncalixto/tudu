@@ -13,6 +13,8 @@ interface Options {
   onToggle: (task: Task) => void;
   onDelete: (id: string) => void;
   onUndo: () => boolean;
+  /** Escape with a task in focus; false when there is nothing to step back from. */
+  onBack: () => boolean;
 }
 
 /** Connects the page shortcuts to the board. A handler returns false when it has nothing to act on. */
@@ -47,6 +49,7 @@ export function useTaskShortcuts(options: Options) {
       shortcutsApi.subscribe("editTask", (target) => onTask(target, (_, row) => press(row, "button.task-title"))),
       shortcutsApi.subscribe("openTask", (target) => onTask(target, (_, row) => press(row, "button.task-disclosure"))),
       shortcutsApi.subscribe("deleteTask", (target) => onTask(target, (task) => latest.current.onDelete(task.id))),
+      shortcutsApi.subscribe("backToList", () => latest.current.onBack()),
     ];
     return () => stops.forEach((stop) => stop());
   }, []);

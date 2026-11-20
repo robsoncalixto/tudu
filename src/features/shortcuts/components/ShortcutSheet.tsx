@@ -64,7 +64,9 @@ export function ShortcutSheet({ t, open, onClose }: { t: Dictionary; open: boole
           <dt>{s.labels[shortcut.id]}</dt>
           <dd>{shortcut.bindings.map((item, index) => <Fragment key={item.keys.join(" ")}>
             {index > 0 && <span className="shortcut-join">{s.or}</span>}
-            <span className="shortcut-binding" data-off={!characters && isCharacterBinding(item) || undefined}>{binding(item)}</span>
+            <span className="shortcut-binding" data-off={!characters && isCharacterBinding(item) || undefined}>
+              {binding(item)}{!characters && isCharacterBinding(item) && <span className="sr-only"> ({s.off})</span>}
+            </span>
           </Fragment>)}</dd>
         </div>)}
       </dl>

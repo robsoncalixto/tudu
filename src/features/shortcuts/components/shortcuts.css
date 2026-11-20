@@ -42,7 +42,7 @@
 .shortcut-list code { font: 500 13px/20px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); white-space: pre-wrap; text-align: end; }
 
 .shortcut-binding, .shortcut-chord { display: inline-flex; align-items: center; gap: 4px; }
-.shortcut-binding[data-off] { opacity: .45; text-decoration: line-through; }
+.shortcut-binding[data-off] > :not(.sr-only) { opacity: .45; text-decoration: line-through; }
 .shortcut-join { color: var(--text-muted); font: 400 12px/18px var(--body); }
 
 .shortcut-toggle {

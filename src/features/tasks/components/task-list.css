@@ -38,6 +38,8 @@
 }
 .task-context-menu button:hover, .task-context-menu button:focus-visible { background: var(--selected-surface); }
 .task-context-menu button:focus-visible { outline-offset: -2px; }
+.task-context-menu button.is-destructive { color: var(--error); }
+.task-context-menu button + button.is-destructive { margin-top: 4px; border-top: 1px solid var(--border); border-start-start-radius: 0; border-start-end-radius: 0; }
 
 .list-head, .task {
   display: grid;
@@ -64,7 +66,10 @@
 }
 
 .task + .task { border-top: 1px solid var(--border); }
-.task.is-new { animation: appear 0.15s ease-out both; }
+/* A new row is tinted where the list's order put it, then settles. */
+.task.is-new { animation: appear 0.15s ease-out both, arrive 2.4s ease-out both; }
+@keyframes arrive { from, 45% { background-color: var(--selected-surface); } to { background-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .task.is-new { background-color: var(--selected-surface); } }
 .task-body { min-width: 0; }
 
 .task .check {

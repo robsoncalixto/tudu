@@ -9,16 +9,16 @@ import type { CaptureDefaults } from "@/features/capture/schema";
 import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import { useVisibleRefresh } from "@/lib/use-visible-refresh";
 import { tasksApi } from "./api";
-import { applyTaskMutations, provisionalTask, type PendingTaskMutation } from "./optimistic-tasks";
+import { applyTaskMutations, arrivalTime, provisionalTask, type PendingTaskMutation } from "./optimistic-tasks";
 import type { Priority, Task, TaskPatch } from "./schema";
 
 /**
  * Owns the task list. `add` shows the new tasks at once and `capture` waits for
  * the server; both reject with an ApiError so the caller can keep the user's
- * text. `patch`, `removeLater` and what `capture` finishes update optimistically,
+ * text. `patch`, `changeLater` and what `capture` finishes update optimistically,
  * roll back on failure and report the error code through `onError`.
  */
-export function useTasks(onError: (code: string) => void, onNext?: (task: Task) => void, onRefreshed?: (currentIds: ReadonlySet<string>) => void, provider?: string) {
+export function useTasks(onError: (code: string, retry?: () => void) => void, onNext?: (task: Task) => void, onRefreshed?: (currentIds: ReadonlySet<string>) => void, provider?: string) {
   const [confirmed, setConfirmed] = useState<Task[] | null>(null);
   const [pending, setPending] = useState<PendingTaskMutation[]>([]);
   const [unsaved, setUnsaved] = useState<Task[]>([]);
@@ -28,6 +28,11 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   const tasks = useMemo(() => confirmed && [...applyTaskMutations(confirmed, pending), ...unsaved], [confirmed, pending, unsaved]);
   const known = useRef(confirmed);
   known.current = confirmed;
+  const shown = useRef(tasks);
+  shown.current = tasks;
+  // The saved task keeps the row of the one shown while it was being saved, so that row neither blinks nor moves.
+  const rows = useRef(new Map<string, string>());
+  const rowKey = useCallback((id: string) => rows.current.get(id) ?? id, []);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -81,17 +86,21 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   const add = useCallback((text: string, today: string, defaults: QuickAddDefaults, projects: Project[], priority: Priority) => {
     const drafts = quickAddApi.previewDrafts(text, today, defaults, projects);
     if (!drafts) throw new ApiError("invalid_quick_task", 400);
-    const now = new Date();
-    const shown = drafts.map((draft) => provisionalTask(draft, priority, now));
-    const settle = () => setUnsaved((current) => current.filter((task) => !shown.includes(task)));
-    setUnsaved((current) => [...current, ...shown]);
+    const first = arrivalTime(shown.current ?? [], new Date());
+    const written = drafts.map((draft, index) => provisionalTask(draft, priority, new Date(first.getTime() + index)));
+    const settle = () => setUnsaved((current) => current.filter((task) => !written.includes(task)));
+    setUnsaved((current) => [...current, ...written]);
     // The saved tasks take the place of the shown ones in a single render.
-    const saved = tasksApi.create(drafts.length === 1 ? drafts[0] : drafts)
-      .then((created) => { settle(); return append(created); }, (error: unknown) => { settle(); throw error; });
-    return { shown, saved };
+    const saved = tasksApi.create(drafts.length === 1 ? drafts[0] : drafts).then((created) => {
+      created.forEach((task, index) => { if (written[index]) rows.current.set(task.id, written[index].id); });
+      settle();
+      return append(created);
+    }, (error: unknown) => { settle(); throw error; });
+    return { shown: written, saved };
   }, [append]);
 
-  const send = useCallback((mutation: PendingTaskMutation) => {
+  /** `quiet` leaves the next occurrence of a repeating task unannounced: whoever held the change back already said it. */
+  const send = useCallback((mutation: PendingTaskMutation, quiet = false) => {
     const { id, patch: changes } = mutation;
     // Order writes to the same task while other tasks remain independent.
     const previous = lastWrite.current.get(id) ?? Promise.resolve();
@@ -111,11 +120,14 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
             if (nextTask && !next.some((item) => item.id === nextTask.id)) next.push(nextTask);
             return next;
           });
-          if (changes.done && nextTask && !nextTask.done) scheduled.current?.(nextTask);
+          if (!quiet && changes.done && nextTask && !nextTask.done) scheduled.current?.(nextTask);
         }
         return true;
       } catch (error) {
-        report.current(errorCode(error));
+        // A refusal would be refused again; only a failure to reach or to answer is worth sending once more.
+        const again = error instanceof ApiError && error.status < 500 ? undefined
+          : () => { setPending((current) => [...current, mutation]); void send(mutation, quiet); };
+        report.current(errorCode(error), again);
         return false;
       } finally {
         setPending((current) => current.filter((item) => item !== mutation));
@@ -148,9 +160,12 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
     return created;
   }, [append, change]);
 
-  /** Hides the task now and deletes it only on `commit`, so `undo` has nothing to restore on the server. */
-  const removeLater = useCallback((id: string) => {
-    const mutation: PendingTaskMutation = { id, patch: null };
+  /**
+   * Shows a change now and saves it only on `commit`, so `undo` leaves nothing to put right on the server.
+   * `null` deletes the task.
+   */
+  const changeLater = useCallback((id: string, changes: TaskPatch | null) => {
+    const mutation: PendingTaskMutation = { id, patch: changes };
     let settled = false;
     setPending((current) => [...current, mutation]);
     return {
@@ -163,7 +178,7 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
       commit() {
         if (settled) return Promise.resolve(false);
         settled = true;
-        return send(mutation);
+        return send(mutation, true);
       },
     };
   }, [send]);
@@ -184,5 +199,5 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
       return position === undefined ? task : { ...task, dayRanks: { ...task.dayRanks, [day]: position } };
     }) ?? null);
   }, [retryLoad]);
-  return { reorder, tasks, aiEnabled, loadFailed, retryLoad, add, capture, patch, removeLater, clearProject };
+  return { reorder, tasks, rowKey, aiEnabled, loadFailed, retryLoad, add, capture, patch, changeLater, clearProject };
 }

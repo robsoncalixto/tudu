@@ -15,18 +15,23 @@ interface Props {
   projects: Project[];
   t: Dictionary;
   disabled: boolean;
+  /** The lines cannot be saved as they are, and the field already says why. */
+  blocked: boolean;
   onJoin: () => void;
 }
 
+/** Past this many lines the preview scrolls instead of pushing the list away. */
+const VISIBLE_LINES = 6;
+
 /** Shown when several lines are typed or pasted: what each line becomes, with the choice to keep them as one task. */
-export function ComposerBatch({ drafts, count, today, locale, dateFormat, projects, t, disabled, onJoin }: Props) {
+export function ComposerBatch({ drafts, count, today, locale, dateFormat, projects, t, disabled, blocked, onJoin }: Props) {
   return <section className="composer-batch" aria-label={t.quickTaskPreview}>
     <header>
       <p id="quick-task-batch">{t.composerBatch(count)}</p>
-      <button type="submit" className="chip" disabled={disabled}>{t.composerAddAll(count)}</button>
+      <button type="submit" className="chip" disabled={disabled || blocked}>{t.composerAddAll(count)}</button>
       <button type="button" className="chip" disabled={disabled} onClick={onJoin}>{t.composerJoin}</button>
     </header>
-    {drafts && <ul className="quick-preview" aria-labelledby="quick-task-batch">
+    {drafts && <ul className="quick-preview" aria-labelledby="quick-task-batch" tabIndex={drafts.length > VISIBLE_LINES ? 0 : undefined}>
       {drafts.map((draft, index) => {
         const project = projects.find((item) => item.id === draft.projectId);
         return <li className="quick-task-line" key={index}>

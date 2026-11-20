@@ -41,10 +41,10 @@ export function TaskTitle({ task, row, today, locale, t, projects, savedTags, on
       if (document.activeElement === document.body) (fromRow.current ? row.current : button.current)?.focus();
     });
     const { title, changes } = quickAddApi.edit(task.title, draft, today, projects);
-    // Only tokens and no title: nothing is saved rather than guessing what was meant.
-    if (!save || !title) return;
+    if (!save) return;
     const tags = changes.tags && [...new Set([...task.tags, ...changes.tags])];
-    const patch: TaskPatch = { ...changes, ...(tags ? { tags } : {}), ...(title === task.title ? {} : { title }) };
+    // Tokens alone are no title, so they set their fields and the title stays as it was.
+    const patch: TaskPatch = { ...changes, ...(tags ? { tags } : {}), ...(!title || title === task.title ? {} : { title }) };
     if (Object.keys(patch).length) void onPatch(task.id, patch);
   }
 
@@ -58,7 +58,7 @@ export function TaskTitle({ task, row, today, locale, t, projects, savedTags, on
 
   return <div className="task-edit">
     <CommandField inputRef={field} value={draft} onChange={setDraft} label={t.editTitle} t={t} locale={locale}
-      sources={{ today, language: locale, tags: savedTags, projects }} usedTags={task.tags}
+      sources={{ today, language: locale, tags: savedTags, projects }} usedTags={task.tags} editing={task.title}
       onBlur={() => finish(!discarded.current)}
       onKey={(event, shortcuts) => {
         if (shortcuts.includes("submitTask") || shortcuts.includes("newTaskLine")) { event.preventDefault(); field.current?.blur(); }
