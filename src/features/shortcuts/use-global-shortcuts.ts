@@ -38,6 +38,8 @@ export function useGlobalShortcuts() {
         prefix = match.prefix;
         timer = window.setTimeout(forget, SEQUENCE_MS);
       } else if (match && shortcutsApi.run(match.id, target)) event.preventDefault();
+      // With nothing of the page's to undo, the browser would undo text in some other field instead.
+      else if (match && chordFromDate) event.preventDefault();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => {

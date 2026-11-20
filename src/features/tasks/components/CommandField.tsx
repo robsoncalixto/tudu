@@ -58,8 +58,9 @@ export function CommandField({ id, value, onChange, label, placeholder, hint, so
   // Escape hides the suggestions for the word being typed only: the next word is offered them again.
   useEffect(() => { if (!typing) setDismissed(""); }, [typing]);
 
-  // A word is not called wrong while it is being typed. Once the caret leaves it or the typing pauses, it is.
-  const typingAt = useSettled(value, 900) === value ? null : caret;
+  // A word is not called wrong while it is being typed, or while there is something to complete it with.
+  // Once the caret leaves it, or the typing pauses with nothing on offer, it is.
+  const typingAt = useSettled(value, 900) === value && !open ? null : caret;
   useEffect(() => onCaret?.(typingAt), [typingAt, onCaret]);
 
   const marks = [
