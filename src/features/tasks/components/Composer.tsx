@@ -34,9 +34,11 @@ interface Props {
   onSubmit: (mode: ComposerMode, text: string, defaults: QuickAddDefaults) => Promise<boolean>;
   /** Escape on an empty field hands the keyboard back to the list. */
   onLeave: () => void;
+  /** Undoes the last completion or deletion while its notice is showing; false when there is nothing to undo. */
+  onUndo: () => boolean;
 }
 
-export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onTextChange, onSubmit, onLeave, context, projects, suggestions }: Props) {
+export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onTextChange, onSubmit, onLeave, onUndo, context, projects, suggestions }: Props) {
   const [capturing, setCapturing] = useState(false);
   const [setup, setSetup] = useState(false);
   const [mod, setMod] = useState("Ctrl");
@@ -113,6 +115,8 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
             onKey={(event, shortcuts) => {
               if (shortcuts.includes("submitWithAi")) { event.preventDefault(); void submit(aiEnabled ? "ai" : "add"); }
               else if (shortcuts.includes("submitTask")) { event.preventDefault(); void submit("add"); }
+              // With nothing typed there is no text to undo, so the key reaches the list's last action.
+              else if (shortcuts.includes("undoFromField") && !text) { if (onUndo()) event.preventDefault(); }
               else if (shortcuts.includes("leaveComposer")) {
                 event.preventDefault();
                 if (text || choice !== NO_CHOICE) { rewrite(""); setChoice(NO_CHOICE); }

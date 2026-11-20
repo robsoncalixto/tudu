@@ -21,6 +21,7 @@ export interface TaskActions {
 interface Props extends TaskActions {
   tasks: Task[];
   projects: Project[];
+  savedTags: string[];
   dateFormat: DateFormat;
   today: string;
   locale: Locale;

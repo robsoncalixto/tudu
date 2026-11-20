@@ -105,6 +105,7 @@ describe("shortcuts a field handles itself", () => {
     expect(scopeShortcuts("composer", "Mod+Enter")).toEqual(["submitWithAi"]);
     expect(scopeShortcuts("composer", "Shift+Enter")).toEqual(["newTaskLine"]);
     expect(scopeShortcuts("composer", "Escape")).toEqual(["leaveComposer"]);
+    expect(scopeShortcuts("composer", "Mod+z")).toEqual(["undoFromField"]);
     expect(scopeShortcuts("search", "Escape")).toEqual(["clearSearch"]);
     expect(scopeShortcuts("assistant", "ArrowUp")).toEqual(["recallNote"]);
     expect(scopeShortcuts("composer", "n")).toEqual([]);

@@ -15,8 +15,8 @@ import type { Priority, Task, TaskPatch } from "./schema";
 /**
  * Owns the task list. `add` shows the new tasks at once and `capture` waits for
  * the server; both reject with an ApiError so the caller can keep the user's
- * text. `patch` and `remove` update optimistically, roll back on failure and
- * report the error code through `onError`.
+ * text. `patch` and `removeLater` update optimistically, roll back on failure
+ * and report the error code through `onError`.
  */
 export function useTasks(onError: (code: string) => void, onNext?: (task: Task) => void, onRefreshed?: (currentIds: ReadonlySet<string>) => void, provider?: string) {
   const [confirmed, setConfirmed] = useState<Task[] | null>(null);
@@ -94,10 +94,8 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
     [append],
   );
 
-  const mutate = useCallback((id: string, changes: TaskPatch | null) => {
-    const mutation = { id, patch: changes };
-    setPending((current) => [...current, mutation]);
-
+  const send = useCallback((mutation: PendingTaskMutation) => {
+    const { id, patch: changes } = mutation;
     // Order writes to the same task while other tasks remain independent.
     const previous = lastWrite.current.get(id) ?? Promise.resolve();
     const request: Promise<boolean> = previous.then(async () => {
@@ -131,8 +129,31 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
     return request;
   }, []);
 
-  const patch = useCallback((id: string, changes: TaskPatch) => mutate(id, changes), [mutate]);
-  const remove = useCallback((id: string) => mutate(id, null), [mutate]);
+  const patch = useCallback((id: string, changes: TaskPatch) => {
+    const mutation = { id, patch: changes };
+    setPending((current) => [...current, mutation]);
+    return send(mutation);
+  }, [send]);
+
+  /** Hides the task now and deletes it only on `commit`, so `undo` has nothing to restore on the server. */
+  const removeLater = useCallback((id: string) => {
+    const mutation: PendingTaskMutation = { id, patch: null };
+    let settled = false;
+    setPending((current) => [...current, mutation]);
+    return {
+      undo() {
+        if (settled) return false;
+        settled = true;
+        setPending((current) => current.filter((item) => item !== mutation));
+        return true;
+      },
+      commit() {
+        if (settled) return Promise.resolve(false);
+        settled = true;
+        return send(mutation);
+      },
+    };
+  }, [send]);
 
   const clearProject = useCallback((id: string) => {
     revision.current++;
@@ -150,5 +171,5 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
       return position === undefined ? task : { ...task, dayRanks: { ...task.dayRanks, [day]: position } };
     }) ?? null);
   }, [retryLoad]);
-  return { reorder, tasks, aiEnabled, loadFailed, retryLoad, add, capture, patch, remove, clearProject };
+  return { reorder, tasks, aiEnabled, loadFailed, retryLoad, add, capture, patch, removeLater, clearProject };
 }

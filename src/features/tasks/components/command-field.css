@@ -36,7 +36,6 @@
 .command-field > textarea:focus { outline: none; }
 /* The mirror draws the placeholder with its example tokens marked; the real one stays for assistive technology. */
 .command-field > textarea::placeholder { color: transparent; }
-.command-field > textarea:disabled + .command-suggestions { display: none; }
 .command-field:has(textarea:disabled) .command-mirror { color: var(--text-muted); }
 
 /* Marks change colour only: any change in width would move the caret away from the text. */
@@ -46,10 +45,8 @@
 .command-placeholder .command-token { background: transparent; }
 
 .command-suggestions {
-  position: absolute;
-  inset-block-start: calc(100% + 2px);
-  inset-inline-start: -10px;
-  z-index: 5;
+  position: fixed;
+  inset: auto;
   width: max-content;
   min-width: min(280px, 100%);
   max-width: min(420px, calc(100vw - 2 * var(--s-md)));
@@ -62,7 +59,6 @@
   color: var(--text);
 }
 
-.command-suggestions[hidden] { display: none; }
 
 .command-suggestions li {
   display: flex;

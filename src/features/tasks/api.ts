@@ -10,5 +10,6 @@ export const tasksApi = {
       .then((data) => taskListSchema.parse(data).tasks),
   update: (id: string, patch: TaskPatch) =>
     request<unknown>(`/api/tasks/${id}`, { method: "PATCH", body: patch }).then((data) => taskUpdateSchema.parse(data)),
-  remove: (id: string) => request<void>(`/api/tasks/${id}`, { method: "DELETE" }),
+  // A deletion waits out its undo window, so it may be sent while the page is closing.
+  remove: (id: string) => request<void>(`/api/tasks/${id}`, { method: "DELETE", keepalive: true }),
 };

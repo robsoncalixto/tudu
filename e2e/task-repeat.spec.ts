@@ -21,7 +21,8 @@ for (const l of languages) {
     await closeTaskPanel(page).click();
     await sidebar(page).getByRole("button", { name: new RegExp(`^${l.today}`) }).click();
     await task.getByRole("checkbox", { name: l.done, exact: true }).click();
-    await expect(page.getByRole("status")).toHaveText(l.next);
+    // The completion can still be undone, and the notice also says when the next one is due.
+    await expect(page.getByRole("status")).toContainText(l.next);
     await expect(taskRows(openSection(page))).toHaveCount(0);
     await expect.poll(async () => (await listTasks(request)).length).toBe(2);
     const stored = await listTasks(request);

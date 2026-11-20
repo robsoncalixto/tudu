@@ -94,7 +94,7 @@ test.describe("TaskRow", () => {
     await openApp(page);
 
     await page.getByRole("button", { name: "Old name" }).click();
-    const edit = page.getByRole("textbox", { name: "Edit title" });
+    const edit = page.getByRole("combobox", { name: "Edit title" });
     await expect(edit).toBeFocused();
     await edit.fill("New name");
     await edit.press("Enter");
@@ -108,7 +108,7 @@ test.describe("TaskRow", () => {
     await openApp(page);
 
     await page.getByRole("button", { name: "Blur me" }).click();
-    await page.getByRole("textbox", { name: "Edit title" }).fill("Blurred");
+    await page.getByRole("combobox", { name: "Edit title" }).fill("Blurred");
     await page.getByRole("heading", { level: 1 }).click();
 
     await expect(row(page, "Blurred")).toBeVisible();
@@ -120,13 +120,13 @@ test.describe("TaskRow", () => {
     await openApp(page);
 
     await page.getByRole("button", { name: "Keep me" }).click();
-    await page.getByRole("textbox", { name: "Edit title" }).fill("Discarded");
-    await page.getByRole("textbox", { name: "Edit title" }).press("Escape");
+    await page.getByRole("combobox", { name: "Edit title" }).fill("Discarded");
+    await page.getByRole("combobox", { name: "Edit title" }).press("Escape");
     await expect(row(page, "Keep me").getByRole("button", { name: "Keep me", exact: true })).toBeFocused();
 
     await page.getByRole("button", { name: "Keep me" }).click();
-    await page.getByRole("textbox", { name: "Edit title" }).fill("   ");
-    await page.getByRole("textbox", { name: "Edit title" }).press("Enter");
+    await page.getByRole("combobox", { name: "Edit title" }).fill("   ");
+    await page.getByRole("combobox", { name: "Edit title" }).press("Enter");
     await expect(row(page, "Keep me")).toBeVisible();
 
     expect((await listTasks(request))[0].title).toBe("Keep me");
@@ -186,10 +186,14 @@ test.describe("TaskRow", () => {
 
     await taskDetails(row(page, "Remove me")).click();
     await taskPanel(page).getByRole("button", { name: "Delete task" }).click();
-    await page.getByRole("dialog", { name: "Delete this task?", exact: true }).getByRole("button", { name: "Delete task", exact: true }).click();
 
     await expect(row(page, "Remove me")).toHaveCount(0);
+    await expect(taskPanel(page)).toBeHidden();
     await expect(row(page, "Keep me")).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    // The task is removed once the chance to undo is gone.
+    await expect(page.getByRole("status")).toHaveText("Task deleted.Undo");
+    await page.getByRole("status").getByRole("button", { name: "Dismiss", exact: true }).click();
     await expect.poll(async () => (await listTasks(request)).map((task) => task.title)).toEqual(["Keep me"]);
   });
 
@@ -205,40 +209,51 @@ test.describe("TaskRow", () => {
 
     await taskDetails(row(page, "Unlucky")).click();
     await taskPanel(page).getByRole("button", { name: "Delete task" }).click();
-    await page.getByRole("dialog", { name: "Delete this task?", exact: true }).getByRole("button", { name: "Delete task", exact: true }).click();
-    await expect(page.getByRole("dialog", { name: "Delete this task?", exact: true }).getByRole("alert")).toHaveText("Something went wrong. Try again.");
+    await expect(row(openSection(page), "Unlucky")).toHaveCount(0);
+    await page.getByRole("status").getByRole("button", { name: "Dismiss", exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText("Something went wrong. Try again.");
     await expect(row(openSection(page), "Unlucky")).toBeVisible();
     expect((await listTasks(request))[0]).toMatchObject({ title: "Unlucky", done: false });
   });
 });
 
 for (const language of [
-  { code: "en", confirm: "Delete this task?", cancel: "Cancel", remove: "Delete task", error: "Something went wrong. Try again." },
-  { code: "pt-BR", confirm: "Excluir esta tarefa?", cancel: "Cancelar", remove: "Excluir tarefa", error: "Algo deu errado. Tente novamente." },
+  { code: "en", deleted: "Task deleted.", undo: "Undo", dismiss: "Dismiss", remove: "Delete task", error: "Something went wrong. Try again." },
+  { code: "pt-BR", deleted: "Tarefa excluída.", undo: "Desfazer", dismiss: "Dispensar", remove: "Excluir tarefa", error: "Algo deu errado. Tente novamente." },
 ]) {
-  test(`mouse deletion requires confirmation and recovers focus after failure in ${language.code}`, async ({ page, request }) => {
+  test(`deletion can be undone and recovers after failure in ${language.code}`, async ({ page, request }) => {
     await seed(request, [{ title: "First task" }, { title: "Second task" }]);
     await openApp(page); await setLanguage(page, language.code);
     const first = row(page, "First task");
-    await taskDetails(first).click();
-    const remove = taskPanel(page).getByRole("button", { name: language.remove, exact: true });
-    await remove.click();
-    const dialog = page.getByRole("dialog", { name: language.confirm, exact: true });
-    await expect(dialog.getByRole("button", { name: language.cancel, exact: true })).toBeFocused();
-    expect(await listTasks(request)).toHaveLength(2);
-    await page.keyboard.press("Enter"); await expect(dialog).toBeHidden(); await expect(remove).toBeFocused();
-    await remove.click();
-    await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
-    await dialog.getByRole("button", { name: language.remove, exact: true }).click();
-    await expect(dialog.getByRole("alert")).toHaveText(language.error);
-    expect(await listTasks(request)).toHaveLength(2);
-    await dialog.getByRole("button", { name: language.cancel, exact: true }).click();
-    await expect(first).toBeFocused();
-    await expect(taskPanel(page).getByRole("heading", { name: "First task", exact: true })).toBeVisible();
-    await page.unroute("**/api/tasks/*"); await remove.click();
-    await dialog.getByRole("button", { name: language.remove, exact: true }).click();
+    const status = page.getByRole("status");
+    const remove = async () => {
+      await taskDetails(first).click();
+      await taskPanel(page).getByRole("button", { name: language.remove, exact: true }).click();
+    };
+    await remove();
+    await expect(first).toHaveCount(0);
+    await expect(taskPanel(page)).toBeHidden();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(status).toHaveText(`${language.deleted}${language.undo}`);
     await expect(row(page, "Second task")).toBeFocused();
-    expect((await listTasks(request)).map((task) => task.title)).toEqual(["Second task"]);
+    expect(await listTasks(request)).toHaveLength(2);
+    await status.getByRole("button", { name: language.undo, exact: true }).click();
+    await expect(first).toBeFocused();
+    await expect(status).toHaveText("");
+    expect(await listTasks(request)).toHaveLength(2);
+
+    await page.route("**/api/tasks/*", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
+    await remove();
+    await status.getByRole("button", { name: language.dismiss, exact: true }).click();
+    await expect(status).toHaveText(language.error);
+    await expect(first).toBeVisible();
+    expect(await listTasks(request)).toHaveLength(2);
+    await page.unroute("**/api/tasks/*");
+    await remove();
+    await expect(row(page, "Second task")).toBeFocused();
+    await status.getByRole("button", { name: language.dismiss, exact: true }).click();
+    await expect.poll(async () => (await listTasks(request)).map((task) => task.title)).toEqual(["Second task"]);
+    await expect(first).toHaveCount(0);
   });
 }
 
@@ -400,42 +415,36 @@ test("deletes after a pending row edit and keeps that edit if deletion fails", a
     return route.continue();
   });
   const editing = row(page, task.title);
-  const dialog = page.getByRole("dialog", { name: "Delete this task?", exact: true });
+  const status = page.getByRole("status");
   try {
     await editing.getByRole("combobox", { name: "Priority" }).selectOption("high");
     await expect.poll(() => methods).toEqual(["PATCH"]);
     await taskDetails(editing).click();
     await taskPanel(page).getByRole("button", { name: "Delete task" }).click();
-    await dialog.getByRole("button", { name: "Delete task", exact: true }).click();
     await expect(editing).toHaveCount(0);
+    // Dismissing ends the undo window; the deletion still waits its turn behind the edit.
+    await status.getByRole("button", { name: "Dismiss", exact: true }).click();
     expect(methods).toEqual(["PATCH"]);
   } finally {
     release();
   }
-  await expect(dialog.getByRole("alert")).toHaveText("Something went wrong. Try again.");
-  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(status).toHaveText("Something went wrong. Try again.");
   await expect(editing.getByRole("combobox", { name: "Priority" })).toHaveValue("high");
   expect((await listTasks(request))[0]).toMatchObject({ id: task.id, priority: "high" });
   expect(methods).toEqual(["PATCH", "DELETE"]);
 });
 
-test("delete confirmation stays open while saving and restores keyboard focus after success", async ({ page, request }) => {
+test("deleting the only task from the keyboard hands focus to the task field", async ({ page, request }) => {
   await seed(request, [{ title: "Only task" }]);
   await openApp(page);
-  let release = () => {};
-  const wait = new Promise<void>((resolve) => { release = resolve; });
-  let requested = false;
-  await page.route("**/api/tasks/*", async (route) => { requested = true; await wait; await route.continue(); });
   await taskDetails(row(page, "Only task")).press("Enter");
   await taskPanel(page).getByRole("button", { name: "Delete task", exact: true }).press("Enter");
-  const dialog = page.getByRole("dialog", { name: "Delete this task?", exact: true });
-  await dialog.getByRole("button", { name: "Delete task", exact: true }).click();
-  await expect.poll(() => requested).toBe(true);
-  await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeDisabled();
-  await page.keyboard.press("Escape"); await expect(dialog).toBeVisible();
-  release(); await expect(dialog).toBeHidden();
+  await expect(taskPanel(page)).toBeHidden();
   await expect(composer(page)).toBeFocused();
-  expect(await listTasks(request)).toEqual([]);
+  expect(await listTasks(request)).toHaveLength(1);
+  // Leaving the board ends the undo window as well.
+  await sidebar(page).getByRole("link", { name: "Work log" }).click();
+  await expect.poll(async () => await listTasks(request)).toEqual([]);
 });
 
 for (const action of ["complete", "delete"]) {
@@ -452,9 +461,12 @@ for (const action of ["complete", "delete"]) {
     else {
       await taskDetails(task).press("Enter");
       await taskPanel(page).getByRole("button", { name: "Delete task", exact: true }).press("Enter");
-      await page.getByRole("dialog", { name: "Delete this task?" }).getByRole("button", { name: "Delete task", exact: true }).click();
     }
     await expect(composer(page)).toBeFocused();
+    if (action === "delete") {
+      await page.getByRole("status").getByRole("button", { name: "Dismiss", exact: true }).click();
+      await expect.poll(async () => (await listTasks(request)).length).toBe(1);
+    } else await expect.poll(async () => (await listTasks(request)).every((item) => item.done)).toBe(true);
     const saved = await listTasks(request);
     expect(saved.every((task) => task.done)).toBe(true);
     expect(saved).toHaveLength(action === "complete" ? 2 : 1);
@@ -486,10 +498,49 @@ test("renaming the final search match keeps keyboard focus on the board", async 
   await openApp(page);
   await page.getByRole("searchbox").fill("Searchable");
   await page.getByRole("button", { name: "Searchable title", exact: true }).click();
-  const edit = page.getByRole("textbox", { name: "Edit title" });
+  const edit = page.getByRole("combobox", { name: "Edit title" });
   await edit.fill("Renamed task");
   await edit.press("Enter");
   await expect(composer(page)).toBeFocused();
   await expect(taskRows(openSection(page))).toHaveCount(0);
   await expect.poll(async () => (await listTasks(request)).find((task) => task.id === first.id)?.title).toBe("Renamed task");
+});
+
+test("double-clicking a row opens its details and controls keep their own clicks", async ({ page, request }) => {
+  await seed(request, [{ title: "Open me", notes: "Some notes" }]);
+  await openApp(page);
+  const task = row(page, "Open me");
+  await task.getByText("Some notes").dblclick();
+  await expect(taskPanel(page).getByRole("heading", { name: "Open me", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(taskPanel(page)).toBeHidden();
+  await task.getByRole("button", { name: "Add to today" }).dblclick();
+  await expect(taskPanel(page)).toBeHidden();
+  await expect.poll(async () => (await listTasks(request))[0].plannedFor).toBeNull();
+});
+
+test("secondary row actions appear with the pointer or the keyboard", async ({ page, request }) => {
+  await seed(request, [{ title: "Quiet row" }, { title: "Other row" }]);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openApp(page);
+  const task = row(page, "Quiet row");
+  const add = task.getByRole("button", { name: "Add subtask" });
+  const more = task.getByRole("button", { name: "Task actions" });
+  const plan = task.getByRole("button", { name: "Add to today" });
+  await page.getByRole("heading", { level: 1 }).hover();
+  await expect(add).toHaveCSS("opacity", "0");
+  await expect(more).toHaveCSS("opacity", "0");
+  // Planning for today is a main action and stays in sight.
+  await expect(plan).toHaveCSS("opacity", "1");
+  await task.hover();
+  await expect(add).toHaveCSS("opacity", "1");
+  await expect(more).toHaveCSS("opacity", "1");
+  await page.getByRole("heading", { level: 1 }).hover();
+  await expect(add).toHaveCSS("opacity", "0");
+  await task.focus();
+  await expect(add).toHaveCSS("opacity", "1");
+  await row(page, "Other row").focus();
+  await expect(add).toHaveCSS("opacity", "0");
+  await add.focus();
+  await expect(more).toHaveCSS("opacity", "1");
 });
