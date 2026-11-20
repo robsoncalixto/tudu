@@ -161,10 +161,12 @@ proposal API with that synthetic provider.
 
 - **Review my tasks** supports an optional note. The model sees a bounded
   list of open tasks and their estimates and recorded time. Treat the note and
-  saved text as data. The model has no tools, and Zod validates its output.
+  saved text as data. The model has no tools. Reject invalid output and invented
+  targets.
 - Workload and placement are computed in code using working days, daily hours,
   and a one-hour fallback for missing estimates. Keep explicit dates and periods
-  for new work. Ask for approval before changing an existing plan or Today order.
+  for new work. The Assistant proposes changes to existing plans and Today order
+  for the user to approve.
 - The server scheduler starts in `instrumentation.ts`. It is opt-in, uses the
   saved local time and time zone, and runs at most once per day. The run outcome
   and task fingerprint live in `data/agent-review.json`. Keep status writes

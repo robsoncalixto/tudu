@@ -124,8 +124,8 @@ The board refreshes tasks and projects on focus and periodically while the
 tab is visible.
 
 Open the task panel (the icon at the right of a row) to edit the title,
-notes, subtasks, priority, project, tags, planned day, due date, part of day, repeat rule,
-time estimate, real execution time and links. Both time fields offer a unit selector
+notes, subtasks, priority, project, tags, planned day, due date, part of day,
+repeat rule, time estimate, real execution time and links. Both time fields offer a unit selector
 before the value: Minutes, Hours or Days. Fractional hours are supported, and
 **1 day equals 12 hours**. Clear a field to remove its value. Changing units
 converts the duration; both values are stored as decimal hours (`estimateHours`
@@ -139,8 +139,9 @@ Completing one creates the next occurrence.
 ### Assistant
 
 Choose **Review my tasks** on the Assistant screen for a summary and
-suggestions based on the open list. A note can guide the review. The Assistant
-screen also shows pending suggestions and decision history.
+suggestions based on the open list. An optional note can guide the review.
+The Assistant screen shows pending suggestions and decision history. Every
+suggested change requires approval.
 
 Suggestions for an existing task appear beside the affected fields and
 subtasks in its details. Accept or reject each proposal there or on the
@@ -157,7 +158,7 @@ estimated effort. A review flags days over capacity and can propose moving work
 within its existing deadlines.
 
 Automatic review starts off. In **Settings**, enable it and choose a local
-time. The server runs at most once per day while TUDU is running and can use a
+time. The review runs once per day at most while TUDU is running and can use a
 paid model. It records a skip when there are no open tasks, the task list has
 not changed, or the selected provider is unavailable. Suggestions wait for
 approval.
