@@ -98,9 +98,10 @@ structured output.
 - **Work log summary.** Summarizes the tasks completed on a given day. It reads
   only titles, projects and tags, and never changes tasks.
 - **Assistant.** Describe new work or ask for priorities, due dates, subtasks
-  or a plan for the day. The assistant only proposes changes: review and edit
-  each proposal, then accept or reject it. Decisions are kept in a history that
-  survives restarts.
+  or a plan for the day. Enter sends the note, Shift+Enter starts a new line and
+  the up arrow in an empty field brings back your last note. The assistant only
+  proposes changes: review and edit each proposal, then accept or reject it.
+  Decisions are kept in a history that survives restarts.
 
 ## Install TUDU
 
@@ -113,7 +114,9 @@ page until it can reach the server again.
 ## Using TUDU
 
 The same sidebar on every screen opens **All tasks**, **Today**, projects,
-tags, **Work log**, **Assistant** and **Settings**. On a phone, use **More views**. **Today** shows tasks planned
+tags, **Work log**, **Assistant** and **Settings**. On a phone, use **More views**.
+The plus beside **Projects** names a new project right in the sidebar: Enter
+creates it and Escape gives up. **Today** shows tasks planned
 for today, unfinished tasks planned earlier, and tasks due today or overdue.
 Use the sun button to plan a task for today or clear its existing plan.
 The task actions menu moves the planned day without changing the deadline.
@@ -123,9 +126,18 @@ the order for that day.
 The board refreshes tasks and projects on focus and periodically while the
 tab is visible.
 
-Open the task panel (the icon at the right of a row) to edit the title,
+Click a task's title to edit it in place: Enter or leaving the field saves,
+Escape cancels, and the [writing syntax](#writing-tasks) works there too, so
+typing `@fri` at the end of a title moves its due date. Completing, reopening
+or deleting a task acts at once and shows a notice with **Undo** for a few
+seconds. A deleted task is only removed when that notice is gone.
+
+Open the task panel (the icon at the right of a row, or a double click on the
+row) to edit the title,
 notes, subtasks, priority, project, tags, planned day, due date, part of day,
-repeat rule, time estimate, real execution time and links. Both time fields offer a unit selector
+repeat rule, time estimate, real execution time and links. Notes are saved a
+moment after you stop typing; a title or tag list is saved on Enter or on
+leaving the field. Both time fields offer a unit selector
 before the value: Minutes, Hours or Days. Fractional hours are supported, and
 **1 day equals 12 hours**. Clear a field to remove its value. Changing units
 converts the duration; both values are stored as decimal hours (`estimateHours`
@@ -134,8 +146,7 @@ automatically. New repeating occurrences keep the estimate and start with no rea
 execution time.
 
 Repeating tasks can be daily, on weekdays, weekly on selected days, or monthly.
-Completing one creates the next occurrence. If an older task has an invalid due
-date, correct the date or remove its repeat rule before marking it done.
+Completing one creates the next occurrence.
 
 ### Assistant
 
@@ -175,28 +186,54 @@ The daily total counts a multi-tag task once.
 view, default priority, date format, work capacity, automatic review, and the
 AI provider and model.
 
-### Quick-add shortcuts
+### Writing tasks
 
-Write shortcuts as separate words. Enter submits the composer and Shift+Enter
-adds another task on a new line. The priority, due date and tag controls
-provide defaults for each line and for Create with AI. The current tab keeps
-your unfinished text, priority, due date and tags when you visit another screen
-or reload. Adding the task clears the draft.
-`Fix login #bug !high tomorrow` creates **Fix login**, tagged `bug`, with high
-priority, due tomorrow.
+One field writes a task and everything about it. Enter adds it and leaves the
+field ready for the next one; Shift+Enter starts another task on a new line.
+`Review proposal #work @tomorrow 14h !high` creates **Review proposal**, tagged
+`work`, with high priority, due tomorrow afternoon.
 
-| Shortcut | Meaning |
+| Write | Meaning |
 | --- | --- |
-| `#tag` | Add a tag |
-| `!low`, `!medium`, `!high` | Set the priority |
-| `today` / `hoje`, `tomorrow` / `amanhã` | Set the due date |
-| Weekday (`friday`, `sexta-feira`) | Due on its next occurrence |
-| `YYYY-MM-DD` | Due on that date |
-| `@website-redesign` | Assign an existing project. Use hyphens for spaces. Unknown names stay in the title. |
-| `~30m`, `~2h`, `~1d` | Set an estimate. One day is 12 hours. |
+| `#tag` | Add a tag. A new tag is created when you save. |
+| `+website-redesign`, `@website-redesign` | Assign an existing project. Use hyphens for spaces. An unknown `+name` stays in the title and is pointed out. |
+| `@today`, `@tomorrow`, `@fri`, `@25/11`, `@2026-12-01` | Set the due date. Portuguese works too: `@hoje`, `@amanha`, `@sex`. |
+| `today` / `hoje`, `tomorrow` / `amanhã`, a full weekday, `YYYY-MM-DD` | The same, without the `@`. |
+| `@tomorrow 14h`, `@16:00` | Add a time. A due date keeps the day, so the time is saved as morning, afternoon or evening. |
+| `!high`, `!medium`, `!low` | Set the priority. Also `!alta`, `!media`, `!baixa` and `!1`, `!2`, `!3`. |
+| `~30m`, `~2h`, `~1d`, `t1h30m` | Set an estimate. One day is 12 hours. |
 
-Prefix a token with a backslash to keep it as text: `Discuss \#bug` saves
-**Discuss #bug**. Open **Quick-add shortcuts** in the composer for details.
+A token is a whole word, so `C#` and `name@example.com` are left alone. Prefix
+a token with a backslash to keep it as text: `Discuss \#bug` saves
+**Discuss #bug**. The field marks each token it recognizes, underlines a date
+it cannot read, and offers saved tags, projects, days and priorities as you
+type `#`, `+`, `@` or `!`.
+
+The chips under the field show the same values and can set them with the
+pointer: project, planned day, due date, priority, estimate and tags. A chip
+takes its field over from the text. In **Today**, in a project or in a tag, a
+new task starts with that view's value, which the chip can clear. With several
+lines, the chips are defaults for every line.
+
+### Keyboard shortcuts
+
+Press `?` anywhere for the full list, which the app builds from the same
+registry its key handlers use. Shortcuts never fire while you type in a field.
+
+| Key | Action |
+| --- | --- |
+| `N` or `Shift`+`A` | Write a new task, from any screen |
+| `/` | Search the current list |
+| `G` then `A`, `T`, `W`, `I`, `S` | All tasks, Today, Work log, Assistant, Settings |
+| `J` / `↓`, `K` / `↑` | Next or previous task |
+| `Space` or `D` | Complete or reopen the focused task |
+| `Enter`, `E` | Edit its title, open its details |
+| `Delete` | Delete it |
+| `Z` or `Ctrl`/`⌘`+`Z` | Undo the last completion or deletion |
+| `Esc` in the task field | Close suggestions, then clear the field, then leave it |
+
+Single-key shortcuts can be switched off in that list, per device. Arrows,
+Enter, Space, Esc and shortcuts with `Ctrl` or `⌘` keep working.
 
 ## MCP server
 
@@ -274,7 +311,7 @@ network is untrusted.
 | Task | Command |
 | --- | --- |
 | Unit tests | `npm test` |
-| End-to-end tests | `npm run test:e2e` (run `npx playwright install chromium` once first) |
+| End-to-end tests, with accessibility checks | `npm run test:e2e` (run `npx playwright install chromium` once first) |
 | Type check | `npm run typecheck` |
 | Production build | `npm run build` |
 

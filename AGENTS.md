@@ -34,9 +34,10 @@ design.md         The design system
 A feature folder has the files it needs from: `schema.ts` (Zod contract),
 `api.ts` (browser client), `use-*.ts` hooks, `selectors.ts` (pure logic),
 `components/` and `server/`. The features are `tasks`, `projects`,
-`quick-add`, `recurrence`, `settings`, `work-log`, `capture`, `ai` (provider
-configuration and structured generation), `agent` (reviewed proposals) and
-`mcp`. Imports use the `@/` alias for `src/`.
+`quick-add` (the writing syntax and its completions), `shortcuts` (the key
+registry and help sheet), `recurrence`, `settings`, `work-log`, `capture`, `ai`
+(provider configuration and structured generation), `agent` (reviewed
+proposals) and `mcp`. Imports use the `@/` alias for `src/`.
 
 ## Architecture rules
 
@@ -66,6 +67,15 @@ configuration and structured generation), `agent` (reviewed proposals) and
    `server/`. Routes inject what a feature needs (for example
    `withValidProjectIds` and `clearTaskProject`).
 
+9. **One list of shortcuts.** A key is declared once in `shortcuts/schema.ts`.
+   Page shortcuts are subscribed with `shortcutsApi.subscribe`; a field matches
+   its own keys with `shortcutsApi.match`. The help sheet and every key hint
+   render that list, so no component names a key on its own. A single-character
+   shortcut never fires while typing and stays behind the per-device switch.
+10. **Act, then offer Undo.** Completing and deleting happen at once and put
+    Undo in the board notice; there is no confirmation dialog. A deletion is
+    sent only when its notice is gone (`removeLater` in `use-tasks.ts`).
+
 Dependency direction: `app` → `features` → `i18n`, `lib`.
 
 ## Testing
@@ -94,6 +104,9 @@ Set `TUDU_E2E_PORT` and `TUDU_AI_TEST_PORT` to run from two checkouts at once.
 - Assert what the user sees and, for writes, what was stored (`listTasks()`).
 - Cover the failure path with `page.route()`.
 - Check visible text in English and Portuguese.
+- `e2e/accessibility.spec.ts` runs axe on the board, its layers and the other
+  screens, in both themes. Add a new screen or layer there. No finding rated
+  serious or critical is accepted.
 
 **AI in tests.** No test uses real keys or paid model calls. Provider unit tests
 mock `fetch`; browser tests mock `/api/ai/capture` or point a dummy OpenAI key
@@ -139,7 +152,9 @@ proposal API with that synthetic provider.
 - Reuse `.btn`, `.btn-primary`, `.btn-secondary`, `.card`, `.chip`,
   `.section-title` and `.nav-item` before adding classes.
 - Color carries meaning: `--success` done, `--warning` high priority, `--error`
-  overdue and failures, `--accent` focus.
+  overdue and failures, `--accent` focus and recognized tokens.
+- A message never moves the page: the board notice floats, and loading
+  placeholders take the exact place of what they stand for.
 - Every screen works at phone width without horizontal scroll; interactive
   elements have a visible focus state and an accessible name.
 
