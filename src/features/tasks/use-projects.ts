@@ -6,7 +6,7 @@ import type { Project } from "@/features/projects/schema";
 import { errorCode } from "@/lib/http";
 import { useVisibleRefresh } from "@/lib/use-visible-refresh";
 
-export function useProjects(onError: (code: string) => void, onDeleted: (id: string) => void) {
+export function useProjects(onError: (code: string) => void, onDeleted: (id: string) => void, onRefreshed?: (ids: ReadonlySet<string>) => void) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectError, setProjectError] = useState<string | null>(null);
   const clearProjectError = () => setProjectError(null);
@@ -14,14 +14,17 @@ export function useProjects(onError: (code: string) => void, onDeleted: (id: str
   const attempted = useRef(false);
   const report = useRef(onError);
   report.current = onError;
+  const refreshed = useRef(onRefreshed);
+  refreshed.current = onRefreshed;
   const load = useCallback(async (isCurrent: () => boolean) => {
     const readRevision = revision.current;
     try {
       const saved = await projectsApi.list();
-      if (isCurrent() && readRevision === revision.current) {
-        attempted.current = true;
-        setProjects(saved);
-      }
+      if (!isCurrent()) return;
+      if (readRevision !== revision.current) return true;
+      attempted.current = true;
+      setProjects(saved);
+      refreshed.current?.(new Set(saved.map((project) => project.id)));
     } catch {
       if (isCurrent() && !attempted.current) {
         attempted.current = true;

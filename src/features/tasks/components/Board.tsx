@@ -52,7 +52,9 @@ export function Board({ settings }: { settings: Settings }) {
     if (removed) inspector.setSelectedId((current) => current === id ? null : current);
     return removed;
   });
-  const { projects, projectError, clearProjectError, createProject, renameProject, deleteProject } = useProjects(fail, clearProject);
+  const { projects, projectError, clearProjectError, createProject, renameProject, deleteProject } = useProjects(fail, clearProject, (ids) => {
+    if (filter.kind === "project" && !ids.has(filter.id)) select({ kind: "all" });
+  });
   const view = useMemo(() => buildTaskView(tasks ?? [], filter, today ?? "", projects, query, sort),
     [tasks, filter, today, projects, query, sort]);
   const title = filter.kind === "project" ? projects.find((p) => p.id === filter.id)?.name ?? t.projects

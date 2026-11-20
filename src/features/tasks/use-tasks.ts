@@ -37,7 +37,8 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
     try {
       const saved = await tasksApi.list();
       // A response started before a confirmed local write may be stale.
-      if (!isCurrent() || readRevision !== revision.current) return;
+      if (!isCurrent()) return;
+      if (readRevision !== revision.current) return true;
       setConfirmed(saved);
       setLoadFailed(false);
       if (loaded.current) refreshed.current?.(new Set([...saved.map((task) => task.id), ...lastWrite.current.keys()]));

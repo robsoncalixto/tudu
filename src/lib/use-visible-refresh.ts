@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 const POLL_MS = 10_000;
 
-export function useVisibleRefresh(load: (isCurrent: () => boolean) => Promise<void>, attempt = 0) {
+export function useVisibleRefresh(load: (isCurrent: () => boolean) => Promise<boolean | void>, attempt = 0) {
   useEffect(() => {
     let active = true;
     let inFlight = false;
@@ -13,7 +13,7 @@ export function useVisibleRefresh(load: (isCurrent: () => boolean) => Promise<vo
       if (!active || document.visibilityState !== "visible") return;
       if (inFlight) { queued = true; return; }
       inFlight = true;
-      try { await load(() => active); }
+      try { if (await load(() => active)) queued = true; }
       finally {
         inFlight = false;
         if (queued) { queued = false; void refresh(); }
