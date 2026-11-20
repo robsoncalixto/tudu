@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { captureApi } from "@/features/capture/api";
 import { quickAddApi } from "@/features/quick-add/api";
 import { errorCode } from "@/lib/http";
+import { useVisibleRefresh } from "@/lib/use-visible-refresh";
 import type { TaskFilter } from "./selectors";
 import { tasksApi } from "./api";
 import { applyTaskMutations, type PendingTaskMutation } from "./optimistic-tasks";
@@ -14,9 +15,11 @@ import type { Task, TaskPatch } from "./schema";
  * caller can keep the user's text; `patch` and `remove` update optimistically,
  * roll back on failure and report the error code through `onError`.
  */
-export function useTasks(onError: (code: string) => void, onNext?: (task: Task) => void) {
+export function useTasks(onError: (code: string) => void, onNext?: (task: Task) => void, onRefreshed?: (currentIds: ReadonlySet<string>) => void, provider?: string) {
   const [confirmed, setConfirmed] = useState<Task[] | null>(null);
   const [pending, setPending] = useState<PendingTaskMutation[]>([]);
+  const revision = useRef(0);
+  const loaded = useRef(false);
   const lastWrite = useRef(new Map<string, Promise<boolean>>());
   const tasks = useMemo(() => confirmed && applyTaskMutations(confirmed, pending), [confirmed, pending]);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -26,14 +29,24 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   report.current = onError;
   const scheduled = useRef(onNext);
   scheduled.current = onNext;
+  const refreshed = useRef(onRefreshed);
+  refreshed.current = onRefreshed;
 
-  useEffect(() => {
-    let active = true;
-    tasksApi.list()
-      .then((saved) => { if (active) setConfirmed(saved); })
-      .catch(() => { if (active) setLoadFailed(true); });
-    return () => { active = false; };
-  }, [loadAttempt]);
+  const load = useCallback(async (isCurrent: () => boolean) => {
+    const readRevision = revision.current;
+    try {
+      const saved = await tasksApi.list();
+      // A response started before a confirmed local write may be stale.
+      if (!isCurrent() || readRevision !== revision.current) return;
+      setConfirmed(saved);
+      setLoadFailed(false);
+      if (loaded.current) refreshed.current?.(new Set([...saved.map((task) => task.id), ...lastWrite.current.keys()]));
+      loaded.current = true;
+    } catch {
+      if (isCurrent() && !loaded.current) setLoadFailed(true);
+    }
+  }, []);
+  useVisibleRefresh(load, loadAttempt);
 
   const retryLoad = useCallback(() => {
     setLoadFailed(false);
@@ -41,14 +54,19 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   }, []);
 
   useEffect(() => {
-    captureApi
-      .status()
-      .then(setAiEnabled)
-      .catch(() => setAiEnabled(false));
-  }, []);
+    let active = true;
+    captureApi.status()
+      .then((enabled) => { if (active) setAiEnabled(enabled); })
+      .catch(() => { if (active) setAiEnabled(false); });
+    return () => { active = false; };
+  }, [provider]);
 
   const append = useCallback((created: Task[]) => {
-    setConfirmed((current) => [...(current ?? []), ...created]);
+    revision.current++;
+    setConfirmed((current) => {
+      const existing = new Set(current?.map((task) => task.id));
+      return [...(current ?? []), ...created.filter((task) => !existing.has(task.id))];
+    });
     return created;
   }, []);
 
@@ -74,9 +92,11 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
       try {
         if (changes === null) {
           await tasksApi.remove(id);
+          revision.current++;
           setConfirmed((current) => current?.filter((task) => task.id !== id) ?? null);
         } else {
           const { task, nextTask } = await tasksApi.update(id, changes);
+          revision.current++;
           setConfirmed((current) => {
             if (!current) return null;
             const next = current.map((item) => item.id === id ? task : item);
@@ -103,6 +123,7 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   const remove = useCallback((id: string) => mutate(id, null), [mutate]);
 
   const clearProject = useCallback((id: string) => {
+    revision.current++;
     setConfirmed((current) => current?.map((task) => task.projectId === id ? { ...task, projectId: null } : task) ?? null);
   }, []);
   return { tasks, aiEnabled, loadFailed, retryLoad, add, capture, patch, remove, clearProject };

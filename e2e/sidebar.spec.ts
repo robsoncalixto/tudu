@@ -1,5 +1,5 @@
 import { dictionaries } from "../src/i18n";
-import { composer, expect, listProjects, openApp, openSection, row, rowTitles, saveSettings, seed, seedProjects, sidebar, taskRows, test, setLanguage } from "./support";
+import { composer, expect, listProjects, openApp, openSection, row, rowTitles, saveSettings, seed, seedProjects, sidebar, taskRows, test, setLanguage, TODAY } from "./support";
 
 for (const locale of ["en", "pt-BR"] as const) {
   const t = dictionaries[locale];
@@ -112,8 +112,8 @@ for (const locale of ["en", "pt-BR"] as const) {
 }
 
 for (const language of [
-  { code: "en", settings: "Settings", back: "Back to tasks", today: "Today" },
-  { code: "pt-BR", settings: "Configurações", back: "Voltar às tarefas", today: "Hoje" },
+  { code: "en", settings: "Settings", today: "Today" },
+  { code: "pt-BR", settings: "Configurações", today: "Hoje" },
 ]) {
   test(`Settings returns to the active list, search, sort and draft in ${language.code}`, async ({ page, request }) => {
     await seed(request, [{ title: "Review agenda", due: "2026-11-17" }]);
@@ -125,7 +125,8 @@ for (const language of [
     await sort.selectOption("priority");
     await composer(page).fill("Private draft");
     await sidebar(page).getByRole("link", { name: language.settings }).click();
-    await page.getByRole("link", { name: language.back }).click();
+    await expect(page).toHaveURL("/settings");
+    await page.goBack();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(language.today);
     await expect(page.getByRole("searchbox")).toHaveValue("agenda");
     await expect(sort).toHaveValue("priority");
@@ -264,7 +265,7 @@ test.describe("Sidebar", () => {
     await page.getByRole("combobox", { name: "Language", exact: true }).selectOption("pt-BR");
     await page.getByRole("button", { name: "Save settings", exact: true }).click();
     await expect(page.getByRole("status")).toHaveText("Configurações salvas.");
-    await page.getByRole("link", { name: "Voltar às tarefas", exact: true }).click();
+    await sidebar(page).getByRole("button", { name: /^Todas as tarefas,/ }).click();
 
     await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");
     await expect(page.getByText("terça-feira", { exact: true })).toBeVisible();
@@ -287,7 +288,7 @@ test.describe("Sidebar", () => {
     await sidebar(page).getByRole("link", { name: "Configurações", exact: true }).click();
     await page.getByRole("combobox", { name: "Idioma", exact: true }).selectOption("en");
     await page.getByRole("button", { name: "Salvar configurações", exact: true }).click();
-    await page.getByRole("link", { name: "Back to tasks", exact: true }).click();
+    await sidebar(page).getByRole("button", { name: /^All tasks,/ }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByRole("button", { name: "Add", exact: true })).toBeVisible();
   });
@@ -373,5 +374,50 @@ for (const language of [
     await expect(page.getByText(language.empty, { exact: true })).toBeVisible();
     await sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) }).click();
     expect(await rowTitles(openSection(page))).toEqual(["Client work", "Unassigned work"]);
+  });
+}
+
+for (const l of [
+  { locale: "en", settings: "Settings", agent: "Assistant", log: "Work log", today: /^Today,/, all: /^All tasks,/,
+    projects: "Projects", collapse: "Collapse sidebar", expand: "Expand sidebar", more: "More views", project: /^Project: Release,/ },
+  { locale: "pt-BR", settings: "Configurações", agent: "Assistente", log: "Resumo diário", today: /^Hoje,/, all: /^Todas as tarefas,/,
+    projects: "Projetos", collapse: "Recolher barra lateral", expand: "Expandir barra lateral", more: "Mais visualizações", project: /^Projeto: Release,/ },
+] as const) {
+  test(`shares navigation, task views and sidebar preferences across screens in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    const [project] = await seedProjects(request, ["Release"]);
+    await seed(request, [{ title: "Planning", projectId: project.id, tags: ["launch"], plannedFor: TODAY }]);
+    await page.goto("/");
+    const nav = sidebar(page);
+    const projects = nav.getByRole("button", { name: l.projects, exact: true });
+    await projects.click();
+    await expect(projects).toHaveAttribute("aria-expanded", "false");
+    await nav.getByRole("button", { name: l.collapse }).click();
+    for (const name of [l.settings, l.agent, l.log]) {
+      const link = nav.getByRole("link", { name, exact: true });
+      await link.click();
+      await expect(link).toHaveAttribute("aria-current", "page");
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
+      await expect(nav.getByRole("button", { name: l.expand })).toBeVisible();
+      await expect(nav.getByRole("button", { name: l.all })).not.toHaveAttribute("aria-current", "page");
+    }
+    await nav.getByRole("button", { name: l.expand }).click();
+    await expect(projects).toHaveAttribute("aria-expanded", "false");
+    await projects.click();
+    await nav.getByRole("button", { name: l.project }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Release");
+    await nav.getByRole("link", { name: l.agent }).click();
+    await nav.getByRole("button", { name: /^#launch/ }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("#launch");
+    await page.setViewportSize({ width: 320, height: 760 });
+    await nav.getByRole("link", { name: l.settings }).click();
+    await expect(nav.getByRole("link", { name: l.settings })).toHaveAttribute("aria-current", "page");
+    await nav.getByRole("button", { name: l.more }).click();
+    await nav.getByRole("link", { name: l.log }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(l.log);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+    await nav.getByRole("button", { name: l.today }).click();
+    await expect(nav.getByRole("button", { name: l.today })).toHaveAttribute("aria-current", "page");
+    await expect(row(page, "Planning")).toBeVisible();
   });
 }

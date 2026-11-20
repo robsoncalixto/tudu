@@ -1,4 +1,4 @@
-import { sidebar, closeTaskPanel, expect, listTasks, openApp, openSection, doneSection, row, seed, seedProjects, taskDetails, taskPanel, test, TODAY, YESTERDAY, setLanguage } from "./support";
+import { sidebar, closeTaskPanel, composer, expect, listTasks, openApp, openSection, doneSection, taskRows, row, seed, seedProjects, taskDetails, taskPanel, test, TODAY, YESTERDAY, setLanguage } from "./support";
 
 for (const language of [
   { code: "en", add: "Add subtask", repeat: "Repeat: Never", newStep: "New subtask" },
@@ -417,4 +417,79 @@ test("deletes after a pending row edit and keeps that edit if deletion fails", a
   await expect(editing.getByRole("combobox", { name: "Priority" })).toHaveValue("high");
   expect((await listTasks(request))[0]).toMatchObject({ id: task.id, priority: "high" });
   expect(methods).toEqual(["PATCH", "DELETE"]);
+});
+
+test("delete confirmation stays open while saving and restores keyboard focus after success", async ({ page, request }) => {
+  await seed(request, [{ title: "Only task" }]);
+  await openApp(page);
+  let release = () => {};
+  const wait = new Promise<void>((resolve) => { release = resolve; });
+  let requested = false;
+  await page.route("**/api/tasks/*", async (route) => { requested = true; await wait; await route.continue(); });
+  await taskDetails(row(page, "Only task")).press("Enter");
+  await taskPanel(page).getByRole("button", { name: "Delete task", exact: true }).press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Delete this task?", exact: true });
+  await dialog.getByRole("button", { name: "Delete task", exact: true }).click();
+  await expect.poll(() => requested).toBe(true);
+  await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeDisabled();
+  await page.keyboard.press("Escape"); await expect(dialog).toBeVisible();
+  release(); await expect(dialog).toBeHidden();
+  await expect(composer(page)).toBeFocused();
+  expect(await listTasks(request)).toEqual([]);
+});
+
+for (const action of ["complete", "delete"]) {
+  test(`closed Done tasks cannot receive focus after ${action} even when the browser reports their layout rectangles`, async ({ page, request }) => {
+    const tasks = await seed(request, [{ title: "Open task" }, { title: "Hidden completed task" }]);
+    await request.patch(`/api/tasks/${tasks[1].id}`, { data: { done: true } });
+    await openApp(page);
+    // WebKit can report layout rectangles for descendants of closed details.
+    await doneSection(page).getByRole("listitem", { name: "Hidden completed task", exact: true, includeHidden: true }).evaluate((element) => {
+      Object.defineProperty(element, "getClientRects", { value: () => [new DOMRect(0, 0, 200, 80)] });
+    });
+    const task = row(page, "Open task");
+    if (action === "complete") await task.getByRole("checkbox", { name: "Mark as done" }).press("Space");
+    else {
+      await taskDetails(task).press("Enter");
+      await taskPanel(page).getByRole("button", { name: "Delete task", exact: true }).press("Enter");
+      await page.getByRole("dialog", { name: "Delete this task?" }).getByRole("button", { name: "Delete task", exact: true }).click();
+    }
+    await expect(composer(page)).toBeFocused();
+    const saved = await listTasks(request);
+    expect(saved.every((task) => task.done)).toBe(true);
+    expect(saved).toHaveLength(action === "complete" ? 2 : 1);
+  });
+}
+
+test("Space on a checkbox moves focus to the next row while saving and respects later navigation", async ({ page, request }) => {
+  const [first] = await seed(request, [{ title: "First", due: TODAY }, { title: "Second", due: "2026-11-18" }]);
+  await openApp(page);
+  let release = () => {};
+  const wait = new Promise<void>((resolve) => { release = resolve; });
+  await page.route(`**/api/tasks/${first.id}`, async (route) => {
+    await wait;
+    await route.continue();
+  });
+  const checkbox = page.getByRole("listitem", { name: "First", exact: true }).getByRole("checkbox");
+  await checkbox.focus();
+  await checkbox.press("Space");
+  try {
+    await expect(page.getByRole("listitem", { name: "Second", exact: true })).toBeFocused();
+    await page.getByRole("searchbox").focus();
+  } finally { release(); }
+  await expect.poll(async () => (await listTasks(request)).find((task) => task.id === first.id)?.done).toBe(true);
+  await expect(page.getByRole("searchbox")).toBeFocused();
+});
+
+test("renaming the final search match keeps keyboard focus on the board", async ({ page, request }) => {
+  const [first] = await seed(request, [{ title: "Searchable title" }, { title: "Other title" }]);
+  await openApp(page);
+  await page.getByRole("searchbox").fill("Searchable");
+  await page.getByRole("button", { name: "Searchable title", exact: true }).click();
+  const edit = page.getByRole("textbox", { name: "Edit title" });
+  await edit.fill("Renamed task");
+  await edit.press("Enter");
+  await expect(composer(page)).toBeFocused();
+  await expect(taskRows(openSection(page))).toHaveCount(0);
+  await expect.poll(async () => (await listTasks(request)).find((task) => task.id === first.id)?.title).toBe("Renamed task");
 });

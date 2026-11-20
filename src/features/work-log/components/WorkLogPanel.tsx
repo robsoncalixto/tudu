@@ -3,7 +3,6 @@
 import type { Settings } from "@/features/settings/schema";
 import { errorMessage } from "@/i18n";
 import { useLocale } from "@/i18n/use-locale";
-import { Icon } from "@/lib/Icon";
 import { GROUPINGS, type Grouping } from "../schema";
 import { groupLabel, taskTimeLabel, totalTimeLabel } from "../format";
 import { totalWorkLogTime } from "../selectors";
@@ -15,11 +14,7 @@ export function WorkLogPanel({ settings }: { settings: Settings }) {
   const unavailable = log.loading || log.loadError || !log.completed.length;
   return (
     <main className="page-content work-log-page">
-      <header className="page-header">
-        <a className="back-link" href="/"><Icon name="arrow-left" />{t.backToTasks}</a>
-        <span className="brand-name">TUDU</span>
-      </header>
-      <h1>{t.workLog}</h1>
+    <h1>{t.workLog}</h1>
       <p className="hint">{t.workLogHint}</p>
       <div className="card work-log-controls">
         <label>{t.workLogDay}

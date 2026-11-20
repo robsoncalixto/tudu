@@ -1,11 +1,13 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { errorCode } from "@/lib/http";
 import { settingsApi } from "./api";
 import { settingsChanges, settingsSchema, type Settings, type SettingsPatch } from "./schema";
 
 export function useSettings(initial: Settings) {
+  const router = useRouter();
   const [saved, setSaved] = useState(initial);
   const [draft, setDraft] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -33,6 +35,7 @@ export function useSettings(initial: Settings) {
       setSaved(next);
       setDraft(next);
       setSavedNotice(true);
+      router.refresh();
     } catch (error) { setError(errorCode(error)); }
     finally { setBusy(false); }
   }

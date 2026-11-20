@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { quickAddApi } from "@/features/quick-add/api";
 import type { Dictionary, Locale } from "@/i18n";
@@ -16,12 +17,11 @@ interface Props {
   dateFormat: DateFormat;
   text: string;
   onTextChange: (value: string) => void;
-  onOpenSettings: () => void;
   aiEnabled: boolean;
   onSubmit: (mode: ComposerMode, text: string) => Promise<boolean>;
 }
 
-export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onTextChange, onOpenSettings, onSubmit }: Props) {
+export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onTextChange, onSubmit }: Props) {
   const [busy, setBusy] = useState<ComposerMode | null>(null);
   const [help, setHelp] = useState<"shortcuts" | "ai" | null>(null);
   const [mod, setMod] = useState("Ctrl");
@@ -100,7 +100,7 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
       </div>
       {!aiEnabled && <section className="capture-guide" id="ai-capture-guide" aria-label={t.aiSetup} hidden={help !== "ai"}>
         <p>{t.aiOff}</p>
-        <a href="/settings?from=tasks#ai-settings-heading" onClick={onOpenSettings}>{t.settings}</a>
+        <Link href="/settings#ai-settings-heading">{t.settings}</Link>
       </section>}
     </form>
   );

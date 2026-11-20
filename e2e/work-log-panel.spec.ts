@@ -3,8 +3,8 @@ import type { Task } from "../src/features/tasks/schema";
 import { expect, listTasks, saveSettings, seed, seedProjects, sidebar, test, TODAY, YESTERDAY } from "./support";
 
 const languages = [
-  { locale: "en", title: "Work log", day: "Completed on", group: "Group by", noProject: "No project", noTags: "No tags", count: "2 tasks completed", text: "Copy plain text", markdown: "Copy Markdown", copied: "Work log copied.", ai: "Summarize with AI", summary: "AI summary", ready: "AI summary ready. Review it before sharing.", paragraph: "Shipped the report and reviewed the release.", busy: "The AI is busy right now. Try again in a moment.", empty: "No tasks completed on this day.", refresh: "Refresh", loadFailed: "Couldn't load the work log. Try Refresh.", manual: "Select and copy this work log", copyFailed: "Copying was blocked. Select and copy the work log below.", back: "Back to tasks" },
-  { locale: "pt-BR", title: "Resumo diário", day: "Concluídas em", group: "Agrupar por", noProject: "Sem projeto", noTags: "Sem etiquetas", count: "2 tarefas concluídas", text: "Copiar texto simples", markdown: "Copiar Markdown", copied: "Resumo diário copiado.", ai: "Resumir com IA", summary: "Resumo com IA", ready: "Resumo com IA pronto. Revise antes de compartilhar.", paragraph: "Enviei o relatório e revisei a versão.", busy: "A IA está ocupada agora. Tente de novo em instantes.", empty: "Nenhuma tarefa concluída neste dia.", refresh: "Atualizar", loadFailed: "Não foi possível carregar o resumo diário. Tente Atualizar.", manual: "Selecione e copie este resumo diário", copyFailed: "A cópia foi bloqueada. Selecione e copie o resumo diário abaixo.", back: "Voltar às tarefas" },
+  { locale: "en", title: "Work log", day: "Completed on", group: "Group by", noProject: "No project", noTags: "No tags", count: "2 tasks completed", text: "Copy plain text", markdown: "Copy Markdown", copied: "Work log copied.", ai: "Summarize with AI", summary: "AI summary", ready: "AI summary ready. Review it before sharing.", paragraph: "Shipped the report and reviewed the release.", busy: "The AI is busy right now. Try again in a moment.", empty: "No tasks completed on this day.", refresh: "Refresh", loadFailed: "Couldn't load the work log. Try Refresh.", manual: "Select and copy this work log", copyFailed: "Copying was blocked. Select and copy the work log below.", all: /^All tasks,/ },
+  { locale: "pt-BR", title: "Resumo diário", day: "Concluídas em", group: "Agrupar por", noProject: "Sem projeto", noTags: "Sem etiquetas", count: "2 tarefas concluídas", text: "Copiar texto simples", markdown: "Copiar Markdown", copied: "Resumo diário copiado.", ai: "Resumir com IA", summary: "Resumo com IA", ready: "Resumo com IA pronto. Revise antes de compartilhar.", paragraph: "Enviei o relatório e revisei a versão.", busy: "A IA está ocupada agora. Tente de novo em instantes.", empty: "Nenhuma tarefa concluída neste dia.", refresh: "Atualizar", loadFailed: "Não foi possível carregar o resumo diário. Tente Atualizar.", manual: "Selecione e copie este resumo diário", copyFailed: "A cópia foi bloqueada. Selecione e copie o resumo diário abaixo.", all: /^Todas as tarefas,/ },
 ] as const;
 
 async function prepare(page: Page, request: APIRequestContext, locale: "en" | "pt-BR", withTime = false) {
@@ -44,7 +44,7 @@ for (const l of languages) {
     await expect(page.getByText(l.empty, { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: l.text, exact: true })).toBeDisabled();
     expect(await listTasks(request)).toEqual(saved);
-    await page.getByRole("link", { name: l.back, exact: true }).click();
+    await sidebar(page).getByRole("button", { name: l.all }).click();
     await expect(sidebar(page).getByRole("link", { name: l.title, exact: true })).toBeVisible();
   });
 
@@ -140,7 +140,7 @@ for (const l of languages) {
     await expect(page.getByRole("heading", { name: l.count, exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: l.ai, exact: true })).toBeDisabled();
     for (const control of [
-      page.getByRole("link", { name: l.back, exact: true }),
+      sidebar(page).getByRole("button", { name: l.all }),
       page.getByLabel(l.day, { exact: true }),
       page.getByRole("combobox", { name: l.group, exact: true }),
       page.getByRole("button", { name: l.refresh, exact: true }),

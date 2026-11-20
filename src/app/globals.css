@@ -84,24 +84,7 @@ button, a, select, summary, input, textarea, label {
   touch-action: manipulation;
 }
 
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: var(--touch-target);
-  padding: 8px 13px 8px 10px;
-  border: 1px solid var(--control-border);
-  border-radius: var(--r-lg);
-  color: var(--text);
-  background: var(--surface);
-  font: 600 14px/20px var(--heading);
-  text-decoration: none;
-}
-
-.back-link:hover { background: var(--surface-muted); border-color: var(--text-muted); }
-.back-link:active, .btn-secondary:enabled:active { background: var(--border); }
-.back-link svg { flex-shrink: 0; }
+.btn-secondary:enabled:active { background: var(--border); }
 
 .form-control, .select-control {
   max-width: 100%;
@@ -190,63 +173,39 @@ p {
   outline-offset: -2px;
 }
 
-.task-shortcuts {
+.task-delete-dialog {
   width: min(560px, calc(100% - 2 * var(--s-md)));
   max-height: calc(100% - 2 * var(--s-md));
   overflow-y: auto;
   color: var(--text);
 }
 
-.task-shortcuts::backdrop {
+.task-delete-dialog::backdrop {
   background: rgb(0 0 0 / 0.4);
 }
 
-.task-shortcuts h2 {
+.task-delete-dialog h2 {
   margin: 0 0 var(--s-md);
   font-family: var(--heading);
 }
 
-.task-shortcuts p,
-.task-shortcuts dl {
-  margin-bottom: var(--s-md);
-}
+.task-delete-dialog p { margin-bottom: var(--s-md); }
 
-.task-shortcuts dl > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-sm);
-  margin-bottom: var(--s-sm);
-}
-
-.task-shortcuts dt {
-  flex: 0 1 150px;
-  font-family: var(--heading);
-}
-
-.task-shortcuts kbd {
-  font: inherit;
-}
-
-.task-shortcuts dd {
-  flex: 1 1 180px;
-  margin: 0;
-}
-
-.shortcut-actions {
+.task-delete-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-sm);
 }
 
-.shortcut-error { color: var(--error); }
+.task-delete-error { color: var(--error); }
 
-.shortcut-danger {
+.task-delete-danger {
   color: var(--error);
   background: var(--surface);
   border: 1px solid var(--error);
 }
 
-.shortcut-danger:not(:disabled):hover {
+.task-delete-danger:not(:disabled):hover {
   background: color-mix(in srgb, var(--error) 8%, var(--surface));
 }
 
@@ -494,24 +453,6 @@ label.chip:hover {
   padding: var(--s-lg) 0 var(--s-xl);
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--s-md);
-}
-
-.page-header a {
-  text-decoration: none;
-}
-
-.brand-name { font: 800 23px/1 var(--heading); letter-spacing: -.055em; }
-
-.page-header .brand-name {
-  color: var(--text);
-}
-
 .page-content h1 {
   font: 650 36px/43px var(--heading);
   margin: var(--s-lg) 0;
@@ -663,18 +604,6 @@ label.chip:hover {
   gap: var(--s-sm);
   font-family: var(--heading);
   min-width: 0;
-}
-
-.agent-header-tools {
-  display: flex;
-  align-items: center;
-  gap: var(--s-md);
-}
-
-@media (max-width: 480px) {
-  .agent-header-tools { gap: var(--s-sm); }
-  .agent-header-tools .btn { width: var(--touch-target); padding-inline: 0; }
-  .agent-header-tools .btn span { display: none; }
 }
 
 .agent-request textarea {

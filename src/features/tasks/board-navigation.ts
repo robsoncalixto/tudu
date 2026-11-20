@@ -35,22 +35,8 @@ const filterSchema = z.discriminatedUnion("kind", [
 ]);
 export type TaskFilter = z.infer<typeof filterSchema>;
 
-const boardReturnSchema = z.object({
-  startView: settingsSchema.shape.startView.unwrap(),
-  filter: filterSchema,
-  query: z.string(),
-  sort: taskSortSchema.optional().catch(undefined),
-  text: z.string(),
-});
-export type BoardReturn = z.infer<typeof boardReturnSchema>;
+export type StartView = z.infer<typeof settingsSchema.shape.startView>;
 
-export function restoreBoardReturn(serialized: string | null, startView: BoardReturn["startView"]): BoardReturn | null {
-  if (!serialized) return null;
-  try {
-    const previous = boardReturnSchema.parse(JSON.parse(serialized));
-    if (previous.startView === startView) return previous;
-    return { ...previous, startView, filter: { kind: startView }, query: "" };
-  } catch {
-    return null;
-  }
+export function boardFilterForPage(page: string, filter: TaskFilter): TaskFilter | null {
+  return page === "/" ? filter : null;
 }

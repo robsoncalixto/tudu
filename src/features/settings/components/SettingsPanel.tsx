@@ -13,21 +13,14 @@ const themeIcons = { system: "monitor", light: "sun", dark: "moon" } as const;
 interface Props {
   initial: Settings;
   ai: AiPublicConfiguration;
-  returnTo?: string;
 }
 
-export function SettingsPanel({ initial, ai, returnTo = "/" }: Props) {
+export function SettingsPanel({ initial, ai }: Props) {
   const { saved, draft, change, save, busy, dirty, error, savedNotice } = useSettings(initial);
   const { t } = useLocale(saved.locale);
   return (
     <main className="page-content settings-page">
-      <header className="page-header settings-navigation">
-        <a className="back-link" href={returnTo}><Icon name="arrow-left" />
-          {returnTo === "/agent" ? t.backToAssistant : t.backToTasks}
-        </a>
-        <span className="brand-name">TUDU</span>
-      </header>
-      <h1>{t.settings}</h1>
+    <h1>{t.settings}</h1>
       <form className="card" onSubmit={(event) => { event.preventDefault(); void save(); }}>
         <fieldset disabled={busy} className="settings-fields">
           <legend className="sr-only">{t.preferences}</legend>

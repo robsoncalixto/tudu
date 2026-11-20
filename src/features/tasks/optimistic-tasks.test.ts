@@ -24,3 +24,14 @@ describe("optimistic task changes", () => {
     expect(applyTaskMutations(confirmed, [])).toEqual(confirmed);
   });
 });
+
+it("reapplies pending changes while preserving fresh changes made elsewhere", () => {
+  const first = taskSchema.parse({ id: "one", title: "Remote title", notes: "Earlier notes", done: false,
+    createdAt: "2026-11-17T12:00:00Z", completedAt: null });
+  const deleted = { ...first, id: "two", title: "Locally removed" };
+  const added = { ...first, id: "three", title: "Added elsewhere" };
+  const result = applyTaskMutations([first, deleted, added], [
+    { id: "one", patch: { notes: "Pending notes" } }, { id: "two", patch: null },
+  ]);
+  expect(result).toEqual([{ ...first, notes: "Pending notes" }, added]);
+});

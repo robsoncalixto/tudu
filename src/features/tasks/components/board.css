@@ -4,6 +4,7 @@
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100dvh;
 }
+.board-content { display: contents; }
 .sidebar {
   position: sticky;
   top: 0;
@@ -43,14 +44,12 @@
 }
 .nav-item.is-active svg { color: color-mix(in srgb, var(--brand-accent) 37%, var(--neutral)); }
 .nav-text { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.nav-count, .shortcut-help kbd {
+.nav-count {
   margin-inline-start: auto; font: 500 12px/18px var(--body); color: var(--rail-muted);
   font-variant-numeric: tabular-nums;
 }
 .nav-item.is-active .nav-count { color: var(--neutral); }
 .sidebar-actions { margin-top: auto; padding-top: 11px; border-top: 1px solid var(--rail-rule); }
-.shortcut-help span { white-space: nowrap; }
-.shortcut-help kbd { border: 1px solid var(--rail-rule); border-radius: var(--r-sm); padding: 0 5px; }
 .sidebar .more-views { display: none; }
 .sidebar-width, .nav-add-project { width: var(--touch-target); justify-content: center; padding: 0; }
 .sidebar-width svg { transform: rotate(180deg); }
