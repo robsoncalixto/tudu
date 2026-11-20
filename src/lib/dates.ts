@@ -70,3 +70,15 @@ export function longDate(today: string, locale: Locale, format: DateFormat = "lo
     rest: format === "iso" ? today : new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", timeZone: "UTC" }).format(date),
   };
 }
+
+/** A day named for a list of choices: "Tomorrow · Nov 18" or "Friday · Nov 20". */
+export function dayChoiceLabel(iso: string, today: string, locale: Locale, t: Dictionary): string {
+  const diff = dayDiff(iso, today);
+  const date = parse(iso);
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(date);
+  const name = diff === 0 ? t.today : diff === 1 ? t.tomorrow : weekday.charAt(0).toLocaleUpperCase(locale) + weekday.slice(1);
+  const day = new Intl.DateTimeFormat(locale, {
+    day: "numeric", month: "short", ...(date.getFullYear() !== parse(today).getFullYear() ? { year: "numeric" } : {}),
+  }).format(date);
+  return `${name} · ${day}`;
+}

@@ -18,6 +18,13 @@ export function isForToday(task: Task, today: string): boolean {
   return Boolean(today) && (isPlannedForToday(task, today) || (due !== null && due <= today));
 }
 
+export function isInFilter(task: Task, filter: TaskFilter, today: string): boolean {
+  if (filter.kind === "today") return isForToday(task, today);
+  if (filter.kind === "tag") return task.tags.includes(filter.tag);
+  if (filter.kind === "project") return task.projectId === filter.id;
+  return true;
+}
+
 function searchText(text: string) {
   return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 }
@@ -56,12 +63,7 @@ export function buildTaskView(tasks: Task[], filter: TaskFilter, today: string =
   }
   const words = searchText(query).trim().split(/\s+/u).filter(Boolean);
   const projectNames = new Map(projects.map((project) => [project.id, project.name]));
-  const scope = tasks.filter((task) => {
-    if (filter.kind === "today") return isForToday(task, today);
-    if (filter.kind === "tag") return task.tags.includes(filter.tag);
-    if (filter.kind === "project") return task.projectId === filter.id;
-    return true;
-  });
+  const scope = tasks.filter((task) => isInFilter(task, filter, today));
   const scopeOpen = scope.filter((task) => !task.done).length;
   const visible = words.length ? scope.filter((task) => {
     const content = searchText([task.title, task.notes, ...task.tags.map((tag) => `#${tag}`),
