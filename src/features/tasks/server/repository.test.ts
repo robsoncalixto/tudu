@@ -74,6 +74,9 @@ describe.each(backends)("repository on $name", (backend) => {
     const initial = await repo.readDayOrder(day);
     expect(initial.taskIds).toEqual([first.id, second.id]);
     await repo.setDayOrder({ day, taskIds: [second.id, first.id], expected: initial.taskIds });
+    const changed = await repo.updateTaskIfUnchanged(first.id, { plannedFor: day }, first);
+    expect(changed?.dayRanks).toEqual({ [day]: 1 });
+
     await expect(repo.setDayOrder({ day, taskIds: [first.id, second.id], expected: initial.taskIds })).rejects.toThrow();
     const [added] = await repo.addTasks([{ ...input("Added"), plannedFor: day }]);
     expect((await repo.readDayOrder(day)).taskIds).toEqual([second.id, first.id, added.id]);

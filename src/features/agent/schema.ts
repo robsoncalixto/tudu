@@ -66,7 +66,7 @@ export const proposalRequestSchema = z.object({
 }).strict().refine((input) => input.review || input.text.length > 0);
 export const taskReviewResponseSchema = z.object({ summary: z.string(), proposals: z.array(proposalSchema) });
 export const proposalDecisionSchema = z.discriminatedUnion("decision", [
-  z.object({ decision: z.literal("accept"), action: proposalActionSchema }).strict(),
+  z.object({ decision: z.literal("accept"), action: proposalActionSchema, today: z.iso.date().optional() }).strict(),
   z.object({ decision: z.literal("reject") }).strict(),
   z.object({ decision: z.literal("recheck") }).strict(),
   z.object({ decision: z.literal("dismiss") }).strict(),

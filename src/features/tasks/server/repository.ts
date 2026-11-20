@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { dayOrderSchema, taskSchema, type DayOrder, type DayOrderRequest, type Task, type TaskCreationInput, type TaskInput, type TaskPatch, type TaskUpdate } from "../schema";
+import { dayOrderSchema, taskContentSchema, taskSchema, type DayOrder, type DayOrderRequest, type Task, type TaskCreationInput, type TaskInput, type TaskPatch, type TaskUpdate } from "../schema";
 import { rankDayTasks } from "../day-order";
 import { isForToday } from "../selectors";
 import { nextDueDate, validateRepeat } from "../recurrence";
@@ -19,13 +19,12 @@ function dayTaskList(tasks: Task[], day: string) {
 export function createRepository(store: TaskStore) {
   function updateTaskWithNext(id: string, patch: TaskPatch, expected?: Task): Promise<TaskUpdate | null> {
     return store.modify(id, (current) => {
-      if (expected && JSON.stringify(taskSchema.parse(current)) !== JSON.stringify(taskSchema.parse(expected))) throw new TaskChangedError();
+      if (expected && !same(taskContentSchema.parse(current), taskContentSchema.parse(expected))) throw new TaskChangedError();
       const task: Task = { ...current, ...patch };
       if (task.plannedFor !== current.plannedFor || task.due !== current.due || task.done !== current.done) {
         task.planChangedAt = new Date().toISOString();
-        const moved = task.plannedFor !== current.plannedFor;
         task.dayRanks = Object.fromEntries(Object.entries(current.dayRanks).filter(([day]) =>
-          !task.done && isForToday(task, day) && (!moved || (day !== current.plannedFor && day !== task.plannedFor))));
+          !task.done && isForToday(task, day)));
       }
       validateRepeat(task.due, task.repeat);
       const completing = !current.done && task.done;
@@ -61,7 +60,7 @@ export function createRepository(store: TaskStore) {
         const rank = new Map(order.taskIds.map((id, index) => [id, index]));
         if (ids.length !== rank.size || ids.some((id) => !rank.has(id)) ||
           (expected && !same(ids, expected)) ||
-          (expectedTasks && !same(current.map((task) => taskSchema.parse(task)), expectedTasks.map((task) => taskSchema.parse(task))))) {
+          (expectedTasks && !same(current.map((task) => taskContentSchema.parse(task)), expectedTasks.map((task) => taskContentSchema.parse(task))))) {
           throw new TaskChangedError();
         }
         return current.map((task) => ({ ...task, dayRanks: { ...task.dayRanks, [day]: rank.get(task.id)! } }));

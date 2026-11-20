@@ -1,4 +1,4 @@
-import { taskInputSchema, taskSchema, type DayOrder, type Task, type TaskPatch } from "@/features/tasks/schema";
+import { taskInputSchema, taskContentSchema, type DayOrder, type Task, type TaskPatch } from "@/features/tasks/schema";
 import type { Project } from "@/features/projects/schema";
 import { AgentError, proposalActionSchema, type Proposal, type ProposalAction, type ProposalDecision, type ProposalResult } from "../schema";
 import type { ProposalRepository } from "./repository";
@@ -36,9 +36,9 @@ function matches(proposal: Proposal, action: ProposalAction, result: ProposalRes
   if (action.kind === "order_day" && result.kind === "day_order") {
     return result.order.day === action.day && same(result.order.taskIds, action.items.map(({ taskId }) => taskId));
   }
-  if (action.kind === "flag_duplicate" && result.kind === "task") return same(result.task, proposal.taskBefore);
+  if (action.kind === "flag_duplicate" && result.kind === "task") return proposal.taskBefore !== null && same(taskContentSchema.parse(result.task), taskContentSchema.parse(proposal.taskBefore));
   if (action.kind === "update_task" && result.kind === "task" && proposal.taskBefore) {
-    return same(taskSchema.parse(result.task), taskSchema.parse({ ...proposal.taskBefore, ...action.patch }));
+    return same(taskContentSchema.parse(result.task), taskContentSchema.parse({ ...proposal.taskBefore, ...action.patch }));
   }
   return result.kind === "project" && (action.kind === "create_project" || action.kind === "rename_project")
     && result.project.id === (action.kind === "create_project" ? proposal.id : action.projectId) && result.project.name === action.name;
@@ -96,6 +96,7 @@ export function decideProposal(repository: ProposalRepository, id: string, decis
     if (decision.decision === "reject") return save({ ...proposal, status: "rejected", decidedAt: new Date().toISOString() });
     if (decision.decision !== "accept") throw new AgentError("agent_invalid_proposal");
     const approved = editedAction(proposal, decision.action);
+    if (approved.kind === "order_day" && approved.day !== decision.today) throw new AgentError("agent_stale");
     const applying = await save({ ...proposal, status: "applying", approved, decidedAt: new Date().toISOString() });
     try {
       const result = await execute(applying, approved, operations);

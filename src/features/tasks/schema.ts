@@ -101,6 +101,7 @@ export const taskSchema = taskInputSchema.extend({
 });
 
 export type Task = z.infer<typeof taskSchema>;
+export const taskContentSchema = taskSchema.omit({ dayRanks: true, planChangedAt: true });
 
 // Old JSON files and proposal snapshots used minutes; never reinterpret them as hours.
 export const storedTaskSchema = z.object({

@@ -13,8 +13,8 @@ export function TaskOrderControls({ order, id, t }: { order: DayOrderControl; id
         event.dataTransfer.effectAllowed = "move";
       }}>{position + 1}</span>
     <button type="button" className="icon-btn task-order-up" aria-label={t.moveTaskUp} title={t.moveTaskUp}
-      disabled={!order.ready || position === 0} onClick={() => order.move(id, position - 1)}><Icon name="chevron-down" size={16} /></button>
+      aria-disabled={!order.ready || position === 0} onClick={() => order.move(id, position - 1)}><Icon name="chevron-down" size={16} /></button>
     <button type="button" className="icon-btn" aria-label={t.moveTaskDown} title={t.moveTaskDown}
-      disabled={!order.ready || position + 1 === order.size} onClick={() => order.move(id, position + 1)}><Icon name="chevron-down" size={16} /></button>
+      aria-disabled={!order.ready || position + 1 === order.size} onClick={() => order.move(id, position + 1)}><Icon name="chevron-down" size={16} /></button>
   </div>;
 }

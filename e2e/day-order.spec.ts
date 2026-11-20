@@ -13,6 +13,7 @@ for (const locale of ["en", "pt-BR"] as const) {
     await expect(page.getByRole("combobox", { name: t.sortTasks })).toHaveValue("manual");
     await row(page, "Third task").getByRole("button", { name: t.moveTaskUp }).press("Enter");
     await expect.poll(() => rowTitles(openSection(page))).toEqual(["First task", "Third task", "Second task"]);
+    await expect(row(page, "Third task").getByRole("button", { name: t.moveTaskUp })).toBeFocused();
     await row(page, "Second task").getByRole("img", { name: t.taskOrderPosition(3) }).dragTo(row(page, "First task"));
     await expect.poll(() => rowTitles(openSection(page))).toEqual(["Second task", "First task", "Third task"]);
     await page.reload();
@@ -49,3 +50,17 @@ for (const locale of ["en", "pt-BR"] as const) {
     await expect.poll(() => rowTitles(openSection(page))).toEqual(["Second task", "First task"]);
   });
 }
+
+test("refreshes a stale board order before retrying a move", async ({ page, request }) => {
+  await saveSettings(request, { startView: "today" });
+  await request.post("/api/tasks", { data: ["First", "Second", "Third"].map((title) => ({ title, plannedFor: TODAY })) });
+  const [first, second, third] = await listTasks(request);
+  await page.goto("/");
+  await expect(row(page, "Third")).toBeVisible();
+  const external = await request.post("/api/tasks/order", { data: { day: TODAY, taskIds: [third.id, first.id, second.id] } });
+  expect(external.ok()).toBe(true);
+  await row(page, "Third").getByRole("button", { name: dictionaries.en.moveTaskUp }).click();
+  await expect.poll(() => rowTitles(openSection(page))).toEqual(["Third", "First", "Second"]);
+  await row(page, "First").getByRole("button", { name: dictionaries.en.moveTaskUp }).click();
+  await expect.poll(() => rowTitles(openSection(page))).toEqual(["First", "Third", "Second"]);
+});
