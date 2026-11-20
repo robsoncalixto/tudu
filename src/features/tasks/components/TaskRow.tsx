@@ -1,13 +1,14 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { dayDiff, dueLabel, type DateFormat } from "@/lib/dates";
+import { dayDiff, dueLabel, longDate, type DateFormat } from "@/lib/dates";
 import { Icon } from "@/lib/Icon";
 import type { Dictionary, Locale } from "@/i18n";
 import type { Project } from "@/features/projects/schema";
 import { PRIORITIES, type Priority, type Task } from "../schema";
 import { nextSubtaskVisibility, stepProgress, type SubtaskVisibility } from "../checklist";
 import { repeatDescription } from "../recurrence";
+import { isPlannedForToday } from "../selectors";
 import type { TaskActions } from "./TaskList";
 import { TaskContextMenu } from "./TaskContextMenu";
 import { TaskChecklist } from "./TaskChecklist";
@@ -38,9 +39,10 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
   const steps = stepProgress(task.steps);
   const nextVisibility = nextSubtaskVisibility(visibility, steps);
   const visibilityLabel = { all: t.showSubtasks, open: t.hideDoneSubtasks, collapsed: t.hideSubtasks }[nextVisibility];
-  const planned = Boolean(today) && task.plannedFor === today;
+  const planned = isPlannedForToday(task, today);
+  const earlierPlan = planned && task.plannedFor && task.plannedFor < today ? task.plannedFor : null;
   const planLabel = planned ? t.removeFromToday : t.addToToday;
-  const hasMetadata = project || task.tags.length > 0 || steps.total > 0 || task.repeat;
+  const hasMetadata = project || task.tags.length > 0 || steps.total > 0 || task.repeat || earlierPlan;
 
   function addSubtask() {
     setVisibility("all"); setAdding(true);
@@ -79,6 +81,9 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
         )}
         {task.notes && <p className="task-notes is-preview">{task.notes}</p>}
         {hasMetadata && <div className="task-metadata">
+          {earlierPlan && <span><Icon name="sun" size={13} />
+            <time dateTime={earlierPlan}>{t.plannedEarlier(longDate(earlierPlan, locale, dateFormat).rest)}</time>
+          </span>}
           {project && <span><Icon name="folder" size={13} />{project.name}</span>}
           {task.tags.map((tag) => <button type="button" key={tag} onClick={() => onTag(tag)}>#{tag}</button>)}
           {steps.total > 0 && <button type="button" className="subtask-count" id={`${subtasksId}-toggle`} aria-label={visibilityLabel}

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PRIORITIES, stepSchema, taskDraftSchema, taskPatchSchema, taskSchema, taskUpdateSchema } from "@/features/tasks/schema";
-import { projectIdSchema, projectSchema } from "@/features/projects/schema";
+import { projectIdSchema, projectInputSchema, projectSchema } from "@/features/projects/schema";
 
 export const listTasksToolSchema = z.object({
   state: z.enum(["all", "open", "done"]).default("all"),
@@ -10,13 +10,14 @@ export const listTasksToolSchema = z.object({
   dueFrom: z.iso.date().optional().describe("Inclusive earliest due date; excludes undated tasks."),
   dueTo: z.iso.date().optional().describe("Inclusive latest due date; excludes undated tasks."),
   plannedFor: z.iso.date().optional(),
-  today: z.iso.date().optional().describe("Tasks selected for this day, due on it, or overdue, as in Today view."),
+  today: z.iso.date().optional().describe("Tasks planned for this day, unfinished tasks planned before it, and tasks due on or before it."),
   query: z.string().trim().min(1).max(300).optional().describe("Case-insensitive title or notes search."),
   offset: z.number().int().min(0).default(0),
   limit: z.number().int().min(1).max(200).default(100),
 }).strict().refine((input) => !input.dueFrom || !input.dueTo || input.dueFrom <= input.dueTo);
 export type TaskFilters = z.infer<typeof listTasksToolSchema>;
 export const listProjectsToolSchema = z.object({}).strict();
+export const createProjectToolSchema = projectInputSchema.strict();
 
 // Clients cannot know which ids are free, so new steps may omit theirs and the server assigns one.
 const toolStepsSchema = z.array(stepSchema.extend({
@@ -37,6 +38,7 @@ export const deleteTaskToolSchema = completeTaskToolSchema.extend({
 }).strict();
 
 export const listProjectsOutputSchema = z.object({ projects: z.array(projectSchema) });
+export const createProjectOutputSchema = z.object({ project: projectSchema });
 export const listTasksOutputSchema = z.object({
   tasks: z.array(taskSchema),
   total: z.number().int().min(0),

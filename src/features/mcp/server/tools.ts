@@ -2,19 +2,21 @@ import { randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { taskDraftSchema, taskPatchSchema, type Task, type TaskDraft, type TaskPatch, type TaskUpdate } from "@/features/tasks/schema";
-import type { Project } from "@/features/projects/schema";
-import { addTasksToolSchema, completeTaskToolSchema, deleteTaskToolSchema, listTasksToolSchema, listProjectsToolSchema, updateTaskToolSchema } from "../schema";
+import type { Project, ProjectInput } from "@/features/projects/schema";
+import { addTasksToolSchema, completeTaskToolSchema, createProjectToolSchema, deleteTaskToolSchema, listTasksToolSchema, listProjectsToolSchema, updateTaskToolSchema } from "../schema";
 import { filterTasks } from "../selectors";
 
 export interface TaskOperations {
   listTasks(): Promise<Task[]>;
+  isForToday(task: Task, today: string): boolean;
   listProjects(): Promise<Project[]>;
+  createProject(input: ProjectInput): Promise<Project>;
   addTasks(inputs: TaskDraft[]): Promise<Task[]>;
   updateTask(id: string, patch: TaskPatch, expected?: Task): Promise<TaskUpdate | null>;
   deleteTask(id: string): Promise<boolean>;
 }
 export class McpToolError extends Error {
-  constructor(public readonly code: "not_found" | "invalid_project" | "invalid_repeat" | "task_changed") { super(code); }
+  constructor(public readonly code: "not_found" | "invalid_project" | "duplicate_project" | "invalid_repeat" | "task_changed") { super(code); }
 }
 
 async function result(name: string, operation: () => Promise<Record<string, unknown>>): Promise<CallToolResult> {
@@ -39,9 +41,14 @@ export function createTaskTools(operations: TaskOperations) {
       listProjectsToolSchema.parse(raw);
       return { projects: await operations.listProjects() };
     }),
+    create_project: (raw: unknown) => result("create_project", async () => {
+      const parsed = createProjectToolSchema.safeParse(raw);
+      if (!parsed.success) throw new McpToolError("invalid_project");
+      return { project: await operations.createProject(parsed.data) };
+    }),
     list_tasks: (raw: unknown) => result("list_tasks", async () => {
       const filters = listTasksToolSchema.parse(raw);
-      return filterTasks(await operations.listTasks(), filters);
+      return filterTasks(await operations.listTasks(), filters, operations.isForToday);
     }),
     add_tasks: (raw: unknown) => result("add_tasks", async () => {
       const drafts = addTasksToolSchema.parse(raw).tasks.map((draft) => taskDraftSchema.strict().parse(withStepIds(draft)));

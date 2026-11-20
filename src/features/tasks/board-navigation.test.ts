@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { restoreBoardReturn, restoreSidebarLayout, type BoardReturn, type TaskFilter } from "./board-navigation";
+import { restoreBoardReturn, restoreSidebarLayout, restoreTaskSort, TASK_SORTS, type BoardReturn, type TaskFilter } from "./board-navigation";
 
 const previous: BoardReturn = {
   startView: "all", filter: { kind: "today" }, query: "draft", sort: "priority", text: "Follow up",
 };
+
+describe("task sort preference", () => {
+  it.each(TASK_SORTS)("restores %s", (sort) => expect(restoreTaskSort(sort)).toBe(sort));
+  it.each([null, "", "unknown", "{}"])("falls back to due date for %s", (sort) => expect(restoreTaskSort(sort)).toBe("due"));
+});
 
 describe("sidebar layout", () => {
   it("restores independent sections and compact mode", () => {
@@ -30,7 +35,7 @@ describe("returning to the board", () => {
       .toEqual({ ...previous, startView: "today", filter: { kind: "today" }, query: "" });
   });
 
-  it.each([null, "{", "[]", JSON.stringify({ ...previous, sort: "unknown" }),
+  it.each([null, "{", "[]",
     JSON.stringify({ ...previous, filter: { kind: "project", id: "missing" } }),
   ])("ignores missing or invalid navigation state", (serialized) => {
     expect(restoreBoardReturn(serialized, "all")).toBeNull();

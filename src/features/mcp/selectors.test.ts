@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { taskSchema } from "@/features/tasks/schema";
-import { listTasksToolSchema } from "./schema";
-import { filterTasks } from "./selectors";
+import { taskSchema, type Task } from "@/features/tasks/schema";
+import { isForToday } from "@/features/tasks/selectors";
+import { listTasksToolSchema, type TaskFilters } from "./schema";
+import { filterTasks as filterWithToday } from "./selectors";
 
 const projectId = "00000000-0000-4000-8000-000000000001";
 const task = (id: string) => taskSchema.parse({ id, title: id, done: false, createdAt: "2026-11-01T12:00:00Z", completedAt: null });
@@ -11,6 +12,7 @@ const tasks = [
   { ...task("Selected"), plannedFor: "2026-11-17" },
   { ...task("Later"), due: "2026-11-20", tags: ["work"] }, task("Undated"),
 ];
+const filterTasks = (candidates: Task[], filters: TaskFilters) => filterWithToday(candidates, filters, isForToday);
 describe("MCP task filters", () => {
   it("combines state, tags, project, priority and case-insensitive text without changing stored order", () => {
     const before = structuredClone(tasks);
@@ -23,6 +25,14 @@ describe("MCP task filters", () => {
     expect(filterTasks(tasks, listTasksToolSchema.parse({ dueFrom: "2026-11-17", dueTo: "2026-11-20" })).tasks).toEqual([tasks[0], tasks[3]]);
     expect(filterTasks(tasks, listTasksToolSchema.parse({ plannedFor: "2026-11-17" })).tasks).toEqual([tasks[2]]);
     expect(filterTasks(tasks, listTasksToolSchema.parse({ today: "2026-11-17" })).tasks).toEqual(tasks.slice(0, 3));
+  });
+  it("carries open plans forward but keeps completed and future plans on their original days", () => {
+    const candidates = [
+      { ...task("Carry-over"), plannedFor: "2026-11-16" },
+      { ...task("Done"), plannedFor: "2026-11-16", done: true },
+      { ...task("Future"), plannedFor: "2026-11-18" },
+    ];
+    expect(filterTasks(candidates, listTasksToolSchema.parse({ today: "2026-11-17" })).tasks).toEqual([candidates[0]]);
   });
   it("reports filtered totals and pagination without losing tasks", () => {
     const first = filterTasks(tasks, listTasksToolSchema.parse({ limit: 2 }));
