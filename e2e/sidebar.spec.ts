@@ -1,3 +1,4 @@
+import { createTask, fixture, pending } from "./agent-support";
 import { dictionaries } from "../src/i18n";
 import { composer, expect, listProjects, openApp, openSection, row, rowTitles, saveSettings, seed, seedProjects, sidebar, taskRows, test, setLanguage, TODAY } from "./support";
 
@@ -415,9 +416,53 @@ for (const l of [
     await nav.getByRole("button", { name: l.more }).click();
     await nav.getByRole("link", { name: l.log }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(l.log);
+    await expect(nav.getByRole("button", { name: l.more })).toBeFocused();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
     await nav.getByRole("button", { name: l.today }).click();
     await expect(nav.getByRole("button", { name: l.today })).toHaveAttribute("aria-current", "page");
     await expect(row(page, "Planning")).toBeVisible();
   });
 }
+
+test("returns from a reloaded Settings page with the board search and task draft", async ({ page, request }) => {
+  await seed(request, [{ title: "First match", plannedFor: TODAY }]);
+  await page.goto("/");
+  await sidebar(page).getByRole("button", { name: /^Today,/ }).click();
+  await page.getByRole("searchbox").fill("first");
+  const draft = page.getByRole("textbox", { name: /Write a task/ });
+  await draft.fill("Finish the remaining work");
+  await sidebar(page).getByRole("link", { name: "Settings" }).click();
+  await expect(page).toHaveURL("/settings");
+  await page.reload();
+  await page.goBack();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Today");
+  await expect(page.getByRole("searchbox")).toHaveValue("first");
+  await expect(draft).toHaveValue("Finish the remaining work");
+});
+
+test("refreshes the board after accepting an Assistant proposal", async ({ page, request }) => {
+  await saveSettings(request, { aiProvider: "openai", aiModel: "test-agent" });
+  await fixture(request, [createTask("Accepted work")]);
+  await page.goto("/");
+  await sidebar(page).getByRole("link", { name: "Assistant" }).click();
+  await page.getByRole("textbox", { name: /What should the assistant organize|What do you need|Describe|Tell the assistant|What would you like/i }).fill("Add the approved report");
+  await page.getByRole("button", { name: "Suggest changes", exact: true }).click();
+  const card = pending(page, "en").getByRole("article", { name: "Accepted work" });
+  await card.getByRole("button", { name: "Accept and save", exact: true }).click();
+  await expect(card).toHaveCount(0);
+  await sidebar(page).getByRole("button", { name: /^All tasks,/ }).click();
+  await expect(row(page, "Accepted work")).toBeVisible({ timeout: 5_000 });
+});
+
+test("shows and retries sidebar data errors from Settings", async ({ page }) => {
+  await page.route("**/api/tasks", (route) => route.fulfill({ status: 503, json: { error: "generic" } }));
+  await page.route("**/api/projects", (route) => route.fulfill({ status: 503, json: { error: "generic" } }));
+  await page.goto("/settings");
+  const nav = sidebar(page);
+  await expect(nav.getByRole("alert")).toHaveCount(2);
+  await page.unroute("**/api/tasks");
+  await page.unroute("**/api/projects");
+  await nav.getByRole("button", { name: /Retry.*tasks/ }).click();
+  await nav.getByRole("button", { name: /Retry.*projects/ }).click();
+  await expect(nav.getByRole("alert")).toHaveCount(0);
+});

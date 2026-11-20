@@ -1,6 +1,4 @@
-import { durationHoursSchema, type DurationDraft, type DurationUnit } from "./schema";
-
-const HOURS_PER_UNIT: Record<DurationUnit, number> = { minutes: 1 / 60, hours: 1, days: 12 };
+import { HOURS_PER_UNIT, durationHoursSchema, type DurationDraft, type DurationUnit } from "./schema";
 
 export function durationToHours(value: string, unit: DurationUnit) {
   return durationHoursSchema.safeParse(value.trim() === "" ? null : Number(value) * HOURS_PER_UNIT[unit]);

@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { captureApi } from "@/features/capture/api";
 import { quickAddApi } from "@/features/quick-add/api";
 import { errorCode } from "@/lib/http";
+import type { Project } from "@/features/projects/schema";
+import type { CaptureDefaults } from "@/features/capture/schema";
+import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import { useVisibleRefresh } from "@/lib/use-visible-refresh";
-import type { TaskFilter } from "./selectors";
 import { tasksApi } from "./api";
 import { applyTaskMutations, type PendingTaskMutation } from "./optimistic-tasks";
 import type { Task, TaskPatch } from "./schema";
@@ -71,15 +73,11 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
     return created;
   }, []);
 
-  const add = useCallback((text: string, today: string, filter: TaskFilter) => {
-    const context = filter.kind === "today" ? { plannedFor: today }
-      : filter.kind === "project" ? { projectId: filter.id }
-      : filter.kind === "tag" ? { tag: filter.tag } : {};
-    return quickAddApi.create(text, today, context).then(append);
-  }, [append]);
+  const add = useCallback((text: string, today: string, defaults: QuickAddDefaults, projects: Project[]) =>
+    quickAddApi.create(text, today, defaults, projects).then(append), [append]);
 
   const capture = useCallback(
-    (text: string, today: string) => captureApi.capture(text, today).then(append),
+    (text: string, today: string, defaults: CaptureDefaults) => captureApi.capture(text, today, defaults).then(append),
     [append],
   );
 
