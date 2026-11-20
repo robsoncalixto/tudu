@@ -29,6 +29,8 @@
   display: flex;
   align-items: center;
   gap: var(--s-sm);
+  width: 100%;
+  text-align: left;
   min-height: var(--touch-target);
   padding: 8px 12px;
   border-radius: var(--r-md);
@@ -36,11 +38,10 @@
 }
 .task-context-menu button:hover, .task-context-menu button:focus-visible { background: var(--selected-surface); }
 .task-context-menu button:focus-visible { outline-offset: -2px; }
-.task-context-menu kbd { margin-inline-start: var(--s-md); color: var(--text-muted); font: inherit; }
 
 .list-head, .task {
   display: grid;
-  grid-template-columns: var(--row-target) minmax(0, 1fr) 134px 106px calc(3 * var(--row-target) + 8px);
+  grid-template-columns: var(--row-target) minmax(0, 1fr) 134px 106px calc(4 * var(--row-target) + 12px);
   column-gap: 12px;
   align-items: center;
   padding-inline: var(--s-md);
@@ -218,7 +219,7 @@
 .task[data-priority="high"] .priority-mark { background: var(--warning); }
 
 .task-tools { justify-content: flex-end; gap: 4px; }
-.task-tools button {
+.task-tools > button {
   display: grid;
   place-items: center;
   width: var(--row-target);
@@ -226,11 +227,11 @@
   border-radius: var(--r-md);
   color: var(--text-muted);
 }
-.task-tools button:hover, .task-tools .task-disclosure[aria-expanded="true"] {
+.task-tools > button:hover, .task-tools .task-disclosure[aria-expanded="true"] {
   color: var(--text);
   background: var(--secondary);
 }
-.task-tools button:disabled { opacity: .5; cursor: not-allowed; }
+.task-tools > button:disabled { opacity: .5; cursor: not-allowed; }
 .task-tools .plan-today[aria-pressed="true"] {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface));
@@ -351,7 +352,7 @@
     grid-template-columns: var(--row-target) minmax(0, 1fr) var(--row-target) var(--row-target);
     grid-template-areas:
       "check title add disclosure"
-      "metadata metadata metadata plan"
+      "metadata metadata actions plan"
       "subtasks subtasks subtasks subtasks";
     gap: 0 4px;
     padding: 12px;
@@ -360,6 +361,7 @@
   .task-body { grid-area: title; align-self: start; }
   .task-tools { display: contents; }
   .subtask-add { grid-area: add; align-self: start; }
+  .task-tools .task-more { grid-area: actions; margin-top: 5px; }
   .task-disclosure { grid-area: disclosure; align-self: start; }
   .task-tools .plan-today { grid-area: plan; margin-top: 5px; }
   .task-schedule { grid-area: metadata; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; margin-top: 5px; }
