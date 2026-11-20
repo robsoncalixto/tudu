@@ -4,6 +4,7 @@ import { isForToday } from "@/features/tasks/selectors";
 import { createTaskTools, McpToolError, type TaskOperations } from "./tools";
 
 const task = taskSchema.parse({ id: "t1", title: "Report", done: false, createdAt: "2026-11-01T12:00:00Z", completedAt: null });
+const project = { id: "00000000-0000-4000-8000-000000000001", name: "Demo" };
 let operations: TaskOperations;
 let tools: ReturnType<typeof createTaskTools>;
 beforeEach(() => {
@@ -11,6 +12,7 @@ beforeEach(() => {
     listTasks: vi.fn(async () => [task]),
     isForToday,
     listProjects: vi.fn(async () => []),
+    createProject: vi.fn(async () => project),
     addTasks: vi.fn(async () => [task]),
     updateTask: vi.fn(async () => ({ task, nextTask: null })),
     deleteTask: vi.fn(async () => true),
@@ -19,6 +21,21 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); });
 describe("MCP task tools", () => {
+  it("creates a project through its repository port", async () => {
+    expect((await tools.create_project({ name: " Demo " })).structuredContent).toEqual({ project });
+    expect(operations.createProject).toHaveBeenCalledWith({ name: "Demo" });
+  });
+
+  it.each([{}, { name: " " }, { name: "x".repeat(81) }, { name: 1 }])("rejects malformed project input", async (input) => {
+    expect(await tools.create_project(input)).toMatchObject({ isError: true, structuredContent: { error: "invalid_project" } });
+    expect(operations.createProject).not.toHaveBeenCalled();
+  });
+
+  it("returns a stable duplicate project code", async () => {
+    vi.mocked(operations.createProject).mockRejectedValueOnce(new McpToolError("duplicate_project"));
+    expect(await tools.create_project({ name: "Demo" })).toMatchObject({ isError: true, structuredContent: { error: "duplicate_project" } });
+  });
+
   it("lists existing projects through their repository port", async () => {
     expect((await tools.list_projects({})).structuredContent).toEqual({ projects: [] });
     expect(operations.listProjects).toHaveBeenCalledOnce();
