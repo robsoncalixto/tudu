@@ -81,6 +81,11 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Hover and focus changes are quick, never abrupt. Reduced motion turns them off below. */
+button, a, .chip {
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s, opacity 0.12s;
+}
+
 button, a, select, summary, input, textarea, label {
   touch-action: manipulation;
 }
@@ -591,6 +596,10 @@ kbd {
   margin: var(--s-sm) 0 var(--s-md);
   resize: vertical;
 }
+
+.agent-keys { display: flex; flex-wrap: wrap; gap: 4px var(--s-md); margin: calc(-1 * var(--s-sm)) 0 var(--s-md); font-size: 12px; }
+.agent-keys > span { display: inline-flex; align-items: center; gap: 4px; }
+.agent-keys kbd { min-width: 20px; height: 20px; padding: 0 5px; font-size: 11px; }
 
 .proposal-actions {
   display: flex;

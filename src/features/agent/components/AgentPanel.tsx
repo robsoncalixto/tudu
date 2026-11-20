@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { shortcutsApi } from "@/features/shortcuts/api";
 import { errorMessage } from "@/i18n";
 import { useLocale } from "@/i18n/use-locale";
 import { formatTimestamp } from "@/lib/dates";
@@ -16,7 +17,10 @@ export function AgentPanel({ settings }: { settings: Settings }) {
   const today = useToday();
   const agent = useAgent();
   const root = useRef<HTMLElement>(null);
+  const note = useRef<HTMLTextAreaElement>(null);
+  const [mac, setMac] = useState(false);
   const [historyLimit, setHistoryLimit] = useState(10);
+  useEffect(() => { setMac(/Mac|iPhone|iPad/.test(navigator.userAgent)); }, []);
   const automatic = agent.state?.automaticReview;
   const automaticOutcome = automatic?.skipReason
     ? `${t.automaticReviewOutcomes.skipped} · ${t.automaticReviewSkipReasons[automatic.skipReason]}`
@@ -28,17 +32,40 @@ export function AgentPanel({ settings }: { settings: Settings }) {
       ? { ...decision, today: today ?? undefined } : decision;
     if (await agent.decide(id, approval)) requestAnimationFrame(() => root.current?.querySelector<HTMLElement>(`[data-proposal-id="${id}"]`)?.focus());
   }
+  async function send(review = false) {
+    if (!today) return;
+    await agent.propose(today, review);
+    // The field was disabled while the answer was prepared; the next note starts where the last one was written.
+    requestAnimationFrame(() => { if (document.activeElement === document.body) note.current?.focus(); });
+  }
   const cards = (proposals: Proposal[]) => proposals.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal}
     projects={agent.state?.projects ?? []} locale={locale} t={t} busy={busy} saving={agent.busyId === proposal.id} error={agent.errors[proposal.id]} onDecision={decide} />);
   return <main id="main-content" tabIndex={-1} className="page-content agent-page" ref={root} aria-busy={busy}>
     <h1>{t.agent}</h1><p className="agent-intro">{t.agentIntro}</p>
-    <form className="card agent-request" onSubmit={(event) => { event.preventDefault(); if (today) void agent.propose(today); }}>
+    <form className="card agent-request" onSubmit={(event) => { event.preventDefault(); void send(); }}>
       <label htmlFor="agent-note">{t.agentPrompt}</label>
-      <textarea className="form-control" id="agent-note" value={agent.text} maxLength={8000} rows={4} placeholder={t.agentPromptHint}
-        disabled={busy} onChange={(event) => agent.setText(event.target.value)} />
+      <textarea className="form-control" id="agent-note" ref={note} value={agent.text} maxLength={8000} rows={4} placeholder={t.agentPromptHint}
+        disabled={busy} aria-describedby="agent-keys" onChange={(event) => agent.setText(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing) return;
+          const keys = shortcutsApi.match("assistant", event);
+          if (keys.includes("sendNote")) {
+            event.preventDefault();
+            if (agent.state?.enabled && agent.text.trim()) void send();
+          } else if (keys.includes("recallNote") && !agent.text && agent.lastNote) {
+            event.preventDefault();
+            agent.setText(agent.lastNote);
+          }
+        }} />
+      <p className="hint agent-keys" id="agent-keys">
+        {shortcutsApi.keys("assistant", mac).map(({ id, caps }) => <span key={id}>
+          {caps.map((cap) => <kbd key={cap}>{Object.hasOwn(t.shortcuts.keys, cap) ? t.shortcuts.keys[cap as keyof typeof t.shortcuts.keys] : cap}</kbd>)}
+          {t.shortcuts.labels[id]}
+        </span>)}
+      </p>
       <div className="proposal-actions">
         <button type="button" className="btn btn-primary" disabled={!agent.state?.enabled || !today || busy}
-          aria-describedby={!agent.state?.enabled ? "agent-ai-hint" : undefined} onClick={() => { if (today) void agent.propose(today, true); }}>
+          aria-describedby={!agent.state?.enabled ? "agent-ai-hint" : undefined} onClick={() => { void send(true); }}>
           {t.agentReviewTasks}
         </button><button type="submit" className="btn btn-secondary" disabled={!agent.state?.enabled || !today || !agent.text.trim() || busy} aria-describedby={!agent.state?.enabled ? "agent-ai-hint" : undefined}>
         {agent.generating ? t.agentProposing : t.agentPropose}
