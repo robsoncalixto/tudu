@@ -1,4 +1,99 @@
 import { sidebar, addTask, composer, expect, listTasks, openApp, openSection, taskRows, row, rowTitles, saveSettings, seed, seedProjects, taskDetails, taskPanel, test, TODAY, TOMORROW, setLanguage } from "./support";
+import { dictionaries } from "../src/i18n";
+
+for (const locale of ["en", "pt-BR"] as const) {
+  test(`restores all composer details after a settings reload and clears them after saving in ${locale}`, async ({ page, request }) => {
+    const t = dictionaries[locale];
+    await saveSettings(request, { locale, defaultPriority: "medium" });
+    await page.goto("/");
+    const entry = composer(page);
+    const priority = page.getByRole("combobox", { name: t.composerPriority });
+    const due = page.getByLabel(t.composerDue);
+    const tag = page.getByLabel(t.composerTag);
+    const preview = page.getByRole("list", { name: t.quickTaskPreview });
+    await entry.fill("Review release");
+    await priority.selectOption("high");
+    await due.fill(TOMORROW);
+    await tag.fill("release");
+    await tag.press("Enter");
+    await tag.fill(" Team ");
+    await sidebar(page).getByRole("link", { name: t.settings }).click();
+    await expect(page).toHaveURL("/settings");
+    await page.reload();
+    await page.goBack();
+    await expect(entry).toHaveValue("Review release");
+    await expect(priority).toHaveValue("high");
+    await expect(due).toHaveValue(TOMORROW);
+    await expect(preview).toContainText("#release");
+    await expect(tag).toHaveValue(" Team ");
+    await page.route("**/api/tasks", (route) => route.request().method() === "POST"
+      ? route.fulfill({ status: 500, json: { error: "generic" } }) : route.continue());
+    await entry.press("Enter");
+    await expect(page.getByRole("status")).toHaveText(t.errors.generic);
+    await expect(tag).toHaveValue(" Team ");
+    expect(await listTasks(request)).toEqual([]);
+    await page.unroute("**/api/tasks");
+    await entry.press("Enter");
+    await expect(entry).toHaveValue("");
+    expect(await listTasks(request)).toMatchObject([
+      { title: "Review release", priority: "high", due: TOMORROW, tags: ["release", "team"] },
+    ]);
+    await page.reload();
+    await expect(entry).toHaveValue("");
+    await expect(priority).toHaveValue("medium");
+    await expect(due).toHaveValue("");
+    await expect(tag).toHaveValue("");
+    await expect(preview).toHaveCount(0);
+  });
+}
+
+for (const scenario of ["clear the submitted draft", "keep newer input with full session storage"] as const) {
+  test(`a late save can ${scenario} after changing the start view`, async ({ page, request }) => {
+    await openApp(page);
+    const entry = composer(page);
+    const tag = page.getByLabel("New task tag");
+    const newerInput = scenario === "keep newer input with full session storage";
+    if (newerInput) {
+      await entry.fill("Earlier draft");
+      await page.evaluate(() => {
+        const write = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (key, value) {
+          if (this === sessionStorage && key === "tudu.boardReturn") throw new DOMException("Full", "QuotaExceededError");
+          write.call(this, key, value);
+        };
+      });
+    }
+    await entry.fill("Send report");
+    await tag.fill("report");
+    await page.getByLabel("New task due date").fill(TODAY);
+    let release = () => {};
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    await page.route("**/api/tasks", async (route) => {
+      if (route.request().method() === "POST") await held;
+      await route.continue();
+    });
+    try {
+      const posting = page.waitForRequest((request) => request.method() === "POST" && request.url().endsWith("/api/tasks"));
+      await entry.press("Enter");
+      await posting;
+      await sidebar(page).getByRole("link", { name: "Settings" }).click();
+      await page.getByRole("combobox", { name: "Start view" }).selectOption("today");
+      await page.getByRole("button", { name: "Save settings" }).click();
+      await expect(page.getByRole("status")).toHaveText("Settings saved.");
+      await page.goBack();
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText("Today");
+      await expect(entry).toHaveValue("Send report");
+      await expect(tag).toHaveValue("report");
+      if (newerInput) await tag.fill("next");
+    } finally {
+      release();
+    }
+    await expect(row(page, "Send report")).toBeVisible();
+    await expect(entry).toHaveValue(newerInput ? "Send report" : "");
+    await expect(tag).toHaveValue(newerInput ? "next" : "");
+    expect(await listTasks(request)).toMatchObject([{ title: "Send report", tags: ["report"], due: TODAY }]);
+  });
+}
 
 test.describe("Composer", () => {
   test("Portuguese ordinals stay in ordinary task titles without adding a due date", async ({ page, request }) => {
