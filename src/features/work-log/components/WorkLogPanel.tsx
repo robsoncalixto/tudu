@@ -5,12 +5,13 @@ import { errorMessage } from "@/i18n";
 import { useLocale } from "@/i18n/use-locale";
 import { Icon } from "@/lib/Icon";
 import { GROUPINGS, type Grouping } from "../schema";
-import { groupLabel } from "../format";
+import { groupLabel, taskTimeLabel, totalTimeLabel } from "../format";
+import { totalWorkLogTime } from "../selectors";
 import { useWorkLog } from "../use-work-log";
 
 export function WorkLogPanel({ settings }: { settings: Settings }) {
-  const { t } = useLocale(settings.locale);
-  const log = useWorkLog(t);
+  const { t, locale } = useLocale(settings.locale);
+  const log = useWorkLog(t, locale);
   const unavailable = log.loading || log.loadError || !log.completed.length;
   return (
     <main className="page-content work-log-page">
@@ -50,6 +51,7 @@ export function WorkLogPanel({ settings }: { settings: Settings }) {
       </label>}
       {log.loading ? <p>{t.loading}</p> : !log.loadError && <>
         <h2 className="section-title">{t.countCompleted(log.completed.length)}</h2>
+        {log.completed.length > 0 && <p>{totalTimeLabel(totalWorkLogTime(log.completed), t, locale)}</p>}
         {log.grouping === "tag" && log.completed.some((task) => task.tags.length > 1) && <p className="hint">{t.workLogTagsHint}</p>}
         {log.summary && <section className="card work-log-summary" aria-labelledby="work-log-summary-heading">
           <h2 className="section-title" id="work-log-summary-heading">{t.aiWorkLogSummary}</h2>
@@ -58,7 +60,11 @@ export function WorkLogPanel({ settings }: { settings: Settings }) {
         {!log.completed.length ? <div className="card empty"><p>{t.emptyWorkLog}</p></div>
           : log.groups.map((group) => <section className="card work-log-group" key={group.key}>
             {groupLabel(group, t) && <h3>{groupLabel(group, t)}</h3>}
-            <ul>{group.tasks.map((task) => <li key={task.id}>{task.title}</li>)}</ul>
+            <ul>{group.tasks.map((task) => {
+              const time = taskTimeLabel(task, t, locale);
+              return <li key={task.id}>{task.title}{time && <span className="hint"> — {time}</span>}</li>;
+            })}</ul>
+            {group.kind !== "none" && <p className="hint">{totalTimeLabel(totalWorkLogTime(group.tasks), t, locale)}</p>}
           </section>)}
       </>}
     </main>
