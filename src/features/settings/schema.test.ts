@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS, settingsChanges, settingsPatchSchema, settingsSchema 
 
 describe("settings schema", () => {
   it("supplies usable defaults for a new or older installation", () => {
-    expect(settingsSchema.parse({})).toEqual({ locale: "en", theme: "system", defaultPriority: "medium", startView: "all", dateFormat: "locale", aiProvider: "anthropic", aiModel: "" });
+    expect(settingsSchema.parse({})).toEqual({ locale: "en", theme: "system", defaultPriority: "medium", startView: "all", dateFormat: "locale", aiProvider: "anthropic", aiModel: "", automaticReview: { enabled: false, enabledAt: null, time: "09:00", timeZone: "UTC" } });
     expect(settingsSchema.parse({ locale: "pt-BR" })).toEqual({ ...DEFAULT_SETTINGS, locale: "pt-BR" });
   });
   it("keeps partial updates partial instead of inserting unrelated defaults", () => {

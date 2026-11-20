@@ -4,6 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import type { Dictionary } from "@/i18n";
 import { Icon, type IconName } from "@/lib/Icon";
 import type { TaskFilter, TaskView } from "../selectors";
+import { usePendingSuggestions } from "../use-pending-suggestions";
 import { useSidebarLayout } from "../use-sidebar-layout";
 import { ProjectManager, type ProjectDialogMode, type ProjectManagerProps } from "./ProjectManager";
 
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function Sidebar({ t, view, filter, projectManager, onFilter, onOpenSettings }: Props) {
+  const count = usePendingSuggestions();
   const [expanded, setExpanded] = useState(false);
   const [projectDialog, setProjectDialog] = useState<ProjectDialogMode | null>(null);
   const { layout, compact, update, toggleGroup } = useSidebarLayout();
@@ -66,7 +68,10 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, onOpenSetti
       <div id="nav-library" className="nav-library">
         <div className="nav-tools">
           <a href="/work-log" className="nav-item" aria-label={t.workLog} title={t.workLog}><Icon name="book" /><span>{t.workLog}</span></a>
-          <a href="/agent" className="nav-item" aria-label={t.agent} title={t.agent}><Icon name="assistant" /><span>{t.agent}</span></a>
+          <a href="/agent" className="nav-item" aria-label={t.agent} title={t.agent}
+            aria-description={count ? t.pendingAgentCount(count) : undefined}><Icon name="assistant" /><span>{t.agent}</span>
+            {count > 0 && <span className="nav-count">{count}</span>}
+          </a>
         </div>
         <NavGroup name="projects" label={t.projects} icon="folder" open={layout.projects && !compact}
           currentLabel={projectName} onToggle={() => toggleGroup("projects")} action={
