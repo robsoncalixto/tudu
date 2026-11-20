@@ -7,6 +7,7 @@ import { THEMES, type Settings } from "../schema";
 import { useSettings } from "../use-settings";
 import { AI_PROVIDERS, type AiPublicConfiguration } from "@/features/ai/schema";
 import { Icon } from "@/lib/Icon";
+import { weekdayName } from "@/lib/dates";
 
 const themeIcons = { system: "monitor", light: "sun", dark: "moon" } as const;
 
@@ -60,6 +61,18 @@ export function SettingsPanel({ initial, ai }: Props) {
               <option value="iso">{t.isoDateFormat}</option>
             </select>
           </label>
+          <fieldset className="work-capacity">
+            <legend className="section-title">{t.workCapacity}</legend>
+            <div className="work-days">{[1, 2, 3, 4, 5, 6, 0].map((day) => <label key={day}>
+              <input type="checkbox" checked={draft.workingDays.includes(day)}
+                disabled={draft.workingDays.length === 1 && draft.workingDays.includes(day)}
+                onChange={(event) => change({ workingDays: event.target.checked
+                  ? [...draft.workingDays, day].sort() : draft.workingDays.filter((workingDay) => workingDay !== day) })} />
+              {weekdayName(day, saved.locale)}
+            </label>)}</div>
+            <label>{t.workHoursPerDay}<input type="number" required min={0.25} max={24} step="any" className="form-control"
+              value={draft.workHoursPerDay || ""} onChange={(event) => change({ workHoursPerDay: Number(event.target.value) })} /></label>
+          </fieldset>
           <section className="settings-ai" aria-labelledby="ai-settings-heading">
             <h2 className="section-title" id="ai-settings-heading">{t.aiSettings}</h2>
             <p className="hint">{ai.available[draft.aiProvider] ? t.aiConfigured : t.aiOff}</p>
@@ -88,7 +101,7 @@ export function SettingsPanel({ initial, ai }: Props) {
           </section>
         </fieldset>
         <div className="settings-savebar">
-          <button className="btn btn-primary" type="submit" disabled={busy || !dirty}>{busy ? t.savingSettings : t.saveSettings}</button>
+          <button className="btn btn-primary" type="submit" disabled={busy || !dirty || draft.workHoursPerDay < 0.25 || draft.workHoursPerDay > 24}>{busy ? t.savingSettings : t.saveSettings}</button>
           <p className={`notice${error ? " is-error" : savedNotice ? " is-ok" : ""}`} role="status">
             {error ? errorMessage(t, error) : savedNotice ? t.settingsSaved : ""}
           </p>

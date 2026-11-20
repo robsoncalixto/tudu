@@ -1,5 +1,8 @@
 import type { Dictionary } from "./en";
 
+const formatHours = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
+const workHours = (hours: number) => `${formatHours.format(hours)} hora${hours === 1 ? "" : "s"}`;
+
 export const ptBR: Dictionary = {
   brandName: "TUDU",
   taskResources: {
@@ -78,6 +81,16 @@ export const ptBR: Dictionary = {
   agentSource: "Solicitação e provedor",
   agentTaskTitle: "Título da tarefa",
   agentNotes: "Anotações",
+  partOfDay: "Período do dia",
+  anyPartOfDay: "Qualquer horário",
+  partsOfDay: { morning: "Manhã", afternoon: "Tarde", evening: "Noite" },
+  workCapacity: "Capacidade de trabalho",
+  workHoursPerDay: "Horas disponíveis por dia útil",
+  agentLoadReason: (day: string, free: number, effort: number) => `${day} tem ${workHours(free)} ${free === 1 ? "livre" : "livres"} para cerca de ${workHours(effort)} de trabalho.`,
+  agentOverCapacityPlacement: (day: string, free: number, effort: number) => `${day} tem apenas ${workHours(free)} para ${workHours(effort)} de trabalho. Talvez seja preciso dividir esta tarefa entre vários dias.`,
+  agentDefaultEffort: (hours: number) => `Tarefas sem estimativa contam como ${workHours(hours)} de trabalho.`,
+  agentOverloaded: (day: string, hours: number, capacity: number) => `${day} tem ${workHours(hours)} ${hours === 1 ? "planejada" : "planejadas"} para ${workHours(capacity)} ${capacity === 1 ? "disponível" : "disponíveis"}.`,
+  agentOverloadedDays: (count: number) => `${count} ${count === 1 ? "dia está" : "dias estão"} acima da capacidade.`,
   agentPlannedFor: "Dia planejado",
   agentTagsHint: "Separe as etiquetas por vírgulas.",
   agentStep: (n) => `Subtarefa ${n}`,

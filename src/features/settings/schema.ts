@@ -27,6 +27,9 @@ const fields = {
   dateFormat: z.enum(DATE_FORMATS),
   aiProvider: aiProviderSchema,
   aiModel: aiModelSchema,
+  workingDays: z.array(z.number().int().min(0).max(6)).min(1).max(7)
+    .refine((days) => new Set(days).size === days.length),
+  workHoursPerDay: z.number().min(0.25).max(24),
 };
 export const settingsSchema = z.object({
   automaticReview: fields.automaticReview.default({ enabled: false, time: "09:00", timeZone: "UTC", enabledAt: null }),
@@ -37,6 +40,8 @@ export const settingsSchema = z.object({
   dateFormat: fields.dateFormat.default("locale"),
   aiProvider: fields.aiProvider.default("anthropic"),
   aiModel: fields.aiModel.default(""),
+  workingDays: fields.workingDays.default([1, 2, 3, 4, 5]),
+  workHoursPerDay: fields.workHoursPerDay.default(8),
 }).strict();
 export const settingsPatchSchema = z.object(fields).partial().strict();
 export type Settings = z.infer<typeof settingsSchema>;

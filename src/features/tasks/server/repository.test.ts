@@ -340,9 +340,9 @@ describe("default repository", () => {
       createdAt: "2026-11-01T12:00:00.000Z", completedAt: null,
     };
     await writeFile(path.join(dir, "tasks.json"), JSON.stringify([legacy]));
-    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateHours: null, realTimeHours: null, links: [], nextOccurrenceId: null, plannedFor: null }]);
+    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateHours: null, realTimeHours: null, links: [], nextOccurrenceId: null, partOfDay: null, plannedFor: null }]);
     await repo.updateTask("old", { plannedFor: "2026-11-17" });
-    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateHours: null, realTimeHours: null, links: [], nextOccurrenceId: null, plannedFor: "2026-11-17" }]);
+    expect(await repo.listTasks()).toEqual([{ ...legacy, estimateHours: null, realTimeHours: null, links: [], nextOccurrenceId: null, partOfDay: null, plannedFor: "2026-11-17" }]);
   });
 
   it("converts JSON minute estimates on read and writes only hours on the next edit", async () => {

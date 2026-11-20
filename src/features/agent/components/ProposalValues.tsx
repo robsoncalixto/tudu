@@ -14,6 +14,7 @@ export function ProposalValues({ action, proposal, projects, locale, t, before =
   const pairs = [
     ["title", t.agentTaskTitle, values.title], ["notes", t.agentNotes, values.notes || t.agentEmpty],
     ["priority", t.priority, values.priority ? t[values.priority] : t.agentEmpty],
+    ["partOfDay", t.partOfDay, values.partOfDay ? t.partsOfDay[values.partOfDay] : t.anyPartOfDay],
     ["due", t.setDate, date(values.due)], ["plannedFor", t.agentPlannedFor, date(values.plannedFor)],
     ["projectId", t.project, values.projectId ? projects.find((project) => project.id === values.projectId)?.name ?? t.agentMissingProject : t.noProject],
     ["tags", t.tags, values.tags?.join(", ") || t.agentEmpty],

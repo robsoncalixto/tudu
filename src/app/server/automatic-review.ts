@@ -44,7 +44,7 @@ export function startAutomaticReview() {
         try {
           await reviewState.write({ ...last, status });
           const projects = await listProjects();
-          const { drafts, summary } = await reviewOpenTasks(createGenerator(settings), "", day, tasks, projects, settings.locale);
+          const { drafts, summary } = await reviewOpenTasks(createGenerator(settings), "", day, tasks, projects, settings.locale, settings);
           await proposalRepository.addProposals(drafts, {
             note: "", today: day, review: true, provider: settings.aiProvider,
             model: settings.aiModel || config.models[settings.aiProvider],

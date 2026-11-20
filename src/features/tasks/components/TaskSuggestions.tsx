@@ -30,6 +30,7 @@ export function TaskSuggestionField({ field, proposals, projects, today, locale,
     const values = {
       priority: patch.priority ? t[patch.priority] : "",
       due: date(patch.due), plannedFor: date(patch.plannedFor),
+      partOfDay: patch.partOfDay ? t.partsOfDay[patch.partOfDay] : t.anyPartOfDay,
       projectId: patch.projectId ? projects.find(({ id }) => id === patch.projectId)?.name ?? t.agentMissingProject : t.noProject,
       title: patch.title, notes: patch.notes, tags: patch.tags?.join(", "),
     };
@@ -59,7 +60,7 @@ export function TaskSuggestionActions({ proposals, t }: {
 
   const fields: Record<SuggestedField, string> = {
     title: t.agentTaskTitle, notes: t.agentNotes, priority: t.priority, due: t.setDate, tags: t.tags,
-    steps: t.suggestedChecklist, projectId: t.project, plannedFor: t.agentPlannedFor,
+    steps: t.suggestedChecklist, projectId: t.project, plannedFor: t.agentPlannedFor, partOfDay: t.partOfDay,
   };
   if (!proposals.length) return null;
   return <section className="inspector-suggestion-decisions" aria-label={t.agentPending}>

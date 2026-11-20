@@ -4,7 +4,7 @@ import { proposalSchema, type Proposal } from "../src/features/agent/schema";
 import { expect, saveSettings, TODAY } from "./support";
 
 export const fixtureUrl = "http://127.0.0.1:3120/fixture";
-export const taskDraft = { title: "Suggested report", notes: "Original note", priority: "high", due: "2026-11-18", tags: [], steps: ["Draft", "Review"], projectId: null, plannedFor: TODAY };
+export const taskDraft = { title: "Suggested report", notes: "Original note", priority: "high", due: "2026-11-18", tags: [], steps: ["Draft", "Review"], projectId: null, plannedFor: TODAY, estimateHours: null, partOfDay: null };
 export const createTask = (title = taskDraft.title) => ({ kind: "create_task", task: { ...taskDraft, title }, reason: "Requested work" });
 export const pending = (page: Page, locale: "en" | "pt-BR") => page.getByRole("region", { name: new RegExp(`^${dictionaries[locale].agentPending}`) });
 export async function fixture(request: APIRequestContext, proposals: unknown[], status = 200) {

@@ -143,6 +143,8 @@ modifying either task. You can enable automatic review in Settings and choose
 a local time. It runs at most once per day while TUDU is running and can use a
 paid model. It records a skip when there are no open tasks, the task list has
 not changed, or the selected provider is unavailable.
+The Assistant uses the working days and daily capacity from Settings to suggest
+dates and a part of the day. Work without an estimate counts as one hour.
 
 **Work log** lists the tasks completed on a chosen day, grouped by project or
 tag, with recorded time, estimates alongside recorded time, and totals per

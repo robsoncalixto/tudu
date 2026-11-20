@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import type { Dictionary } from "@/i18n";
 import { Icon } from "@/lib/Icon";
-import { PRIORITIES } from "@/features/tasks/schema";
+import { PARTS_OF_DAY, partOfDaySchema, PRIORITIES } from "@/features/tasks/schema";
 import type { Project } from "@/features/projects/schema";
 import type { ProposalAction } from "../schema";
 
@@ -24,6 +24,11 @@ export function ProposalEditor({ action, projects, t, onChange }: Props) {
     </select></label>}
     {"due" in values && <label>{t.setDate}<input className="form-control" type="date" value={values.due ?? ""} onChange={(event) => change({ due: event.target.value || null })} /></label>}
     {"plannedFor" in values && <label>{t.agentPlannedFor}<input className="form-control" type="date" value={values.plannedFor ?? ""} onChange={(event) => change({ plannedFor: event.target.value || null })} /></label>}
+    {"partOfDay" in values && <label>{t.partOfDay}<select className="select-control" value={values.partOfDay ?? ""}
+      onChange={(event) => change({ partOfDay: event.target.value ? partOfDaySchema.parse(event.target.value) : null })}>
+      <option value="">{t.anyPartOfDay}</option>
+      {PARTS_OF_DAY.map((part) => <option key={part} value={part}>{t.partsOfDay[part]}</option>)}
+    </select></label>}
     {"projectId" in values && <label>{t.project}<select className="select-control" value={values.projectId ?? ""} onChange={(event) => change({ projectId: event.target.value || null })}>
       <option value="">{t.noProject}</option>
       {values.projectId && !projects.some((project) => project.id === values.projectId) && <option value={values.projectId}>{t.agentMissingProject}</option>}
