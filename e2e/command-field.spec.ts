@@ -276,6 +276,11 @@ for (const l of [
       await expect(feedback).toHaveText("");
       expect((await page.locator(".list-toolbar").boundingBox())!.y).toBe(listTop);
     }
+    // A pause does not make "+web" wrong either, while the list still offers the project it starts.
+    await expect(page.getByRole("listbox", { name: l.suggestions })).toBeVisible();
+    await page.waitForTimeout(1200);
+    await expect(unknown).toHaveCount(0);
+    await expect(feedback).toHaveText("");
     await field.fill("");
     await field.pressSequentially("Pagar @31/02");
     await expect(unknown).toHaveCount(0);

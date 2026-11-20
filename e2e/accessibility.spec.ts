@@ -91,6 +91,8 @@ for (const theme of ["light", "dark"] as const) {
     await composer(page).fill("");
     await sidebar(page).getByRole("button", { name: /^Today,/ }).click();
     await row(openSection(page), "Review pull requests").getByRole("checkbox").click();
+    // The notice fades in; its colours are judged once it is fully there.
+    await expect(page.getByRole("status")).toHaveCSS("opacity", "1");
     await audit(page, "phone empty view");
   });
 }

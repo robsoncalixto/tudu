@@ -26,6 +26,10 @@ for (const l of [
     await expect(status).toContainText(l.completed("Write report"));
     await expect(undo).toHaveAttribute("aria-keyshortcuts", "Z");
     await expect(undo.locator("kbd")).toHaveText("Z");
+    // A short message shares one line with its buttons.
+    const centre = async (target: import("@playwright/test").Locator) => { const box = (await target.boundingBox())!; return box.y + box.height / 2; };
+    expect((await status.boundingBox())!.height).toBeLessThan(60);
+    expect(Math.abs(await centre(status.locator(".board-notice-text")) - await centre(status.getByRole("button", { name: l.dismiss, exact: true })))).toBeLessThan(2);
     // The notice floats, so the list stays where it was.
     expect((await openSection(page).boundingBox())!.y).toBe(listTop);
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(true);
@@ -191,16 +195,21 @@ test("every change held for Undo is sent when the page is reloaded or hidden", a
   await expect.poll(stored).toEqual(["Later:open", "Repeats:done", "Repeats:open", "Stays:open"]);
   await expect(row(open, "Delete one")).toHaveCount(0);
 
-  // A page that is hidden may never come back, so the wait for Undo ends there too.
+  // With a mouse, a glance at another tab keeps the chance to undo: the page will hear when it is closed.
   await row(open, "Later").focus();
   await page.keyboard.press("Delete");
   await expect(page.getByRole("status")).toContainText("Deleted “Later”.");
-  await page.evaluate(() => {
-    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
-    document.dispatchEvent(new Event("visibilitychange"));
-  });
-  await expect(page.getByRole("status")).toHaveText("");
-  await expect.poll(stored).toEqual(["Repeats:done", "Repeats:open", "Stays:open"]);
+  await hide(page);
+  await expect(page.getByRole("status")).toContainText("Deleted “Later”.");
+  expect(await stored()).toEqual(["Later:open", "Repeats:done", "Repeats:open", "Stays:open"]);
+  await page.keyboard.press("z");
+  await expect(row(open, "Later")).toBeFocused();
+});
+
+/** What the page is told when its tab stops being the one on screen. */
+const hide = (page: import("@playwright/test").Page) => page.evaluate(() => {
+  Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+  document.dispatchEvent(new Event("visibilitychange"));
 });
 
 test("a notice leaves on its own, waits while the pointer is on it, and then lets a deletion through", async ({ page, request }) => {
@@ -275,5 +284,19 @@ test.describe("on a touch screen", () => {
     const undo = page.getByRole("status").getByRole("button", { name: "Undo", exact: true });
     await expect(undo).toBeVisible();
     await expect(undo.locator("kbd")).toBeHidden();
+    // Short enough for one line, so it takes one line here too.
+    expect((await page.getByRole("status").boundingBox())!.height).toBeLessThan(64);
+  });
+
+  test("hiding the page sends what was held, because a hidden page there may never come back", async ({ page, request }) => {
+    await seed(request, [{ title: "Daily", due: "2026-11-17", repeat: { frequency: "daily" } }, { title: "Stays" }]);
+    await page.goto("/");
+    await row(openSection(page), "Daily").getByRole("checkbox", { name: "Mark as done" }).tap();
+    await expect(page.getByRole("status")).toContainText("Completed “Daily”.");
+    expect((await listTasks(request)).map((task) => task.done)).toEqual([false, false]);
+    await hide(page);
+    await expect(page.getByRole("status")).toHaveText("");
+    await expect.poll(async () => (await listTasks(request)).map((task) => `${task.title}:${task.due}:${task.done}`))
+      .toEqual(["Daily:2026-11-17:true", "Stays:null:false", "Daily:2026-11-18:false"]);
   });
 });
