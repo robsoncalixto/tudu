@@ -72,7 +72,8 @@ export function Board() {
     onDelete: actions.requestDelete, onUndo: undo,
     // The search goes first and the task in focus stays where the keyboard is; then the details close.
     onBack: () => {
-      if (query) setQuery("");
+      // The list grows back around the task in focus, so that task is brought back into view.
+      if (query) { setQuery(""); requestAnimationFrame(() => document.activeElement?.scrollIntoView({ block: "center" })); }
       else if (inspector.selectedId) inspector.close();
       else return false;
       return true;

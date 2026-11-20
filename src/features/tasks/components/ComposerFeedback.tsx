@@ -29,6 +29,6 @@ export function ComposerFeedback({ t, warnings, problem, lines, tagLimit }: Prop
       <Icon name="info" size={14} />{warning.kind === "date" ? t.composerInvalidDate(warning.text) : t.composerUnknownProject(warning.text)}
     </p>)}
     {problem && <p className="hint is-error" role="alert">{problemText(problem, lines, t)}</p>}
-    {tagLimit && <p className="hint is-error" role="alert">{t.composerTagLimit}</p>}
+    {tagLimit && problem?.kind !== "tag_limit" && <p className="hint is-error" role="alert">{t.composerTagLimit}</p>}
   </div>;
 }

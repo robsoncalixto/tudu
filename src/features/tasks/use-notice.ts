@@ -27,8 +27,14 @@ export function useNotice() {
   useEffect(() => {
     // Closing the tab ends the undo window too.
     const settle = () => shown.current?.onGone?.();
+    // So does hiding it: a hidden page, on a phone above all, may never get another turn to send what it held.
+    const hide = () => { if (document.visibilityState === "hidden" && shown.current?.onGone) setNotice(null); };
     window.addEventListener("pagehide", settle);
-    return () => window.removeEventListener("pagehide", settle);
-  }, []);
+    document.addEventListener("visibilitychange", hide);
+    return () => {
+      window.removeEventListener("pagehide", settle);
+      document.removeEventListener("visibilitychange", hide);
+    };
+  }, [setNotice]);
   return [notice, setNotice] as const;
 }

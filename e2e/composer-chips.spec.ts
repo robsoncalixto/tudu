@@ -108,6 +108,9 @@ for (const l of [
     // An empty chip starts at the top of its choices, and the second set is a named group.
     await expect(days.getByRole("menuitemradio").first()).toBeFocused();
     await expect(days.getByRole("group", { name: l.partOfDay, exact: true }).getByRole("menuitemradio")).toHaveCount(4);
+    // Every choice is in view: nothing waits under a fold inside the menu.
+    expect(await days.evaluate((node) => node.scrollHeight <= node.clientHeight + 1)).toBe(true);
+    await expect(days.getByRole("menuitemradio", { name: l.anyTime, exact: true })).toBeInViewport();
     await expect(days.getByRole("menuitem", { name: l.pick, exact: true })).toBeVisible();
     await days.getByRole("menuitemradio", { name: l.nextWeek, exact: true }).click();
     await field.press("Enter");

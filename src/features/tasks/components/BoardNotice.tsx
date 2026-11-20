@@ -20,8 +20,29 @@ interface Props {
 export function BoardNotice({ notice, t, onDismiss }: Props) {
   const [held, setHeld] = useState(false);
   const characters = useCharacterKeys();
-  // Where the keyboard was before it came into the notice, to go back there when the notice is dismissed.
-  const cameFrom = useRef<HTMLElement | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  // Where the keyboard was when the notice came up: the place to return to when one of its buttons goes away.
+  const origin = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const remember = () => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && active !== document.body && !box.current?.contains(active)) origin.current = active;
+    };
+    remember();
+    // The action that raised the notice may still be moving the keyboard on to the next row.
+    const frame = requestAnimationFrame(remember);
+    return () => cancelAnimationFrame(frame);
+  }, [notice]);
+  /** Runs a button of the notice. If the button went away with it, the keyboard goes back instead of nowhere. */
+  const act = (run: () => void) => () => {
+    const inside = box.current?.contains(document.activeElement);
+    run();
+    if (inside) requestAnimationFrame(() => {
+      if (document.activeElement !== document.body) return;
+      (origin.current?.isConnected ? origin.current : document.getElementById("main-content"))?.focus();
+    });
+  };
   const undoKey = characters ? shortcutsApi.keys("global", false).find(({ id }) => id === "undo")?.caps.join("+") : undefined;
 
   useEffect(() => {
@@ -31,25 +52,16 @@ export function BoardNotice({ notice, t, onDismiss }: Props) {
     return () => window.clearTimeout(timer);
   }, [notice, held, onDismiss]);
 
-  return <div className={`board-notice${notice ? ` is-${notice.kind}` : ""}`} role="status"
+  return <div ref={box} className={`board-notice${notice ? ` is-${notice.kind}` : ""}`} role="status"
     onPointerEnter={() => setHeld(true)} onPointerLeave={() => setHeld(false)}
-    onFocus={(event) => {
-      setHeld(true);
-      if (!event.currentTarget.contains(event.relatedTarget)) cameFrom.current = event.relatedTarget instanceof HTMLElement ? event.relatedTarget : null;
-    }}
-    onBlur={() => setHeld(false)}>
+    onFocus={() => setHeld(true)} onBlur={() => setHeld(false)}>
     {notice && <>
-      <span className="board-notice-text">{notice.text}</span>
-      {notice.undo && <button type="button" className="chip" aria-keyshortcuts={undoKey} onClick={notice.undo}>
+      <span className="board-notice-text" title={notice.text}>{notice.text}</span>
+      {notice.undo && <button type="button" className="chip" aria-keyshortcuts={undoKey} onClick={act(notice.undo)}>
         {t.undo}{undoKey && <kbd aria-hidden="true">{undoKey}</kbd>}
       </button>}
-      {notice.action && <button type="button" className="chip" onClick={notice.action.run}>{notice.action.label}</button>}
-      <button type="button" className="icon-btn" aria-label={t.dismiss} title={t.dismiss} onClick={(event) => {
-        // The button is about to go: the keyboard returns to where it was, or to the board.
-        const inside = event.currentTarget.parentElement?.contains(document.activeElement);
-        onDismiss();
-        if (inside) (cameFrom.current?.isConnected ? cameFrom.current : document.getElementById("main-content"))?.focus();
-      }}><Icon name="x" size={15} /></button>
+      {notice.action && <button type="button" className="chip" onClick={act(notice.action.run)}>{notice.action.label}</button>}
+      <button type="button" className="icon-btn" aria-label={t.dismiss} title={t.dismiss} onClick={act(onDismiss)}><Icon name="x" size={15} /></button>
     </>}
   </div>;
 }

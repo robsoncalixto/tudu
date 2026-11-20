@@ -122,6 +122,23 @@ for (const l of [
     expect((await listTasks(request)).every((task) => !task.done)).toBe(true);
   });
 
+  test(`a task found by search stays in view when Escape brings the whole list back in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    // Dated tasks come first, so the one without a date ends up far below the fold of the whole list.
+    await seed(request, [...Array.from({ length: 18 }, (_, index) => ({ title: `Filler ${index + 1}`, due: "2026-11-18" })), { title: "Zebra crossing" }]);
+    await page.goto("/");
+    const target = row(openSection(page), "Zebra crossing");
+    await expect(target).not.toBeInViewport();
+    await page.keyboard.press("/");
+    await page.keyboard.type("zebra");
+    await page.keyboard.press("ArrowDown");
+    await expect(target).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(row(openSection(page), "Filler 1")).toBeAttached();
+    await expect(target).toBeFocused();
+    await expect(target).toBeInViewport();
+  });
+
   test(`a failed keyboard completion keeps the task open in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale });
     await seed(request, [{ title: "First task" }]);

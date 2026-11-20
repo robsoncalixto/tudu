@@ -102,9 +102,8 @@ export function useTasks(onError: (code: string, retry?: () => void) => void, on
   /** `quiet` leaves the next occurrence of a repeating task unannounced: whoever held the change back already said it. */
   const send = useCallback((mutation: PendingTaskMutation, quiet = false) => {
     const { id, patch: changes } = mutation;
-    // Order writes to the same task while other tasks remain independent.
-    const previous = lastWrite.current.get(id) ?? Promise.resolve();
-    const request: Promise<boolean> = previous.then(async () => {
+    const turn: { request?: Promise<boolean> } = {};
+    const run = async () => {
       try {
         if (changes === null) {
           await tasksApi.remove(id);
@@ -131,11 +130,15 @@ export function useTasks(onError: (code: string, retry?: () => void) => void, on
         return false;
       } finally {
         setPending((current) => current.filter((item) => item !== mutation));
-        if (lastWrite.current.get(id) === request) lastWrite.current.delete(id);
+        if (lastWrite.current.get(id) === turn.request) lastWrite.current.delete(id);
       }
-    });
-    lastWrite.current.set(id, request);
-    return request;
+    };
+    // Writes to one task go in order while other tasks stay independent. With none in flight the request
+    // leaves in this same turn, which is what lets a change held for Undo still go out as the page closes.
+    const waiting = lastWrite.current.get(id);
+    turn.request = waiting ? waiting.then(run) : run();
+    lastWrite.current.set(id, turn.request);
+    return turn.request;
   }, []);
 
   const change = useCallback((id: string, changes: TaskPatch) => {

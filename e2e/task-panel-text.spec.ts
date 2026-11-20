@@ -82,10 +82,15 @@ for (const l of languages) {
     await expect(panel.getByText(l.limit, { exact: true })).toBeVisible();
     await panel.getByRole("heading", { name: "Publish release", exact: true }).click();
     await expect(tags).toBeHidden();
+    // Notes still waiting for their pause are saved when the page goes away.
+    await notes.fill("Check the build first and ship");
     await page.reload();
+    await expect.poll(async () => (await stored()).notes).toBe("Check the build first and ship");
     await taskDetails(task).click();
     await expect(panel.getByRole("heading", { name: "Publish release", exact: true })).toBeVisible();
-    await expect(notes).toHaveValue("Check the build first");
+    await expect(notes).toHaveValue("Check the build first and ship");
+    await notes.fill("Check the build first");
+    await expect.poll(async () => (await stored()).notes).toBe("Check the build first");
     await editTags.click();
     await tags.fill("discard");
     await tags.press("Escape");

@@ -60,6 +60,17 @@ export function TaskPanelText({ field, task, t, draft, onDraftChange, onPatch }:
   latest.current = { save, text };
   // Closing the panel or moving to another task must not lose notes that were still waiting to be saved.
   useEffect(() => () => { if (timer.current !== undefined) void latest.current.save(latest.current.text, true); }, []);
+  // Nor must closing or hiding the page, which may never run the pause that saves them.
+  useEffect(() => {
+    const flush = () => { if (timer.current !== undefined) void latest.current.save(latest.current.text, false); };
+    const hidden = () => { if (document.visibilityState === "hidden") flush(); };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  }, []);
 
   function change(value: string) {
     onDraftChange(value);

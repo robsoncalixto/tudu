@@ -128,7 +128,7 @@ span.chip-main { padding-inline-end: 4px; }
   inset: auto;
   min-width: 190px;
   max-width: min(320px, calc(100vw - 8px));
-  max-height: min(22rem, 60dvh);
+  max-height: min(30rem, calc(100dvh - 16px));
   margin: 0;
   padding: 4px;
   overflow-y: auto;
