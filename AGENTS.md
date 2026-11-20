@@ -85,6 +85,7 @@ describe it; never delete or skip a test to make a change pass.
 
 **End-to-end tests (Playwright)** run against a build on port 3100 with a
 throwaway data folder. First-time setup: `npx playwright install chromium`.
+Set `TUDU_E2E_PORT` and `TUDU_AI_TEST_PORT` to run from two checkouts at once.
 
 - A new component gets its own `e2e/<component>.spec.ts`.
 - Import `test` and `expect` from `e2e/support.ts`, which empties the data and
