@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Project } from "@/features/projects/schema";
-import { taskDraftSchema, taskPatchSchema, type Priority } from "@/features/tasks/schema";
+import { taskDraftSchema, taskPatchSchema, type PartOfDay, type Priority } from "@/features/tasks/schema";
 
 export const quickAddInputSchema = z.object({ text: z.string().trim().min(1).max(40_000), today: z.iso.date() });
 // Leaving priority absent lets the server apply the shared default at save time.
@@ -55,6 +55,8 @@ export interface QuickAddResult {
   due: string | null;
   /** HH:MM typed with the date. */
   time: string | null;
+  /** Where that time falls; a deadline stores the day and this, never the hour. */
+  partOfDay: PartOfDay | null;
   priority: Priority | null;
   /** Hours. */
   estimate: number | null;
@@ -67,4 +69,35 @@ export interface QuickEdit {
   title: string;
   /** `tags` holds the tags to add; every other field replaces the saved value. */
   changes: z.infer<typeof quickEditChangesSchema>;
+}
+
+export const QUICK_TRIGGERS = ["#", "+", "@", "!"] as const;
+export type QuickTrigger = (typeof QUICK_TRIGGERS)[number];
+export type QuickLanguage = "en" | "pt-BR";
+
+/** The token being typed at the caret. */
+export interface QuickCompletion {
+  trigger: QuickTrigger;
+  query: string;
+  start: number;
+  end: number;
+}
+
+export interface QuickSuggestion {
+  kind: "tag" | "create" | "project" | "due" | "priority";
+  /** What is written into the field, trigger included. */
+  insert: string;
+  /** Tag or project name, the priority, or the typed date. */
+  label: string;
+  /** What the token will mean: tag name, project id, ISO date or priority. */
+  value: string;
+  time?: string;
+}
+
+export interface SuggestionSources {
+  today: string;
+  language: QuickLanguage;
+  /** Saved tags. */
+  tags: readonly string[];
+  projects: readonly Project[];
 }
