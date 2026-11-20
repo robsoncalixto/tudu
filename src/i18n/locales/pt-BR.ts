@@ -190,7 +190,6 @@ export const ptBR: Dictionary = {
   editTaskTags: "Editar etiquetas",
   noSubtasks: "Nenhuma subtarefa ainda.",
   taskCreated: (date) => `Criada em ${date}`,
-  saveTaskField: "Salvar",
   writeTaskNotes: "Adicionar anotações…",
   taskTagsHint: "Separe as etiquetas com vírgulas. Use \\, para incluir uma vírgula na etiqueta.",
   taskTagsLimit: "Use até 10 etiquetas de 40 caracteres cada.",

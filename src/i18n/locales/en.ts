@@ -188,7 +188,6 @@ export const en = {
   editTaskTags: "Edit tags",
   noSubtasks: "No subtasks yet.",
   taskCreated: (date: string) => `Created ${date}`,
-  saveTaskField: "Save",
   writeTaskNotes: "Add notes…",
   taskTagsHint: "Separate tags with commas. Use \\, for a comma inside a tag.",
   taskTagsLimit: "Use up to 10 tags of 40 characters each.",
