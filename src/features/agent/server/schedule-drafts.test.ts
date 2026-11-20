@@ -16,7 +16,7 @@ it("suggests a date based on capacity and keeps an explicitly requested period",
     task: { title: "Report", notes: "", priority: "high", due: null, tags: [], steps: [],
       projectId: null, plannedFor: null, estimateHours: null, partOfDay: "evening" },
   }] });
-  const drafts = await proposeChanges(generate, "Write the report in the evening", today,
+  const drafts = await proposeChanges(generate as GenerateStructured, "Write the report in the evening", today,
     [task("Full day", { due: today, estimateHours: 4 })], [], "en", "medium", settings);
   expect(drafts[0]).toMatchObject({ action: { task: { due: tomorrow, plannedFor: tomorrow, partOfDay: "evening" } } });
   expect(drafts[0].reason).toContain("1 hour of effort");
@@ -32,7 +32,7 @@ it("flags overload in Portuguese and suggests at most three nonconflicting moves
     task("Movable", { due: tomorrow, plannedFor: today, priority: "low", partOfDay: "evening" }),
     task("First"), task("Second"), task("Third"), task("Fourth", { done: true }),
   ];
-  const review = await reviewOpenTasks(generate, "", today, tasks, [], "pt-BR", settings);
+  const review = await reviewOpenTasks(generate as GenerateStructured, "", today, tasks, [], "pt-BR", settings);
   expect(review.summary).toContain("1 dia está acima da capacidade");
   expect(review.drafts.map(({ action }) => action)).toMatchObject([
     { taskId: "Pending", patch: { priority: "high" } },
