@@ -3,19 +3,18 @@
 import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import { Icon } from "@/lib/Icon";
 import { longDate } from "@/lib/dates";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { shortcutsApi } from "@/features/shortcuts/api";
-import { errorCode } from "@/lib/http";
-import type { Task } from "../schema";
 import { rankDayTasks } from "../day-order";
+import { useComposerSubmit } from "../use-composer-submit";
 import { useDayOrder } from "../use-day-order";
 import { isProvisional } from "../optimistic-tasks";
-import { isForToday, isInFilter, type TaskSort } from "../selectors";
+import { isForToday, type TaskSort } from "../selectors";
 import { useTaskActions } from "../use-task-actions";
 import { useTaskShortcuts } from "../use-task-shortcuts";
 import { BoardHeader } from "./BoardHeader";
 import { BoardNotice } from "./BoardNotice";
-import { Composer, type ComposerMode } from "./Composer";
+import { Composer } from "./Composer";
 import { postponementDate, type Postponement } from "../planning";
 import { TaskEmpty } from "./TaskEmpty";
 import { TaskList } from "./TaskList";
@@ -30,8 +29,10 @@ export function Board() {
   const { filter, setFilter, query, setQuery, sort, setSort, text, setText } = navigation;
   const { tasks, reorder, aiEnabled, add, capture, patch, removeLater, loadFailed, retryLoad } = taskData;
   const { projects } = projectData;
-  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const search = useRef<HTMLInputElement>(null);
+  const { submit, fresh } = useComposerSubmit({
+    t, today, ready: tasks !== null, filter, projects, defaultPriority: settings.defaultPriority, add, capture, setFilter, setQuery, setNotice, fail,
+  });
   const { setSelectedId } = inspector;
   const labels = useMemo(() => ({ completed: t.taskCompleted, reopened: t.taskReopened, deleted: t.taskDeleted, undo: t.undo }), [t]);
   const actions = useTaskActions({
@@ -45,34 +46,6 @@ export function Board() {
 
   const composerContext: QuickAddDefaults = filter.kind === "today" ? { plannedFor: today ?? undefined }
     : filter.kind === "project" ? { projectId: filter.id } : filter.kind === "tag" ? { tag: filter.tag } : {};
-
-  async function submit(mode: ComposerMode, text: string, defaults: QuickAddDefaults) {
-    if (!today || !tasks) return false;
-    setNotice(null);
-    try {
-      if (mode === "add") {
-        const { shown, saved } = add(text, today, defaults, projects, settings.defaultPriority);
-        setFresh(new Set(shown.map((task) => task.id)));
-        setQuery("");
-        const created = await saved;
-        // A chip can send the task out of this view; say that it was still saved.
-        if (created.some((task) => !isInFilter(task, filter, today))) setNotice({ kind: "ok", text: t.added(created.length) });
-        return true;
-      }
-      const { tag, tags, projectId, plannedFor, priority, due } = defaults;
-      const aiTags = [...new Set([...(tags ?? []), ...(tag ? [tag] : [])])];
-      const created = await capture(text, today, {
-        ...(priority ? { priority } : {}), ...(due ? { due } : {}),
-        ...(projectId ? { projectId } : {}), ...(plannedFor ? { plannedFor } : {}),
-        ...(aiTags.length ? { tags: aiTags } : {}),
-      });
-      setFresh(new Set(created.map((task) => task.id)));
-      setQuery("");
-      setFilter({ kind: "all" });
-      setNotice({ kind: "ok", text: t.added(created.length) });
-      return true;
-    } catch (error) { fail(errorCode(error)); return false; }
-  }
 
   async function postpone(id: string, when: Postponement) {
     if (!today) return;

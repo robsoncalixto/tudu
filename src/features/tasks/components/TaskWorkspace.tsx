@@ -1,9 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { subscribeAgentUpdates } from "@/features/agent/api";
-import { shortcutsApi } from "@/features/shortcuts/api";
 import type { Settings } from "@/features/settings/schema";
 import { errorMessage } from "@/i18n";
 import { useLocale } from "@/i18n/use-locale";
@@ -12,6 +11,8 @@ import { useToday } from "@/lib/use-today";
 import type { Task } from "../schema";
 import { buildTaskView, type TaskFilter } from "../selectors";
 import { useBoardNavigation } from "../use-board-navigation";
+import { useNavigationShortcuts } from "../use-navigation-shortcuts";
+import { useNotice } from "../use-notice";
 import { useProjects } from "../use-projects";
 import { useTaskInspector } from "../use-task-inspector";
 import { useTaskSuggestions } from "../use-task-suggestions";
@@ -19,35 +20,13 @@ import { useTasks } from "../use-tasks";
 import { Sidebar } from "./Sidebar";
 import "./board.css";
 
-export type Notice = {
-  kind: "ok" | "error";
-  text: string;
-  action?: { label: string; run: () => void };
-  /** Runs once the notice is replaced or dismissed, for work that waited on a possible undo. */
-  onGone?: () => void;
-} | null;
-
 function useWorkspaceState(settings: Settings) {
   const page = usePathname();
   const router = useRouter();
   const { locale, t } = useLocale(settings.locale);
   const today = useToday();
   const suggestions = useTaskSuggestions();
-  const [notice, showNotice] = useState<Notice>(null);
-  const shown = useRef<Notice>(null);
-  const setNotice = useCallback((next: Notice | ((current: Notice) => Notice)) => {
-    const previous = shown.current;
-    const value = typeof next === "function" ? next(previous) : next;
-    shown.current = value;
-    showNotice(value);
-    if (previous && previous !== value) previous.onGone?.();
-  }, []);
-  useEffect(() => {
-    // Closing the tab ends the undo window too.
-    const settle = () => shown.current?.onGone?.();
-    window.addEventListener("pagehide", settle);
-    return () => window.removeEventListener("pagehide", settle);
-  }, []);
+  const [notice, setNotice] = useNotice();
   const navigation = useBoardNavigation(settings.startView);
   const { filter, query, sort, setFilter, setQuery } = navigation;
   const inspector = useTaskInspector();
@@ -98,27 +77,7 @@ function useWorkspaceState(settings: Settings) {
     if (page !== "/") router.push("/");
   }
 
-  // The board is not mounted on other pages, so it picks this up when it appears.
-  const focusRequest = useRef<"composer" | "search" | null>(null);
-  const go = useRef({ page, select, router });
-  go.current = { page, select, router };
-  useEffect(() => {
-    const openBoard = (field: "composer" | "search") => () => {
-      if (go.current.page === "/") return false;
-      focusRequest.current = field;
-      go.current.router.push("/");
-    };
-    const stops = [
-      shortcutsApi.subscribe("newTask", openBoard("composer")),
-      shortcutsApi.subscribe("search", openBoard("search")),
-      shortcutsApi.subscribe("goAll", () => go.current.select({ kind: "all" })),
-      shortcutsApi.subscribe("goToday", () => go.current.select({ kind: "today" })),
-      shortcutsApi.subscribe("goWorkLog", () => go.current.router.push("/work-log")),
-      shortcutsApi.subscribe("goAssistant", () => go.current.router.push("/agent")),
-      shortcutsApi.subscribe("goSettings", () => go.current.router.push("/settings")),
-    ];
-    return () => stops.forEach((stop) => stop());
-  }, []);
+  const focusRequest = useNavigationShortcuts({ page, select, push: (path) => router.push(path) });
 
   return { page, settings, locale, t, today, navigation, taskData, projectData, selectedTask, inspector,
     view, notice, setNotice, fail, select, suggestions, focusRequest };

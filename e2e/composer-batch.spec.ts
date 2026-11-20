@@ -1,4 +1,4 @@
-import { chips, composer, composerForm, expect, listTasks, openSection, pickChip, row, saveSettings, test, TOMORROW, tagChip } from "./support";
+import { composer, composerForm, expect, listTasks, openSection, pickChip, row, saveSettings, test, TOMORROW, tagChip } from "./support";
 
 for (const l of [
   { locale: "en", preview: "Quick-add preview", count: "3 tasks, one per line", addAll: "Add 3 tasks", join: "Make it one task", priority: "Priority", low: "Low",

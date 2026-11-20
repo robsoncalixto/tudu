@@ -1,6 +1,6 @@
 import { createTask, fixture, pending } from "./agent-support";
 import { dictionaries } from "../src/i18n";
-import { composer, expect, listProjects, openApp, openSection, row, rowTitles, saveSettings, seed, seedProjects, sidebar, taskRows, test, setLanguage, TODAY } from "./support";
+import { composer, expect, openApp, openSection, row, rowTitles, saveSettings, seed, seedProjects, sidebar, taskRows, test, setLanguage, TODAY } from "./support";
 
 for (const locale of ["en", "pt-BR"] as const) {
   const t = dictionaries[locale];

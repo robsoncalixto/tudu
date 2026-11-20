@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 import { shortcutsApi } from "@/features/shortcuts/api";
 import type { Dictionary } from "@/i18n";
-import { Icon, type IconName } from "@/lib/Icon";
+import { Icon } from "@/lib/Icon";
 import { boardFilterForPage } from "../board-navigation";
 import type { TaskFilter, TaskView } from "../selectors";
 import { useSidebarLayout } from "../use-sidebar-layout";
 import { NavProjectCreate } from "./NavProjectCreate";
 import { ProjectManager, type ProjectManagerProps } from "./ProjectManager";
+import { LoadFailure, NavGroup, NavItem } from "./SidebarItems";
 
 interface Props {
   t: Dictionary;
@@ -130,39 +131,4 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, page, pendi
     </div>
     <ProjectManager {...projectManager} error={creating ? "" : projectManager.error} t={t} open={managing} onClose={() => setManaging(false)} />
   </aside>;
-}
-
-function NavGroup({ name, label, icon, open, currentLabel, onToggle, action, children }: {
-  name: string; label: string; icon: IconName; open: boolean; currentLabel?: string; onToggle: () => void; action?: ReactNode; children: ReactNode;
-}) {
-  const hiddenSelection = open ? undefined : currentLabel;
-  return <div className="nav-group">
-    <div className="nav-group-header">
-      <button type="button" className={`nav-item nav-group-toggle${hiddenSelection ? " is-active" : ""}`}
-        aria-label={label} aria-current={hiddenSelection ? "true" : undefined} aria-description={hiddenSelection}
-        title={hiddenSelection ? `${label} · ${hiddenSelection}` : label} aria-expanded={open} aria-controls={`nav-${name}`} onClick={onToggle}>
-        <Icon name={icon} /><span>{label}</span><Icon name="chevron-right" size={14} className="nav-disclosure" />
-      </button>
-      {action}
-    </div>
-    <div id={`nav-${name}`} className="nav-group-items" hidden={!open}>{children}</div>
-  </div>;
-}
-
-function NavItem({ label, icon, count, active, onClick, ariaLabel }: {
-  label: string; icon?: IconName; count: number; active: boolean; onClick: () => void; ariaLabel: string;
-}) {
-  return <button type="button" className={`nav-item${active ? " is-active" : ""}`}
-    aria-current={active ? "page" : undefined} aria-label={ariaLabel} title={label} onClick={onClick}>
-    {icon && <Icon name={icon} />}<span className="nav-text">{label}</span>{" "}<span className="nav-count">{count}</span>
-  </button>;
-}
-
-function LoadFailure({ message, retry, onRetry }: { message: string; retry: string; onRetry: () => void }) {
-  return <div>
-    <p role="alert">{message}</p>
-    <button type="button" className="nav-item" aria-label={`${retry} · ${message}`} onClick={onRetry}>
-      <span>{retry}</span>
-    </button>
-  </div>;
 }

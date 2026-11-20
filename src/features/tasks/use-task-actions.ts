@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useLayoutEffect, useRef } from "react";
-import type { Notice } from "./components/TaskWorkspace";
 import type { Task, TaskPatch } from "./schema";
+import type { Notice } from "./use-notice";
 
 interface Options {
   tasks: Task[] | null;
