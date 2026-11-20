@@ -6,7 +6,20 @@ import { aiModelSchema, aiProviderSchema } from "@/features/ai/schema";
 
 export const THEMES = ["system", "light", "dark"] as const;
 
+const timeZone = z.string().min(1).max(80).refine((zone) => {
+  try { new Intl.DateTimeFormat("en", { timeZone: zone }); return true; }
+  catch { return false; }
+});
+
+const automaticReview = z.object({
+  enabled: z.boolean(),
+  time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+  timeZone,
+  enabledAt: z.iso.datetime().nullable().default(null),
+}).strict();
+
 const fields = {
+  automaticReview,
   locale: z.enum(LOCALES),
   theme: z.enum(THEMES),
   defaultPriority: z.enum(PRIORITIES),
@@ -19,6 +32,7 @@ const fields = {
   workHoursPerDay: z.number().min(0.25).max(24),
 };
 export const settingsSchema = z.object({
+  automaticReview: fields.automaticReview.default({ enabled: false, time: "09:00", timeZone: "UTC", enabledAt: null }),
   locale: fields.locale.default(DEFAULT_LOCALE),
   theme: fields.theme.default("system"),
   defaultPriority: fields.defaultPriority.default("medium"),

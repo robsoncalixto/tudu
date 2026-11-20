@@ -14,20 +14,13 @@ const themeIcons = { system: "monitor", light: "sun", dark: "moon" } as const;
 interface Props {
   initial: Settings;
   ai: AiPublicConfiguration;
-  returnTo?: string;
 }
 
-export function SettingsPanel({ initial, ai, returnTo = "/" }: Props) {
+export function SettingsPanel({ initial, ai }: Props) {
   const { saved, draft, change, save, busy, dirty, error, savedNotice } = useSettings(initial);
   const { t } = useLocale(saved.locale);
   return (
-    <main className="page-content settings-page">
-      <header className="page-header settings-navigation">
-        <a className="back-link" href={returnTo}><Icon name="arrow-left" />
-          {returnTo === "/agent" ? t.backToAssistant : t.backToTasks}
-        </a>
-        <span className="brand-name">TUDU</span>
-      </header>
+    <main id="main-content" tabIndex={-1} className="page-content settings-page">
       <h1>{t.settings}</h1>
       <form className="card" onSubmit={(event) => { event.preventDefault(); void save(); }}>
         <fieldset disabled={busy} className="settings-fields">
@@ -93,6 +86,18 @@ export function SettingsPanel({ initial, ai, returnTo = "/" }: Props) {
                 onChange={(event) => change({ aiModel: event.target.value })} />
             </label>
             <p className="hint" id="ai-model-hint">{t.aiModelHint}</p>
+            <label className="automatic-review-toggle">
+              <input type="checkbox" checked={draft.automaticReview.enabled} onChange={(event) => change({ automaticReview: {
+                ...draft.automaticReview, enabled: event.target.checked,
+                timeZone: draft.automaticReview.enabledAt ? draft.automaticReview.timeZone : Intl.DateTimeFormat().resolvedOptions().timeZone,
+              } })} />
+              {t.automaticReviewEnabled}
+            </label>
+            <p className="hint">{t.automaticReviewHint}</p>
+            {draft.automaticReview.enabled && <label>{t.automaticReviewTime(draft.automaticReview.timeZone)}
+              <input type="time" className="form-control" required value={draft.automaticReview.time}
+                onChange={(event) => change({ automaticReview: { ...draft.automaticReview, time: event.target.value } })} />
+            </label>}
           </section>
         </fieldset>
         <div className="settings-savebar">

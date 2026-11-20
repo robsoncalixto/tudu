@@ -33,7 +33,7 @@ describe("capture provider coordination", () => {
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ tasks: [task] });
     expect(createGenerator).toHaveBeenCalledWith(settings);
-    expect(capture).toHaveBeenCalledWith(generate, "A note", "2026-11-17", [], "high");
+    expect(capture).toHaveBeenCalledWith(generate, "A note", "2026-11-17", [], "high", undefined);
     expect(addTasks).toHaveBeenCalledWith([task]);
   });
   it.each(["ai_auth", "ai_busy", "ai_disabled", "ai_failed", "ai_refused"] as const)("maps %s without saving any task", async (code) => {

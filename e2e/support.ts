@@ -70,7 +70,9 @@ export async function seed(request: APIRequestContext, tasks: SeedTask[]): Promi
 async function reset(request: APIRequestContext) {
   const dataDir = process.env.TUDU_E2E_DATA_DIR;
   if (!dataDir || !path.basename(dataDir).startsWith("tudu-e2e-")) throw new Error("Proposal reset requires an isolated tudu-e2e- directory");
-  await unlink(path.join(dataDir, "proposals.json")).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; });
+  for (const name of ["proposals.json", "agent-review.json"]) {
+    await unlink(path.join(dataDir, name)).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; });
+  }
   await saveSettings(request, DEFAULT_SETTINGS);
   for (const task of await listTasks(request)) {
     await request.delete(`/api/tasks/${task.id}`);

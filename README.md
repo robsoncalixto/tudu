@@ -102,14 +102,24 @@ structured output.
   each proposal, then accept or reject it. Decisions are kept in a history that
   survives restarts.
 
+## Install TUDU
+
+Open TUDU on `localhost` or over HTTPS. On desktop, use the browser’s
+**Install app** option. On a phone, use **Add to Home Screen** or **Install**
+from your browser menu. The installed app opens in its own window and follows
+your **Start view** setting. When the connection drops, it shows an offline
+page until it can reach the server again.
+
 ## Using TUDU
 
-The sidebar opens **All tasks**, **Today**, projects, tags, **Work log** and
-**Assistant**. On a phone, use **More views**. **Today** shows tasks planned
+The same sidebar on every screen opens **All tasks**, **Today**, projects,
+tags, **Work log**, **Assistant** and **Settings**. On a phone, use **More views**. **Today** shows tasks planned
 for today, unfinished tasks planned earlier, and tasks due today or overdue.
 Use the sun button to plan a task for today or clear its existing plan.
 The task actions menu can move the planned day to tomorrow or the next Monday
 while keeping the deadline. Your open-task sort is remembered on the device.
+The board refreshes tasks and projects on focus and periodically while the
+tab is visible.
 
 Open the task panel (the icon at the right of a row) to edit the title,
 notes, subtasks, priority, project, tags, planned day, due date, repeat rule,
@@ -126,10 +136,15 @@ Completing one creates the next occurrence.
 
 **Assistant** can review open tasks with **Review my tasks**, with or without a
 note. It summarizes what it reviewed and proposes changes with reasons. Every
-change requires approval. Possible duplicate flags record the decision without
-modifying either task. The Assistant uses the working days and daily capacity
-from Settings to suggest dates and a part of the day. Work without an estimate
-counts as one hour. All suggested changes still require approval.
+change requires approval. Suggestions for an existing task also appear
+beside the affected fields in its details, where you can accept or reject
+them. Possible duplicate flags record the decision without
+modifying either task. You can enable automatic review in Settings and choose
+a local time. It runs at most once per day while TUDU is running and can use a
+paid model. It records a skip when there are no open tasks, the task list has
+not changed, or the selected provider is unavailable.
+The Assistant uses the working days and daily capacity from Settings to suggest
+dates and a part of the day. Work without an estimate counts as one hour.
 
 **Work log** lists the tasks completed on a chosen day, grouped by project or
 tag, with recorded time, estimates alongside recorded time, and totals per
@@ -141,7 +156,9 @@ view, default priority, date format and the AI provider and model.
 
 ### Quick-add shortcuts
 
-When adding a single task, write shortcuts as separate words.
+Write shortcuts as separate words. Enter submits the composer and Shift+Enter
+adds another task on a new line. The priority, due date and tag controls
+provide defaults for each line and for Create with AI.
 `Fix login #bug !high tomorrow` creates **Fix login**, tagged `bug`, with high
 priority, due tomorrow.
 
@@ -152,6 +169,8 @@ priority, due tomorrow.
 | `today` / `hoje`, `tomorrow` / `amanhã` | Set the due date |
 | Weekday (`friday`, `sexta-feira`) | Due on its next occurrence |
 | `YYYY-MM-DD` | Due on that date |
+| `@website-redesign` | Assign an existing project. Use hyphens for spaces. Unknown names stay in the title. |
+| `~30m`, `~2h`, `~1d` | Set an estimate. One day is 12 hours. |
 
 Prefix a token with a backslash to keep it as text: `Discuss \#bug` saves
 **Discuss #bug**. Open **Quick-add shortcuts** in the composer for details.
