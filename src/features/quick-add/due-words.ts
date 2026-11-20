@@ -37,16 +37,15 @@ function relativeDay(word: string, today: string, names: Record<string, number>)
   return undefined;
 }
 
-// "depois de amanhã" and "the day after tomorrow" are one expression that names the following day.
-const DAY_AFTER: Record<string, string[][]> = { amanha: [["depois", "de"]], tomorrow: [["the", "day", "after"], ["day", "after"]] };
+// "depois de amanhã" and "the day after tomorrow" are each one expression, two days from today.
+const DAY_AFTER_NEXT = [["depois", "de", "amanha"], ["the", "day", "after", "tomorrow"], ["day", "after", "tomorrow"]];
 
-/** How many of the words written just before a date word turn it into "the day after", longest wording first. */
-export function dayAfterLead(word: string, before: readonly string[]): number {
-  const leads = Object.hasOwn(DAY_AFTER, wordKey(word)) ? DAY_AFTER[wordKey(word)] : [];
-  return leads.find((lead) => lead.length <= before.length && lead.every((item, index) => wordKey(before[before.length - lead.length + index]) === item))?.length ?? 0;
+/** How many of these words, counted from the first, spell the day after tomorrow; 0 when they do not. */
+export function dayAfterNext(words: readonly string[]): number {
+  return DAY_AFTER_NEXT.find((phrase) => phrase.every((word, index) => words[index] !== undefined && wordKey(words[index]) === word))?.length ?? 0;
 }
 
-export const dayAfter = (date: string): string | null => shifted(date, 1);
+export const daysFrom = (today: string, days: number): string | null => shifted(today, days);
 
 export function isDateWord(token: string): boolean {
   const word = wordKey(token);

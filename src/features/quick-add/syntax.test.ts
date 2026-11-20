@@ -103,7 +103,8 @@ describe("inline syntax", () => {
   it.each([
     ["Entregar depois de amanhã", "Entregar", "2026-11-19"], ["Entregar depois de amanha cedo", "Entregar cedo", "2026-11-19"],
     ["Ship the day after tomorrow", "Ship", "2026-11-19"], ["Ship day after tomorrow", "Ship", "2026-11-19"],
-    ["Depois de amanhã", "", "2026-11-19"],
+    ["Depois de amanhã", "", "2026-11-19"], ["Enviar @depois de amanhã", "Enviar", "2026-11-19"],
+    ["Send @day after tomorrow now", "Send now", "2026-11-19"], ["Send @the day after tomorrow", "Send", "2026-11-19"],
     // Without the whole expression right before it, the day is the day itself.
     ["Entregar depois amanhã", "Entregar depois", "2026-11-18"], ["Falar de amanhã", "Falar de", "2026-11-18"],
     ["Call the day after #x tomorrow", "Call the day after", "2026-11-18"],
@@ -111,10 +112,21 @@ describe("inline syntax", () => {
     expect(parse(text)).toMatchObject({ title, due });
   });
 
-  it("marks the whole day-after expression as one token", () => {
+  it("marks the whole day-after expression as one token, with the time that follows an @", () => {
     const text = "Entregar depois de amanhã cedo";
     const [token] = parse(text).tokens;
     expect(text.slice(token.start, token.end)).toBe("depois de amanhã");
+    const timed = "Enviar @depois de amanhã 14h já";
+    const result = parse(timed);
+    expect(result).toMatchObject({ title: "Enviar já", due: "2026-11-19", time: "14:00", partOfDay: "afternoon" });
+    expect(timed.slice(result.tokens[0].start, result.tokens[0].end)).toBe("@depois de amanhã 14h");
+    // Written as plain words it is a date only, as every plain date word is.
+    expect(parse("Enviar depois de amanhã 14h")).toMatchObject({ title: "Enviar 14h", due: "2026-11-19", time: null });
+  });
+
+  it("keeps the words of a saved title that only look like the expression", () => {
+    expect(parseQuickAdd("Ligar depois de amanhã #x", { today: TODAY, literals: ["Ligar", "depois", "de", "amanhã"] }))
+      .toMatchObject({ title: "Ligar depois de amanhã", due: null, tags: ["x"] });
   });
 
   it.each([["t45min", 0.75], ["~45min", 0.75], ["t90mins", 1.5], ["~1h30min", 1.5], ["t2h15min", 2.25]])("reads the estimate %s as %d hours", (token, hours) => {
