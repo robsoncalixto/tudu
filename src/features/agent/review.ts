@@ -40,7 +40,6 @@ function pendingKeys(draft: ProposalDraft): string[] {
   if (action.kind === "flag_duplicate") {
     return [JSON.stringify(["duplicate", ...[action.taskId, action.otherTaskId].sort()])];
   }
-  if (action.kind === "order_day") return [JSON.stringify(["order_day", action.day])];
   if (action.kind === "update_task") return Object.keys(action.patch).map((field) => JSON.stringify(["task", action.taskId, field]));
   return [];
 }
