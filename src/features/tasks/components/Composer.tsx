@@ -66,7 +66,7 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
     setChosen({ ...chosen, tags: chosen.tags.filter((item) => item !== value) });
     if (normalizeQuickTag(tag) === value) setTag("");
     setTagLimit(false);
-    onTextChange(quickAddApi.stripTokens(text, "tag", value));
+    onTextChange(quickAddApi.stripTokens(text, today, projects, "tag", value));
     requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
   }
   const disabled = !text.trim() || busy !== null;
@@ -133,10 +133,10 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
         <ComposerDetails t={t} priority={selectedPriority ?? defaultPriority} due={selectedDue ?? ""} tag={tag}
         suggestions={suggestions} busy={busy !== null} onTag={(value) => { setTag(value); setTagLimit(false); }} onAddTag={addTag}
         onPriority={(priority) => {
-          setChosen({ ...chosen, priority }); onTextChange(quickAddApi.stripTokens(text, "priority"));
+          setChosen({ ...chosen, priority }); onTextChange(quickAddApi.stripTokens(text, today, projects, "priority"));
         }}
         onDue={(due) => {
-          setChosen({ ...chosen, due: due || undefined }); onTextChange(quickAddApi.stripTokens(text, "due"));
+          setChosen({ ...chosen, due: due || undefined }); onTextChange(quickAddApi.stripTokens(text, today, projects, "due"));
         }} />
       </div>
       {problem && <p className="hint" role="alert">{problem.kind === "line_limit" ? t.quickLineLimit
