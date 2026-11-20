@@ -20,7 +20,7 @@ import { useTaskWorkspace } from "./TaskWorkspace";
 
 export function Board() {
   const { settings, locale, t, today, navigation, inspector, taskData, projectData, selectedTask,
-    view, notice, setNotice, fail, select } = useTaskWorkspace();
+    view, notice, setNotice, fail, select, suggestions } = useTaskWorkspace();
   const { filter, setFilter, query, setQuery, sort, setSort, text, setText } = navigation;
   const { tasks, aiEnabled, add, capture, patch, remove, loadFailed, retryLoad } = taskData;
   const { projects } = projectData;
@@ -66,7 +66,7 @@ export function Board() {
 
   function clearSearch() { setQuery(""); search.current?.focus(); }
   const searching = Boolean(query.trim());
-  const list = { today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: actions.patchFromRow,
+  const list = { suggestions: suggestions.byTask, today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: actions.patchFromRow,
     onPostpone: postpone, selectedId: inspector.selectedId, onShowPanel: inspector.toggle, onTag: (tag: string) => select({ kind: "tag", tag }) };
 
   return <div className="board-content" ref={actions.root}>
@@ -111,7 +111,7 @@ export function Board() {
     </main>
     {selectedTask && <TaskPanelFrame label={t.taskDetails} resizeLabel={t.resizeTaskPanel} taskId={selectedTask.id} onClose={inspector.close}>
       <TaskPanel task={selectedTask} projects={projects} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat}
-        t={t} onPatch={patch} onDelete={actions.requestDelete} onClose={inspector.close} />
+        t={t} proposals={suggestions.byTask.get(selectedTask.id) ?? []} onPatch={patch} onDelete={actions.requestDelete} onClose={inspector.close} />
     </TaskPanelFrame>}
   </div>;
 }

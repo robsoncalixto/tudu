@@ -128,3 +128,11 @@
   .task-inspector .inspector-date { min-height: calc(var(--touch-target) + 2px); }
   .inspector-editor-actions .btn { min-height: var(--touch-target); }
 }
+
+.inspector-suggestion { border-inline-start: 2px solid var(--accent); padding: var(--s-sm); margin-block: var(--s-sm); background: var(--surface-muted); }
+.inspector-suggestion p { margin: var(--s-xs) 0 0; overflow-wrap: anywhere; white-space: pre-line; }
+.inspector-suggestion ol { margin: var(--s-xs) 0; padding-inline-start: var(--s-md); }
+.inspector-suggestion-decisions { margin: var(--s-md) 0; }
+.inspector-suggestion-decisions > article { border-bottom: 1px solid var(--border); padding-block: var(--s-sm); }
+
+.inspector-suggestion strong { overflow-wrap: anywhere; white-space: pre-wrap; }

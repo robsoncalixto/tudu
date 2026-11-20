@@ -136,7 +136,9 @@ Completing one creates the next occurrence.
 
 **Assistant** can review open tasks with **Review my tasks**, with or without a
 note. It summarizes what it reviewed and proposes changes with reasons. Every
-change requires approval. Possible duplicate flags record the decision without
+change requires approval. Suggestions for an existing task also appear
+beside the affected fields in its details, where you can accept or reject
+them. Possible duplicate flags record the decision without
 modifying either task. You can enable automatic review in Settings and choose
 a local time. It runs at most once per day while TUDU is running and can use a
 paid model. It records a skip when there are no open tasks, the task list has

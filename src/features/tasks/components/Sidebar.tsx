@@ -6,7 +6,6 @@ import type { Dictionary } from "@/i18n";
 import { Icon, type IconName } from "@/lib/Icon";
 import { boardFilterForPage } from "../board-navigation";
 import type { TaskFilter, TaskView } from "../selectors";
-import { usePendingSuggestions } from "../use-pending-suggestions";
 import { useSidebarLayout } from "../use-sidebar-layout";
 import { ProjectManager, type ProjectDialogMode, type ProjectManagerProps } from "./ProjectManager";
 
@@ -17,14 +16,14 @@ interface Props {
   projectManager: Omit<ProjectManagerProps, "t">;
   onFilter: (filter: TaskFilter) => void;
   page: string;
+  pendingCount: number;
   taskLoadFailed: boolean;
   projectLoadFailed: boolean;
   onRetryTasks: () => void;
   onRetryProjects: () => void;
 }
 
-export function Sidebar({ t, view, filter, projectManager, onFilter, page, taskLoadFailed, projectLoadFailed, onRetryTasks, onRetryProjects }: Props) {
-  const count = usePendingSuggestions();
+export function Sidebar({ t, view, filter, projectManager, onFilter, page, pendingCount, taskLoadFailed, projectLoadFailed, onRetryTasks, onRetryProjects }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [projectDialog, setProjectDialog] = useState<ProjectDialogMode | null>(null);
   const { layout, compact, update, toggleGroup } = useSidebarLayout();
@@ -49,12 +48,12 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, page, taskL
     const [label, icon] = links[href];
     return <Link href={href} className={`nav-item${page === href ? " is-active" : ""}`}
       aria-current={page === href ? "page" : undefined} aria-label={label}
-      aria-description={href === "/agent" && count ? t.pendingAgentCount(count) : undefined} title={label} onClick={() => {
+      aria-description={href === "/agent" && pendingCount ? t.pendingAgentCount(pendingCount) : undefined} title={label} onClick={() => {
         if (expanded && href !== "/settings") toggle.current?.focus();
         setExpanded(false);
       }}>
       <Icon name={icon} /><span>{label}</span>
-      {href === "/agent" && count > 0 && <span className="nav-count">{count}</span>}
+      {href === "/agent" && pendingCount > 0 && <span className="nav-count">{pendingCount}</span>}
     </Link>;
   }
   const sizeLabel = compact ? t.expandSidebar : t.collapseSidebar;

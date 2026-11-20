@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { subscribeAgentUpdates } from "@/features/agent/api";
 import type { Settings } from "@/features/settings/schema";
 import { errorMessage } from "@/i18n";
 import { useLocale } from "@/i18n/use-locale";
@@ -12,6 +13,7 @@ import { buildTaskView, type TaskFilter } from "../selectors";
 import { useBoardNavigation } from "../use-board-navigation";
 import { useProjects } from "../use-projects";
 import { useTaskInspector } from "../use-task-inspector";
+import { useTaskSuggestions } from "../use-task-suggestions";
 import { useTasks } from "../use-tasks";
 import { Sidebar } from "./Sidebar";
 import "./board.css";
@@ -23,6 +25,7 @@ function useWorkspaceState(settings: Settings) {
   const router = useRouter();
   const { locale, t } = useLocale(settings.locale);
   const today = useToday();
+  const suggestions = useTaskSuggestions();
   const [notice, setNotice] = useState<Notice>(null);
   const navigation = useBoardNavigation(settings.startView);
   const { filter, query, sort, setFilter, setQuery } = navigation;
@@ -45,7 +48,8 @@ function useWorkspaceState(settings: Settings) {
     setFilter({ kind: "all" });
     setNotice(null);
   });
-  const { tasks } = taskData;
+  const { retryLoad, tasks } = taskData;
+  useEffect(() => subscribeAgentUpdates(retryLoad), [retryLoad]);
   const { projects } = projectData;
   const view = useMemo(() => buildTaskView(tasks ?? [], filter, today ?? "", projects, query, sort),
     [tasks, filter, today, projects, query, sort]);
@@ -70,7 +74,7 @@ function useWorkspaceState(settings: Settings) {
   }
 
   return { page, settings, locale, t, today, navigation, taskData, projectData, selectedTask, inspector,
-    view, notice, setNotice, fail, select };
+    view, notice, setNotice, fail, select, suggestions };
 }
 
 const WorkspaceContext = createContext<ReturnType<typeof useWorkspaceState> | null>(null);
@@ -87,7 +91,7 @@ export function TaskWorkspace({ settings, children }: { settings: Settings; chil
   return <WorkspaceContext.Provider value={workspace}>
     <a className="skip-link" href="#main-content">{t.skipToContent}</a>
     <div className={`shell${page === "/" && selectedTask ? " has-inspector" : ""}`}>
-      <Sidebar t={t} view={view} filter={navigation.filter} page={page} onFilter={select}
+      <Sidebar t={t} view={view} filter={navigation.filter} page={page} onFilter={select} pendingCount={workspace.suggestions.pendingCount}
         taskLoadFailed={page !== "/" && workspace.taskData.loadFailed} onRetryTasks={workspace.taskData.retryLoad}
         projectLoadFailed={projectData.loadFailed} onRetryProjects={projectData.retryLoad}
         projectManager={{ projects: projectData.projects, error: projectData.projectError ? errorMessage(t, projectData.projectError) : "",
