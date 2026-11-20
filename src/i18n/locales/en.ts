@@ -98,7 +98,7 @@ export const en = {
   removeFromToday: "Remove from today",
   plannedEarlier: (date: string) => `Planned earlier · ${date}`,
   emptyToday: "Nothing planned for today.",
-  emptyTodayBody: "Pick tasks with Add to today. Tasks due today or overdue appear automatically.",
+  emptyTodayBody: "Use Add to today to make a plan. Unfinished earlier plans and tasks due today or overdue appear here automatically.",
   tags: "Tags",
   colTask: "Task",
   colDue: "Due",
