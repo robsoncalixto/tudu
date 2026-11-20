@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Dictionary } from "@/i18n";
+import type { Dictionary, Locale } from "@/i18n";
 import { tasksApi } from "@/features/tasks/api";
 import { projectsApi } from "@/features/projects/api";
 import { captureApi } from "@/features/capture/api";
@@ -15,7 +15,7 @@ import { completedOn, groupWorkLog } from "./selectors";
 import { formatWorkLog } from "./format";
 import type { Grouping } from "./schema";
 
-export function useWorkLog(t: Dictionary) {
+export function useWorkLog(t: Dictionary, locale: Locale) {
   const today = useToday();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const day = selectedDay ?? today ?? "";
@@ -65,7 +65,7 @@ export function useWorkLog(t: Dictionary) {
 
   async function copy(mode: "text" | "markdown") {
     const current = revision.current;
-    const text = formatWorkLog(day, groups, mode, t, summary);
+    const text = formatWorkLog(day, groups, mode, t, locale, summary);
     setCopying(true); setError(null); setNotice(null); setManualCopy(null);
     try {
       await copyText(text);

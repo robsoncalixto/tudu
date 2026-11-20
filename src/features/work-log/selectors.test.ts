@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { taskSchema } from "@/features/tasks/schema";
-import { completedOn, groupWorkLog } from "./selectors";
+import { completedOn, groupWorkLog, totalWorkLogTime } from "./selectors";
 import { workLogQuerySchema } from "./schema";
 
 const p1 = "00000000-0000-4000-8000-000000000001";
@@ -64,5 +64,17 @@ describe("groupWorkLog", () => {
     ]);
     expect(groupWorkLog(tasks, projects, "none")).toMatchObject([{ label: null, kind: "none", tasks }]);
     expect(groupWorkLog([], projects, "project")).toEqual([]);
+  });
+});
+
+describe("time totals", () => {
+  it("counts duplicate tag appearances once, includes zero and skips missing actual times", () => {
+    const timed = { ...completedTask("Timed"), tags: ["a", "b"], realTimeHours: 1.5 };
+    const tasks = [timed, { ...completedTask("Zero"), realTimeHours: 0 }, { ...completedTask("Missing"), estimateHours: 8 }];
+    const groups = groupWorkLog(tasks, [], "tag");
+    expect(groups.map((group) => totalWorkLogTime(group.tasks))).toEqual([
+      { hours: 1.5, missing: 0 }, { hours: 1.5, missing: 0 }, { hours: 0, missing: 1 },
+    ]);
+    expect(totalWorkLogTime(groups.flatMap((group) => group.tasks))).toEqual({ hours: 1.5, missing: 1 });
   });
 });

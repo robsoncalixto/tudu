@@ -7,11 +7,11 @@ const languages = [
   { locale: "pt-BR", title: "Resumo diário", day: "Concluídas em", group: "Agrupar por", noProject: "Sem projeto", noTags: "Sem etiquetas", count: "2 tarefas concluídas", text: "Copiar texto simples", markdown: "Copiar Markdown", copied: "Resumo diário copiado.", ai: "Resumir com IA", summary: "Resumo com IA", ready: "Resumo com IA pronto. Revise antes de compartilhar.", paragraph: "Enviei o relatório e revisei a versão.", busy: "A IA está ocupada agora. Tente de novo em instantes.", empty: "Nenhuma tarefa concluída neste dia.", refresh: "Atualizar", loadFailed: "Não foi possível carregar o resumo diário. Tente Atualizar.", manual: "Selecione e copie este resumo diário", copyFailed: "A cópia foi bloqueada. Selecione e copie o resumo diário abaixo.", back: "Voltar às tarefas" },
 ] as const;
 
-async function prepare(page: Page, request: APIRequestContext, locale: "en" | "pt-BR") {
+async function prepare(page: Page, request: APIRequestContext, locale: "en" | "pt-BR", withTime = false) {
   const [project] = await seedProjects(request, ["Acme"]);
   const created = await seed(request, [
-    { title: "Ship *report*", projectId: project.id, due: "2026-12-01", tags: ["client", "work"] },
-    { title: "Review release", due: YESTERDAY }, { title: "Yesterday's work", due: TODAY }, { title: "Still open", due: TODAY },
+    { title: "Ship *report*", projectId: project.id, due: "2026-12-01", tags: ["client", "work"], ...(withTime ? { realTimeHours: 1.5, estimateHours: 2.25 } : {}) },
+    { title: "Review release", due: YESTERDAY, ...(withTime ? { estimateHours: 8 } : {}) }, { title: "Yesterday's work", due: TODAY }, { title: "Still open", due: TODAY },
   ]);
   for (const task of created.slice(0, 3)) await request.patch(`/api/tasks/${task.id}`, { data: { done: true } });
   const saved = (await (await request.get("/api/tasks")).json()).tasks as Task[];
@@ -54,9 +54,33 @@ for (const l of languages) {
     await page.goto("/work-log");
     await page.getByRole("button", { name: l.text, exact: true }).click();
     await expect(page.getByRole("status")).toHaveText(l.copied);
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`${l.title} — ${TODAY}\n\nAcme\n- Ship *report*\n\n${l.noProject}\n- Review release`);
+    const missing = l.locale === "en" ? "Total time: 0 hr (2 tasks without recorded time)" : "Tempo total: 0 h (2 tarefas sem tempo registrado)";
+    const groupTotal = l.locale === "en" ? "Total time: 0 hr (1 task without recorded time)" : "Tempo total: 0 h (1 tarefa sem tempo registrado)";
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`${l.title} — ${TODAY}\n\n${missing}\n\nAcme\n- Ship *report*\n\n${groupTotal}\n\n${l.noProject}\n- Review release\n\n${groupTotal}`);
     await page.getByRole("button", { name: l.markdown, exact: true }).click();
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`# ${l.title} — ${TODAY}\n\n## Acme\n- Ship \\*report\\*\n\n## ${l.noProject}\n- Review release`);
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`# ${l.title} — ${TODAY}\n\n${missing}\n\n## Acme\n- Ship \\*report\\*\n\n${groupTotal}\n\n## ${l.noProject}\n- Review release\n\n${groupTotal}`);
+    expect(await listTasks(request)).toEqual(saved);
+  });
+
+  test(`shows and copies time totals without double-counting tags in ${l.locale}`, async ({ page, request, context }) => {
+    const saved = await prepare(page, request, l.locale, true);
+    const spent = l.locale === "en" ? "Spent 1.5 hr · Estimate 2.25 hr" : "Tempo gasto 1,5 h · Estimativa 2,25 h";
+    const total = l.locale === "en" ? "Total time: 1.5 hr" : "Tempo total: 1,5 h";
+    const missing = l.locale === "en" ? "(1 task without recorded time)" : "(1 tarefa sem tempo registrado)";
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.goto("/work-log");
+    await page.getByRole("combobox", { name: l.group }).selectOption("tag");
+    await expect(page.getByText(spent, { exact: false })).toHaveCount(2);
+    await expect(page.getByRole("listitem").filter({ hasText: "Review release" })).toHaveText("Review release");
+    await expect(page.getByText(total, { exact: true })).toHaveCount(2);
+    await expect(page.getByText(`${total} ${missing}`, { exact: true })).toBeVisible();
+    for (const mode of [l.text, l.markdown]) {
+      await page.getByRole("button", { name: mode, exact: true }).click();
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      expect(copied).toContain(`${total} ${missing}`);
+      expect(copied.split(spent)).toHaveLength(3);
+      expect(copied).toContain("- Review release");
+    }
     expect(await listTasks(request)).toEqual(saved);
   });
 
