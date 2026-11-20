@@ -4,7 +4,7 @@ import { createGenerator } from "@/features/ai/server/generate";
 import { listTasks } from "@/features/tasks/server/repository";
 import { listProjects } from "@/features/projects/server/repository";
 import { proposalRepository } from "@/features/agent/server/repository";
-import { proposeChanges } from "@/features/agent/server/propose";
+import { proposeChanges, reviewOpenTasks } from "@/features/agent/server/propose";
 import { proposalRequestSchema } from "@/features/agent/schema";
 import { agentFailure } from "../response";
 
@@ -25,11 +25,14 @@ export async function POST(request: Request) {
     const config = aiPublicConfiguration();
     if (!config.available[settings.aiProvider]) return Response.json({ error: "ai_disabled" }, { status: 503 });
     const [tasks, projects] = await Promise.all([listTasks(), listProjects()]);
-    const drafts = await proposeChanges(createGenerator(settings), parsed.data.text, parsed.data.today, tasks, projects, settings.locale, settings.defaultPriority);
+    const { text, today, review } = parsed.data;
+    const generate = createGenerator(settings);
+    const reviewed = review ? await reviewOpenTasks(generate, text, today, tasks, projects, settings.locale) : null;
+    const drafts = reviewed?.drafts ?? await proposeChanges(generate, text, today, tasks, projects, settings.locale, settings.defaultPriority);
     const proposals = await proposalRepository.addProposals(drafts, {
-      note: parsed.data.text, today: parsed.data.today, provider: settings.aiProvider,
+      note: text, today, ...(review ? { review } : {}), provider: settings.aiProvider,
       model: settings.aiModel || config.models[settings.aiProvider],
     });
-    return Response.json({ proposals }, { status: 201 });
+    return Response.json({ proposals, ...(reviewed ? { summary: reviewed.summary } : {}) }, { status: 201 });
   } catch (error) { return agentFailure(error); }
 }
