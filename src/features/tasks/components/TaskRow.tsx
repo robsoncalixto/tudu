@@ -7,6 +7,7 @@ import type { Dictionary, Locale } from "@/i18n";
 import type { Project } from "@/features/projects/schema";
 import { PRIORITIES, type Priority, type Task } from "../schema";
 import { nextSubtaskVisibility, stepProgress, type SubtaskVisibility } from "../checklist";
+import { isProvisional } from "../optimistic-tasks";
 import { repeatDescription } from "../recurrence";
 import { isPlannedForToday } from "../selectors";
 import { TASK_ORDER_DRAG_TYPE } from "../use-day-order";
@@ -46,6 +47,8 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
   const planLabel = planned ? t.removeFromToday : t.addToToday;
   const suggestionCount = suggestions.get(task.id)?.length ?? 0;
   const hasMetadata = suggestionCount > 0 || project || task.tags.length > 0 || steps.total > 0 || task.repeat || earlierPlan;
+  // Shown the moment it was written; it becomes reachable when the saved task replaces it.
+  const unsaved = isProvisional(task);
 
   function addSubtask() {
     setVisibility("all"); setAdding(true);
@@ -60,7 +63,8 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
 
   return (
     <li ref={row} className={`task${task.done ? " is-done" : ""}${fresh ? " is-new" : ""}`} data-priority={task.priority}
-      data-task-id={task.id} data-inspected={selected || undefined} tabIndex={-1} aria-label={task.title}
+      data-task-id={unsaved ? undefined : task.id} data-inspected={selected || undefined} tabIndex={-1} aria-label={task.title}
+      inert={unsaved} aria-hidden={unsaved || undefined}
       onDragOver={(event) => {
         if (order?.ready && order.positions.has(task.id) && event.dataTransfer.types.includes(TASK_ORDER_DRAG_TYPE)) {
           event.preventDefault();

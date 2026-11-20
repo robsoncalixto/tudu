@@ -432,7 +432,7 @@ test("returns from a reloaded Settings page with the board search and task draft
   await page.goto("/");
   await sidebar(page).getByRole("button", { name: /^Today,/ }).click();
   await page.getByRole("searchbox").fill("first");
-  const draft = page.getByRole("textbox", { name: /Write a task/ });
+  const draft = page.getByRole("combobox", { name: /Write a task/ });
   await draft.fill("Finish the remaining work");
   await sidebar(page).getByRole("link", { name: "Settings" }).click();
   await expect(page).toHaveURL("/settings");

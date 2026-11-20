@@ -1,0 +1,87 @@
+/* The typed text is drawn by the mirror so tokens can be marked; the field above it stays the real, editable text. */
+.command-field {
+  position: relative;
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  max-height: 13em;
+}
+
+.command-field > .command-mirror,
+.command-field > textarea {
+  grid-area: 1 / 1;
+  min-width: 0;
+  margin: 0;
+  padding: 14px 0;
+  border: 0;
+  font: 400 16px/24px var(--body);
+  letter-spacing: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.command-mirror { color: var(--text); pointer-events: none; }
+
+.command-field > textarea {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text);
+}
+
+.command-field > textarea:focus { outline: none; }
+/* The mirror draws the placeholder with its example tokens marked; the real one stays for assistive technology. */
+.command-field > textarea::placeholder { color: transparent; }
+.command-field > textarea:disabled + .command-suggestions { display: none; }
+.command-field:has(textarea:disabled) .command-mirror { color: var(--text-muted); }
+
+/* Marks change colour only: any change in width would move the caret away from the text. */
+.command-token { border-radius: var(--r-sm); background: var(--selected-surface); color: var(--accent); }
+.command-unknown { text-decoration: underline wavy var(--error); text-underline-offset: 3px; }
+.command-placeholder { color: var(--text-muted); }
+.command-placeholder .command-token { background: transparent; }
+
+.command-suggestions {
+  position: absolute;
+  inset-block-start: calc(100% + 2px);
+  inset-inline-start: -10px;
+  z-index: 5;
+  width: max-content;
+  min-width: min(280px, 100%);
+  max-width: min(420px, calc(100vw - 2 * var(--s-md)));
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--control-border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.command-suggestions[hidden] { display: none; }
+
+.command-suggestions li {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+  min-height: 40px;
+  padding: 6px 10px;
+  border-radius: var(--r-md);
+  font: 500 14px/20px var(--heading);
+  cursor: pointer;
+}
+
+.command-suggestions li > span { min-width: 0; overflow-wrap: anywhere; }
+.command-suggestions svg { flex-shrink: 0; color: var(--text-muted); }
+.command-suggestions code { margin-inline-start: auto; padding-inline-start: var(--s-md); color: var(--text-muted); font: 400 12px/18px var(--body); white-space: nowrap; }
+.command-suggestions li:hover { background: var(--surface-muted); }
+.command-suggestions li[aria-selected="true"] { background: var(--selected-surface); }
+.command-suggestions li[aria-selected="true"], .command-suggestions li[aria-selected="true"] svg { color: var(--accent); }
+
+@media (max-width: 820px), (pointer: coarse) {
+  .command-suggestions li { min-height: var(--touch-target); }
+}

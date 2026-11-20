@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Project } from "@/features/projects/schema";
-import { normalizeQuickTag, type QuickAddDefaults, type QuickAddProblem } from "@/features/quick-add/schema";
 import { quickAddApi } from "@/features/quick-add/api";
+import type { QuickAddDefaults, QuickAddProblem, QuickTokenType } from "@/features/quick-add/schema";
+import { shortcutsApi } from "@/features/shortcuts/api";
 import type { Dictionary, Locale } from "@/i18n";
 import type { DateFormat } from "@/lib/dates";
 import { Icon } from "@/lib/Icon";
-import type { Priority } from "../schema";
-import { ComposerDetails } from "./ComposerDetails";
-import { ComposerPreview, type PreviewDraft } from "./ComposerPreview";
+import { replaceFieldText } from "@/lib/text-field";
+import { composerDefaults, composerValues, MAX_DRAFT_TAGS, NO_CHOICE, withoutTag, withTag, type ComposerChoice } from "../composer-draft";
+import { CommandField } from "./CommandField";
+import { ComposerBatch } from "./ComposerBatch";
+import { ComposerChips } from "./ComposerChips";
 import "./composer.css";
 
 export type ComposerMode = "add" | "ai";
@@ -23,148 +26,141 @@ interface Props {
   text: string;
   onTextChange: (value: string) => void;
   aiEnabled: boolean;
-  defaultPriority: Priority;
+  /** What the current view adds to a new task. */
   context: QuickAddDefaults;
   projects: Project[];
+  /** Saved tags. */
   suggestions: string[];
   onSubmit: (mode: ComposerMode, text: string, defaults: QuickAddDefaults) => Promise<boolean>;
+  /** Escape on an empty field hands the keyboard back to the list. */
+  onLeave: () => void;
 }
 
-export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onTextChange, onSubmit, defaultPriority, context, projects, suggestions }: Props) {
-  const [busy, setBusy] = useState<ComposerMode | null>(null);
-  const [help, setHelp] = useState<"shortcuts" | "ai" | null>(null);
+export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onTextChange, onSubmit, onLeave, context, projects, suggestions }: Props) {
+  const [capturing, setCapturing] = useState(false);
+  const [setup, setSetup] = useState(false);
   const [mod, setMod] = useState("Ctrl");
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const [chosen, setChosen] = useState<{ priority?: Priority; due?: string; tags: string[] }>({ tags: [] });
-  const [tag, setTag] = useState("");
-  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [choice, setChoice] = useState<ComposerChoice>(NO_CHOICE);
   const [problem, setProblem] = useState<QuickAddProblem | null>(null);
   const [tagLimit, setTagLimit] = useState(false);
-  const defaults = { ...context, ...chosen, tags: [...new Set([...chosen.tags, normalizeQuickTag(tag)].filter(Boolean))] };
-  const drafts = useMemo(() => quickAddApi.previewDrafts(text, today, defaults, projects), [text, today, context, chosen, tag, projects]);
-  const selectedPriority = drafts?.every((item) => item.priority === drafts[0].priority) ? drafts[0].priority : chosen.priority;
-  const selectedDue = drafts?.every((item) => item.due === drafts[0].due) ? drafts[0].due : chosen.due;
-  const emptyPreview: PreviewDraft = { title: "", tags: defaults.tags, projectId: null, due: chosen.due ?? null, priority: chosen.priority };
-  const preview = drafts ?? [emptyPreview];
-  const hasMetadata = preview.length > 1 || preview.some((item) => item.due || item.priority || item.projectId || item.estimateHours || item.tags.length);
+  const field = useRef<HTMLTextAreaElement>(null);
+  const current = useRef(text);
+  current.current = text;
+  const defaults = composerDefaults(context, choice);
+  const values = composerValues(text, today, defaults, projects);
+  const drafts = quickAddApi.previewDrafts(text, today, defaults, projects);
+  const lines = text.split(/\r?\n/u).filter((line) => line.trim()).length;
+  const warnings = quickAddApi.warnings(text, today, projects);
+  const disabled = !text.trim() || capturing;
 
-  function addTag() {
-    const value = normalizeQuickTag(tag);
-    if (!value) return;
-    const saved = quickAddApi.previewDrafts(text, today, { ...context, ...chosen }, projects);
-    const current = saved ?? [{ tags: [...chosen.tags, ...(context.tag ? [context.tag] : [])] }];
-    if (current.some((item) => new Set([...item.tags.map(normalizeQuickTag), value]).size > 10)) {
-      setTagLimit(true);
-      return;
-    }
-    setChosen({ ...chosen, tags: [...new Set([...chosen.tags, value])] });
-    setTag("");
-    setTagLimit(false);
+  useEffect(() => { setMod(/Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl"); }, []);
+  useEffect(() => { setProblem(null); setTagLimit(false); }, [text, choice]);
+
+  const refocus = () => requestAnimationFrame(() => field.current?.focus({ preventScroll: true }));
+  /** Changes the text as typing would, so the browser can undo it. */
+  function rewrite(next: string) {
+    const input = field.current;
+    if (!input || !replaceFieldText(input, 0, input.value.length, next)) onTextChange(next);
   }
-
-  function removeTag(value: string) {
-    setChosen({ ...chosen, tags: chosen.tags.filter((item) => item !== value) });
-    if (normalizeQuickTag(tag) === value) setTag("");
-    setTagLimit(false);
-    onTextChange(quickAddApi.stripTokens(text, today, projects, "tag", value));
-    requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+  /** A chip takes over its field: the typed token goes and the chip keeps the value. */
+  function choose(next: ComposerChoice, type?: QuickTokenType, value?: string) {
+    setChoice(next);
+    const stripped = type && !values.batch ? quickAddApi.stripTokens(text, today, projects, type, value) : text;
+    if (stripped !== text) rewrite(stripped);
+    refocus();
   }
-  const disabled = !text.trim() || busy !== null;
-
-  useEffect(() => {
-    setMod(/Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl");
-  }, []);
-
-  useEffect(() => { setProblem(null); }, [text, chosen, tag]);
 
   async function submit(mode: ComposerMode) {
     if (disabled) return;
-    if (new Set([...defaults.tags, ...(context.tag ? [context.tag] : [])]).size > 10) {
-      setTagLimit(true);
+    if (values.tags.length > MAX_DRAFT_TAGS) { setTagLimit(true); return; }
+    const sent = { text, choice };
+    if (mode === "ai") {
+      setCapturing(true);
+      try { if (await onSubmit("ai", text.trim(), defaults)) { onTextChange(""); setChoice(NO_CHOICE); } }
+      finally { setCapturing(false); refocus(); }
       return;
     }
-    if (mode === "add") setProblem(drafts ? null : quickAddApi.problem(text, today, defaults, projects));
-    setBusy(mode);
-    try {
-      if (await onSubmit(mode, text.trim(), defaults)) {
-        onTextChange("");
-        setChosen({ tags: [] });
-        setTag("");
-        setTagLimit(false);
-        setDetailsExpanded(false);
-      }
-    } finally {
-      setBusy(null);
-      requestAnimationFrame(() => {
-        const input = inputRef.current;
-        if (document.activeElement === document.body || input?.form?.contains(document.activeElement)) {
-          input?.focus({ preventScroll: true });
-        }
-      });
+    if (!drafts) {
+      setProblem(quickAddApi.problem(text, today, defaults, projects));
+      void onSubmit("add", text.trim(), defaults);
+      return;
     }
+    // The field is free for the next task at once; a failed save brings this one back.
+    onTextChange("");
+    setChoice(NO_CHOICE);
+    refocus();
+    if (await onSubmit("add", sent.text.trim(), defaults)) return;
+    onTextChange(current.current.trim() ? `${sent.text}\n${current.current}` : sent.text);
+    setChoice(sent.choice);
   }
 
+  const example = <>{t.composerPlaceholder} <span className="command-example">{t.composerExample.split(" ").map((word) =>
+    <span key={word}><span className="command-token">{word}</span> </span>)}</span></>;
+
   return (
-    <form className="composer quick-composer" onSubmit={(event) => { event.preventDefault(); void submit("add"); }}>
+    <form className="composer quick-composer" aria-label={t.addTask} onSubmit={(event) => { event.preventDefault(); void submit("add"); }}>
       <div className="composer-entry">
-        <label className="composer-field" htmlFor="task-entry">
+        <div className="composer-field" onMouseDown={(event) => {
+          if (event.target instanceof HTMLTextAreaElement || (event.target as Element).closest("[role='listbox']")) return;
+          event.preventDefault();
+          field.current?.focus();
+        }}>
           <Icon name="plus" size={20} className="composer-symbol" />
-          <textarea
-            id="task-entry" ref={inputRef} value={text}
-            rows={Math.min(8, text.split("\n").length)} placeholder={t.composerPlaceholder}
-            aria-label={t.composerPlaceholder} aria-describedby={hasMetadata ? "quick-task-preview" : undefined}
-            disabled={busy !== null}
-            onChange={(event) => onTextChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
-              event.preventDefault();
-              void submit((event.metaKey || event.ctrlKey) && aiEnabled ? "ai" : "add");
-            }}
-          />
-        </label>
-        <button type="button" className="composer-mobile-details icon-btn" aria-label={t.composerDetails}
-          title={t.composerDetails} aria-expanded={detailsExpanded} aria-controls="composer-task-details"
-          onClick={() => setDetailsExpanded(!detailsExpanded)}><Icon name="settings" size={17} /></button>
-        <button type="submit" className="btn btn-primary quick-submit" disabled={disabled}>
+          <CommandField id="task-entry" inputRef={field} value={text} onChange={onTextChange} label={t.composerPlaceholder} placeholder={example}
+            hint={`${t.composerPlaceholder} ${t.composerExample}`}
+            sources={{ today, language: locale, tags: suggestions, projects }} usedTags={values.tags} t={t} locale={locale}
+            disabled={capturing} describedBy="composer-feedback"
+            onKey={(event, shortcuts) => {
+              if (shortcuts.includes("submitWithAi")) { event.preventDefault(); void submit(aiEnabled ? "ai" : "add"); }
+              else if (shortcuts.includes("submitTask")) { event.preventDefault(); void submit("add"); }
+              else if (shortcuts.includes("leaveComposer")) {
+                event.preventDefault();
+                if (text || choice !== NO_CHOICE) { rewrite(""); setChoice(NO_CHOICE); }
+                else onLeave();
+              }
+            }} />
+        </div>
+        <button type="submit" className="btn btn-secondary quick-submit" disabled={disabled}>
           {t.add} <Icon name="corner-down-left" size={14} />
         </button>
       </div>
-      <div className="composer-fields" id="composer-task-details" data-expanded={detailsExpanded}>
-        <ComposerDetails t={t} priority={selectedPriority ?? defaultPriority} due={selectedDue ?? ""} tag={tag}
-        suggestions={suggestions} busy={busy !== null} onTag={(value) => { setTag(value); setTagLimit(false); }} onAddTag={addTag}
-        onPriority={(priority) => {
-          setChosen({ ...chosen, priority }); onTextChange(quickAddApi.stripTokens(text, today, projects, "priority"));
+      <ComposerChips t={t} locale={locale} dateFormat={dateFormat} today={today} values={values} projects={projects} savedTags={suggestions}
+        disabled={capturing}
+        onPriority={(priority) => choose({ ...choice, priority: priority ?? undefined }, "priority")}
+        onDue={(due) => choose({ ...choice, due: due ?? undefined }, "due")}
+        onPlanned={(plannedFor) => choose({ ...choice, plannedFor })}
+        onProject={(projectId) => choose({ ...choice, projectId }, "project")}
+        onEstimate={(estimateHours) => choose({ ...choice, estimateHours: estimateHours ?? undefined }, "estimate")}
+        onAddTag={(tag) => {
+          const next = withTag(choice, tag);
+          if (new Set([...values.tags, ...next.tags]).size > MAX_DRAFT_TAGS) setTagLimit(true);
+          else setChoice(next);
         }}
-        onDue={(due) => {
-          setChosen({ ...chosen, due: due || undefined }); onTextChange(quickAddApi.stripTokens(text, today, projects, "due"));
-        }} />
+        onRemoveTag={(tag) => choose(withoutTag(choice, tag, context.tag), "tag", tag)} />
+      <div id="composer-feedback" className="composer-feedback">
+        {warnings.map((warning) => <p className="hint" aria-live="polite" key={`${warning.start}-${warning.text}`}>
+          <Icon name="info" size={14} />{warning.kind === "date" ? t.composerInvalidDate(warning.text) : t.composerUnknownProject(warning.text)}
+        </p>)}
+        {problem && <p className="hint is-error" role="alert">{problem.kind === "line_limit" ? t.quickLineLimit
+          : problem.kind === "text_limit" ? t.quickTextLimit
+            : problem.kind === "tag_limit" ? t.quickTagsOnLine(problem.line) : t.quickInvalidLine("line" in problem ? problem.line : 1)}</p>}
+        {tagLimit && <p className="hint is-error" role="alert">{t.composerTagLimit}</p>}
       </div>
-      {problem && <p className="hint" role="alert">{problem.kind === "line_limit" ? t.quickLineLimit
-        : problem.kind === "text_limit" ? t.quickTextLimit
-          : problem.kind === "tag_limit" ? t.quickTagsOnLine(problem.line) : t.quickInvalidLine("line" in problem ? problem.line : 1)}</p>}
-      {tagLimit && <p className="hint" role="alert">{t.composerTagLimit}</p>}
-      {hasMetadata && <ComposerPreview drafts={preview} today={today} locale={locale} dateFormat={dateFormat}
-        projects={projects} fixedTag={context.tag} t={t} onRemoveTag={removeTag} />}
+      {values.batch && <ComposerBatch drafts={drafts} count={lines} today={today} locale={locale} dateFormat={dateFormat} projects={projects} t={t}
+        disabled={capturing} onJoin={() => { rewrite(text.split(/\s*\r?\n\s*/u).filter(Boolean).join(" ")); refocus(); }} />}
       <div className="capture-options">
         <button type="button" className="capture-option" disabled={!aiEnabled || disabled}
-          title={aiEnabled ? t.composerHint.replace("{mod}", mod) : t.aiOff}
-          onClick={() => void submit("ai")}>
-          <Icon name="list-checks" size={15} />{busy === "ai" ? t.creating : t.createWithAi}
+          title={aiEnabled ? t.composerHint.replace("{mod}", mod) : t.aiOff} onClick={() => void submit("ai")}>
+          <Icon name="list-checks" size={15} />{capturing ? t.creating : t.createWithAi}
+          {aiEnabled && <span className="capture-keys" aria-hidden="true"><kbd>{mod}</kbd><kbd>↵</kbd></span>}
         </button>
         {!aiEnabled && <button type="button" className="capture-setup" aria-label={t.aiSetup} title={t.aiSetup}
-          aria-expanded={help === "ai"} aria-controls="ai-capture-guide"
-          onClick={() => setHelp(help === "ai" ? null : "ai")}><Icon name="info" size={15} /></button>}
-        <button type="button" className="capture-option capture-help" aria-expanded={help === "shortcuts"}
-          aria-controls="quick-task-guide" onClick={() => setHelp(help === "shortcuts" ? null : "shortcuts")}>
-          <Icon name="keyboard" size={15} />{t.shortSyntaxTitle}<Icon name="chevron-down" size={13} />
+          aria-expanded={setup} aria-controls="ai-capture-guide" onClick={() => setSetup(!setup)}><Icon name="info" size={15} /></button>}
+        <button type="button" className="capture-option capture-help" aria-haspopup="dialog" onClick={() => shortcutsApi.run("help")}>
+          <Icon name="keyboard" size={15} />{t.shortcuts.open}
         </button>
       </div>
-      <div className="capture-guide" id="quick-task-guide" hidden={help !== "shortcuts"}>
-        <code>{t.quickTaskExample}</code>
-        <p>{t.shortSyntaxHint}</p>
-        {aiEnabled && <p>{t.composerHint.replace("{mod}", mod)}</p>}
-      </div>
-      {!aiEnabled && <section className="capture-guide" id="ai-capture-guide" aria-label={t.aiSetup} hidden={help !== "ai"}>
+      {!aiEnabled && <section className="capture-guide" id="ai-capture-guide" aria-label={t.aiSetup} hidden={!setup}>
         <p>{t.aiOff}</p>
         <Link href="/settings#ai-settings-heading">{t.settings}</Link>
       </section>}

@@ -65,7 +65,7 @@ for (const language of languages) {
     expect(JSON.stringify(stored)).not.toMatch(/apiKey|API_KEY|authToken/);
     expect(await (await request.get("/api/ai/capture")).json()).toEqual({ enabled: false });
     await sidebar(page).getByRole("button", { name: language.all }).click();
-    await page.getByRole("textbox", { name: /Write a task|Escreva uma tarefa/ }).fill("Works without AI");
+    await page.getByRole("combobox", { name: /Write a task|Escreva uma tarefa/ }).fill("Works without AI");
     await page.getByRole("button", { name: language.add, exact: true }).click();
     expect((await listTasks(request)).map((task) => task.title)).toEqual(["Works without AI"]);
     await expect(page.getByRole("button", { name: language.locale === "en" ? "Create with AI" : "Criar com IA", exact: true })).toBeDisabled();
@@ -89,7 +89,7 @@ for (const language of languages) {
     await expect(page.locator("header time")).toContainText(TODAY);
     await expect(sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) })).toHaveAttribute("aria-current", "page");
     await expect(row(page, "Due task").getByText(TODAY, { exact: true })).toBeVisible();
-    await page.getByRole("textbox", { name: /Write a task|Escreva uma tarefa/ }).fill("Uses preferred priority");
+    await page.getByRole("combobox", { name: /Write a task|Escreva uma tarefa/ }).fill("Uses preferred priority");
     await page.getByRole("button", { name: language.add, exact: true }).click();
     await expect(row(page, "Uses preferred priority").getByRole("combobox", { name: language.rowPriority, exact: true })).toHaveValue("high");
     await expect.poll(async () => (await listTasks(request)).find((task) => task.title === "Uses preferred priority")?.priority).toBe("high");

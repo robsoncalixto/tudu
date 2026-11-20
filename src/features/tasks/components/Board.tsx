@@ -9,7 +9,8 @@ import { errorCode } from "@/lib/http";
 import type { Task } from "../schema";
 import { rankDayTasks } from "../day-order";
 import { useDayOrder } from "../use-day-order";
-import { isForToday, type TaskSort } from "../selectors";
+import { isProvisional } from "../optimistic-tasks";
+import { isForToday, isInFilter, type TaskSort } from "../selectors";
 import { useTaskActions } from "../use-task-actions";
 import { useTaskShortcuts } from "../use-task-shortcuts";
 import { BoardHeader } from "./BoardHeader";
@@ -45,16 +46,26 @@ export function Board() {
     if (!today || !tasks) return false;
     setNotice(null);
     try {
+      if (mode === "add") {
+        const { shown, saved } = add(text, today, defaults, projects, settings.defaultPriority);
+        setFresh(new Set(shown.map((task) => task.id)));
+        setQuery("");
+        const created = await saved;
+        // A chip can send the task out of this view; say that it was still saved.
+        if (created.some((task) => !isInFilter(task, filter, today))) setNotice({ kind: "ok", text: t.added(created.length) });
+        return true;
+      }
       const { tag, tags, projectId, plannedFor, priority, due } = defaults;
       const aiTags = [...new Set([...(tags ?? []), ...(tag ? [tag] : [])])];
-      const created = mode === "ai" ? await capture(text, today, {
+      const created = await capture(text, today, {
         ...(priority ? { priority } : {}), ...(due ? { due } : {}),
         ...(projectId ? { projectId } : {}), ...(plannedFor ? { plannedFor } : {}),
         ...(aiTags.length ? { tags: aiTags } : {}),
-      }) : await add(text, today, defaults, projects);
+      });
       setFresh(new Set(created.map((task) => task.id)));
       setQuery("");
-      if (mode === "ai") { setFilter({ kind: "all" }); setNotice({ kind: "ok", text: t.added(created.length) }); }
+      setFilter({ kind: "all" });
+      setNotice({ kind: "ok", text: t.added(created.length) });
       return true;
     } catch (error) { fail(errorCode(error)); return false; }
   }
@@ -82,7 +93,7 @@ export function Board() {
     focusRequest.current = null;
   }, [loaded, focusRequest, actions.focusComposer]);
   const searching = Boolean(query.trim());
-  const dayIds = today ? rankDayTasks((tasks ?? []).filter((task) => !task.done && isForToday(task, today)), today).map((task) => task.id) : [];
+  const dayIds = today ? rankDayTasks((tasks ?? []).filter((task) => !task.done && !isProvisional(task) && isForToday(task, today)), today).map((task) => task.id) : [];
   const order = useDayOrder(today, dayIds, filter.kind === "today" && sort === "manual", reorder, fail);
   const list = { suggestions: suggestions.byTask, order: order && searching ? { ...order, ready: false } : order, today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: actions.patchFromRow,
     onPostpone: postpone, selectedId: inspector.selectedId, onShowPanel: inspector.toggle, onTag: (tag: string) => select({ kind: "tag", tag }) };
@@ -108,7 +119,8 @@ export function Board() {
         <BoardHeader title={title} t={t} today={today ?? ""} date={today ? longDate(today, locale, settings.dateFormat) : null}
           loading={!tasks && !loadFailed} failed={loadFailed} open={view.scopeOpen} done={view.scopeDone} />
         {tasks && <Composer t={t} text={text} onTextChange={setText} aiEnabled={aiEnabled} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat} onSubmit={submit}
-          defaultPriority={settings.defaultPriority} context={composerContext} projects={projects} suggestions={view.tagCounts.map(([tag]) => tag)} />}
+          context={composerContext} projects={projects} suggestions={view.tagCounts.map(([tag]) => tag)}
+          onLeave={() => (actions.rows()[0] ?? document.getElementById("main-content"))?.focus()} />}
         <p className={`board-notice notice${notice ? ` is-${notice.kind}` : ""}`} role="status">{notice?.text}</p>
         {loadFailed && <div className="board-failure"><p role="alert">{t.taskLoadFailed}</p>
           <button type="button" className="btn btn-secondary" onClick={retryLoad}>{t.retry}</button></div>}
