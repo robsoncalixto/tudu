@@ -6,7 +6,8 @@ import type { Project } from "@/features/projects/schema";
 import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import type { Dictionary } from "@/i18n";
 import { errorCode } from "@/lib/http";
-import type { Priority, Task } from "./schema";
+import { chipsAfterCapture } from "./composer-draft";
+import type { Priority, Task, TaskPatch } from "./schema";
 import { isInFilter, type TaskFilter } from "./selectors";
 import type { Notice } from "./use-notice";
 
@@ -20,7 +21,7 @@ interface Options {
   projects: Project[];
   defaultPriority: Priority;
   add: (text: string, today: string, defaults: QuickAddDefaults, projects: Project[], priority: Priority) => { shown: Task[]; saved: Promise<Task[]> };
-  capture: (text: string, today: string, defaults: CaptureDefaults) => Promise<Task[]>;
+  capture: (text: string, today: string, defaults: CaptureDefaults, finish?: (task: Task) => TaskPatch | null) => Promise<Task[]>;
   setFilter: (filter: TaskFilter) => void;
   setQuery: (query: string) => void;
   setNotice: (notice: Notice) => void;
@@ -50,7 +51,7 @@ export function useComposerSubmit({ t, today, ready, filter, projects, defaultPr
         ...(priority ? { priority } : {}), ...(due ? { due } : {}),
         ...(projectId ? { projectId } : {}), ...(plannedFor ? { plannedFor } : {}),
         ...(aiTags.length ? { tags: aiTags } : {}),
-      });
+      }, (task) => chipsAfterCapture(defaults, task, today));
       setFresh(new Set(created.map((task) => task.id)));
       setQuery("");
       setFilter({ kind: "all" });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composerDefaults, composerValues, NO_CHOICE, withoutTag, withTag } from "./composer-draft";
+import { chipsAfterCapture, composerDefaults, composerValues, NO_CHOICE, withoutTag, withTag } from "./composer-draft";
 
 const today = "2026-11-17";
 const site = { id: "00000000-0000-4000-8000-000000000001", name: "Website redesign" };
@@ -54,6 +54,21 @@ describe("what the chips show", () => {
     expect(composerValues("One !alta #a\n\nTwo @amanha", today, { tags: ["team"], priority: "low" }, []))
       .toMatchObject({ batch: true, priority: "low", due: null, tags: ["team"] });
     expect(composerValues("One !alta\n  \n", today, { tags: [] }, [])).toMatchObject({ batch: false, priority: "high" });
+  });
+});
+
+describe("chips that AI capture has no field for", () => {
+  it("become a change to each task it created", () => {
+    expect(chipsAfterCapture({ estimateHours: 0.5 }, { due: null }, today)).toEqual({ estimateHours: 0.5 });
+    expect(chipsAfterCapture({ repeat: "weekly" }, { due: "2026-11-20" }, today)).toEqual({ due: "2026-11-20", repeat: { frequency: "weekly", days: [5] } });
+    // A repeating task with no date starts today, as a typed one does.
+    expect(chipsAfterCapture({ repeat: "monthly", estimateHours: 2 }, { due: null }, today))
+      .toEqual({ estimateHours: 2, due: today, repeat: { frequency: "monthly", day: 17 } });
+  });
+
+  it("change nothing when capture already carried every chip", () => {
+    expect(chipsAfterCapture({ priority: "high", due: today, tags: ["team"], plannedFor: today }, { due: today }, today)).toBeNull();
+    expect(chipsAfterCapture({}, { due: null }, today)).toBeNull();
   });
 });
 

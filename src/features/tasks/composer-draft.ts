@@ -1,8 +1,8 @@
 import type { Project } from "@/features/projects/schema";
 import { quickAddApi } from "@/features/quick-add/api";
 import { normalizeQuickTag, type QuickAddDefaults } from "@/features/quick-add/schema";
-import type { RepeatFrequency } from "@/features/recurrence/schema";
-import type { PartOfDay, Priority } from "./schema";
+import { repeatFrom, type RepeatFrequency } from "@/features/recurrence/schema";
+import type { PartOfDay, Priority, Task, TaskPatch } from "./schema";
 
 export const MAX_DRAFT_TAGS = 10;
 
@@ -71,6 +71,19 @@ export function composerValues(text: string, today: string, defaults: QuickAddDe
     estimateHours: typed?.estimate ?? defaults.estimateHours ?? null,
     repeat: defaults.repeat ?? null,
   };
+}
+
+/**
+ * AI capture takes priority, dates, project and tags as defaults but has no field for an estimate
+ * or a repeat. Those chips become a change to each task it created; `null` when there is none.
+ */
+export function chipsAfterCapture(defaults: QuickAddDefaults, task: Pick<Task, "due">, today: string): TaskPatch | null {
+  const due = task.due ?? today;
+  const changes: TaskPatch = {
+    ...(defaults.estimateHours == null ? {} : { estimateHours: defaults.estimateHours }),
+    ...(defaults.repeat ? { due, repeat: repeatFrom(defaults.repeat, due) } : {}),
+  };
+  return Object.keys(changes).length ? changes : null;
 }
 
 export function withTag(choice: ComposerChoice, tag: string): ComposerChoice {
