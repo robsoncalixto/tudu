@@ -132,9 +132,10 @@ typing `@fri` at the end of a title moves its due date. Completing, reopening
 or deleting a task, or changing its due date in the list, acts at once and
 shows a notice that names the task and offers **Undo** for a few seconds.
 Undo takes back one action after another, newest first, for as long as the
-notice shows. A deleted task is only removed when that notice is gone, and
-completing a repeating task creates its next one only then, so undoing either
-leaves nothing behind. A save that could not reach the server offers **Retry**
+notice shows, in whichever list you move to. A deleted task is only removed
+when that notice is gone, and completing a repeating task creates its next one
+only then, so undoing either leaves nothing behind. Closing, reloading or hiding
+the page ends that wait and sends what was held. A save that could not reach the server offers **Retry**
 in the same notice. The task actions menu of a row also plans the task for
 tomorrow or next week and deletes it.
 
@@ -142,8 +143,8 @@ Open the task panel (the icon at the right of a row, or a double click on the
 row) to edit the title,
 notes, subtasks, priority, project, tags, planned day, due date, part of day,
 repeat rule, time estimate, real execution time and links. Notes are saved a
-moment after you stop typing and are never taken back: Escape there closes the
-panel and keeps them. A title or tag list is saved on Enter or on leaving the
+moment after you stop typing, and at once when the panel or the page closes.
+They are never taken back: Escape there closes the panel and keeps them. A title or tag list is saved on Enter or on leaving the
 field, and Escape drops that edit. Both time fields offer a unit selector
 before the value: Minutes, Hours or Days. Fractional hours are supported, and
 **1 day equals 12 hours**. Clear a field to remove its value. Changing units
@@ -215,8 +216,8 @@ chip placed it.
 A token is a whole word, so `C#` and `name@example.com` are left alone. Prefix
 a token with a backslash to keep it as text: `Discuss \#bug` saves
 **Discuss #bug**. The field marks each token it recognizes, underlines a date
-it cannot read once you move past it, and offers saved tags, projects, days and
-priorities as you type `#`, `+`, `@` or `!`. What cannot be saved is said under
+it cannot read once you move past it or stop typing, and offers saved tags,
+projects, days and priorities as you type `#`, `+`, `@` or `!`. What cannot be saved is said under
 the field: a missing title when you press Enter, a title over 300 characters or
 more than 50 lines while you type.
 
