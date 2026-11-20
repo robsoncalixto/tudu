@@ -1,3 +1,6 @@
+const formatHours = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
+const workHours = (hours: number) => `${formatHours.format(hours)} hour${hours === 1 ? "" : "s"}`;
+
 export const en = {
   brandName: "TUDU",
   taskResources: {
@@ -59,9 +62,9 @@ export const en = {
   partsOfDay: { morning: "Morning", afternoon: "Afternoon", evening: "Evening" },
   workCapacity: "Work capacity",
   workHoursPerDay: "Hours available per working day",
-  agentLoadReason: (day: string, free: string, effort: string) => `${day} has ${free} hours free for an estimated ${effort} hours of work.`,
-  agentDefaultEffort: (hours: string) => `Tasks without estimates use ${hours} hour of effort.`,
-  agentOverloaded: (day: string, hours: string, capacity: string) => `${day} has ${hours} hours planned against ${capacity} hours available.`,
+  agentLoadReason: (day: string, free: number, effort: number) => `${day} has ${workHours(free)} free for an estimated ${workHours(effort)} of work.`,
+  agentDefaultEffort: (hours: number) => `Tasks without estimates use ${workHours(hours)} of effort.`,
+  agentOverloaded: (day: string, hours: number, capacity: number) => `${day} has ${workHours(hours)} planned against ${workHours(capacity)} available.`,
   agentOverloadedDays: (count: number) => `${count} ${count === 1 ? "day is" : "days are"} over capacity.`,
   agentPlannedFor: "Planned day",
   agentTagsHint: "Separate tags with commas.",

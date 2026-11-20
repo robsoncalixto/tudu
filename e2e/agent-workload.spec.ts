@@ -1,3 +1,4 @@
+import { dueLabel } from "../src/lib/dates";
 import { dictionaries } from "../src/i18n";
 import { fixture, pending, taskDraft } from "./agent-support";
 import { expect, listTasks, row, saveSettings, seed, taskDetails, taskPanel, test, TODAY, TOMORROW } from "./support";
@@ -18,7 +19,7 @@ for (const locale of ["en", "pt-BR"] as const) {
     await expect(report.getByLabel(t.setDate)).toHaveValue(TOMORROW);
     await expect(report.getByLabel(t.agentPlannedFor)).toHaveValue(TOMORROW);
     await expect(report.getByRole("combobox", { name: t.partOfDay })).toHaveValue("morning");
-    await expect(report).toContainText(t.agentLoadReason(TOMORROW, "4", "2"));
+    await expect(report).toContainText(t.agentLoadReason(dueLabel(TOMORROW, TODAY, locale, t), 4, 2));
     await expect(pending(page, locale).getByRole("article", { name: "Explicit deadline" }).getByLabel(t.setDate)).toHaveValue("2026-11-20");
     expect((await listTasks(request)).map((item) => item.title)).toEqual(["Full day"]);
     await report.getByRole("button", { name: t.agentAccept }).click();

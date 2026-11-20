@@ -47,6 +47,15 @@ describe("postgres store", () => {
     expect((await db.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'tasks' AND column_name = 'estimate_minutes'")).rows).toEqual([]);
   });
 
+  it("stores and validates the part of day across inserts and updates", async () => {
+    const store = createPostgresStore(db);
+    await store.insert([{ ...task("timed", "Report"), partOfDay: "morning" }]);
+    expect((await store.list())[0].partOfDay).toBe("morning");
+    await createRepository(store).updateTask("timed", { partOfDay: "evening" });
+    await expect(db.query("UPDATE tasks SET part_of_day = 'midnight' WHERE id = 'timed'")).rejects.toThrow();
+    expect((await createPostgresStore(db).list())[0].partOfDay).toBe("evening");
+  });
+
   it("rolls back completion when inserting the next occurrence fails", async () => {
     const repo = createRepository(createPostgresStore(db));
     const [created] = await repo.addTasks([{ ...task("a", "Report"), due: "2026-11-17", repeat: { frequency: "daily" } }]);

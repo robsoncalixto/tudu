@@ -7,8 +7,8 @@ const reason = z.string().min(1).max(1000);
 const task = z.object({
   title: z.string().min(1).max(300), notes: z.string().max(2000), priority: z.enum(PRIORITIES),
   due: date, tags: z.array(z.string().min(1).max(40)).max(10), steps: z.array(z.string().min(1).max(300)).max(100),
-  projectId: id.nullable(), plannedFor: date, estimateHours: durationHoursSchema.default(null),
-  partOfDay: partOfDaySchema.nullable().default(null),
+  projectId: id.nullable(), plannedFor: date, estimateHours: durationHoursSchema,
+  partOfDay: partOfDaySchema.nullable(),
 }).strict();
 const mutations = [
   z.object({ kind: z.literal("set_priority"), taskId: id, priority: z.enum(PRIORITIES), reason }).strict(),

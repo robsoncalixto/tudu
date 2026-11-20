@@ -16,7 +16,7 @@ const fields = {
   aiModel: aiModelSchema,
   workingDays: z.array(z.number().int().min(0).max(6)).min(1).max(7)
     .refine((days) => new Set(days).size === days.length),
-  workHoursPerDay: z.number().positive().max(24),
+  workHoursPerDay: z.number().min(0.25).max(24),
 };
 export const settingsSchema = z.object({
   locale: fields.locale.default(DEFAULT_LOCALE),
