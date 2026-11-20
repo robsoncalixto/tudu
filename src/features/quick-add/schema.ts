@@ -14,13 +14,17 @@ export type QuickAddDefaults = Pick<QuickTask, "priority" | "plannedFor" | "esti
   tag?: string;
   /** Repeats from the task's due date, or from today when it has none. */
   repeat?: RepeatFrequency;
+  /** Belongs to the task's due date, or to today when it has none. */
+  partOfDay?: PartOfDay;
 };
 
 export function normalizeQuickTag(value: string): string {
   return value.trim().replace(/^#/, "").trim().normalize("NFC").toLowerCase();
 }
 
-export type QuickAddProblem = { kind: "text_limit" | "line_limit" } | { kind: "tag_limit" | "line_invalid"; line: number };
+/** Why the text cannot be saved. `line` counts the lines of the field as typed, blank ones included. */
+export type QuickAddProblem = { kind: "text_limit" | "line_limit" }
+  | { kind: "tag_limit" | "title_missing" | "title_long" | "line_invalid"; line: number };
 
 export const QUICK_TOKEN_TYPES = ["tag", "project", "due", "priority", "estimate"] as const;
 export type QuickTokenType = (typeof QUICK_TOKEN_TYPES)[number];

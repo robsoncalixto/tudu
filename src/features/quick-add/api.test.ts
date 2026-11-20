@@ -94,6 +94,15 @@ it("turns a picked frequency into a rule that repeats from each line's own date"
   expect(quickAddApi.previewDrafts("Stretch", today, {}, [])?.[0].repeat).toBeNull();
 });
 
+it("gives every line the part of the day that was picked, on its own date or today", () => {
+  expect(quickAddApi.previewDrafts("Call Ana\nPlan @sex\nReview @amanha 9h", today, { partOfDay: "afternoon" }, [])).toMatchObject([
+    { title: "Call Ana", due: today, partOfDay: "afternoon" },
+    { title: "Plan", due: "2026-11-20", partOfDay: "afternoon" },
+    { title: "Review", due: "2026-11-18", partOfDay: "morning" },
+  ]);
+  expect(quickAddApi.previewDrafts("Call Ana", today, {}, [])?.[0]).toMatchObject({ due: null });
+});
+
 it("removes a token with one neighbouring space, wherever it sits and on every line", () => {
   const project = { id: "00000000-0000-4000-8000-000000000002", name: "Acme Web" };
   expect(quickAddApi.stripTokens("Draft @amanha 14h now\nPlan @sex", today, [], "due")).toBe("Draft now\nPlan");
@@ -110,6 +119,26 @@ it("exposes what was typed for the field highlight, the chips and the row editor
   expect(quickAddApi.edit("Pay", "Pay @amanha", today)).toEqual({ title: "Pay", changes: { due: "2026-11-18" } });
 });
 
+it("holds a warning back while its word is still being typed", () => {
+  const text = "Pay @25/ now +nope";
+  const [date, project] = quickAddApi.warnings(text, today);
+  expect([date.text, project.text]).toEqual(["@25/", "+nope"]);
+  // Inside the word or right after its last character, the next key may still turn it into a date.
+  expect(quickAddApi.warnings(text, today, [], { caret: 6 })).toEqual([project]);
+  expect(quickAddApi.warnings(text, today, [], { caret: date.end })).toEqual([project]);
+  expect(quickAddApi.warnings(text, today, [], { caret: text.length })).toEqual([date]);
+  // Before the word, after a space past it, or with the field left, it is reported.
+  expect(quickAddApi.warnings(text, today, [], { caret: date.start })).toEqual([date, project]);
+  expect(quickAddApi.warnings(text, today, [], { caret: date.end + 1 })).toEqual([date, project]);
+  expect(quickAddApi.warnings(text, today, [], { caret: null })).toEqual([date, project]);
+});
+
+it("leaves the words of the title being edited unmarked", () => {
+  expect(quickAddApi.tokens("Ligar hoje #casa", today, [], "Ligar hoje").map(({ type }) => type)).toEqual(["tag"]);
+  expect(quickAddApi.tokens("Ligar hoje #casa", today).map(({ type }) => type)).toEqual(["due", "tag"]);
+  expect(quickAddApi.warnings("Pagar +velho +nope", today, [], { editing: "Pagar +velho" }).map(({ text }) => text)).toEqual(["+nope"]);
+});
+
 it("reports the actual input line and validates the batch limits before writing", () => {
   expect(quickAddApi.problem(Array.from({ length: 51 }, (_, i) => `Task ${i}`).join("\n"), today, {}, []))
     .toEqual({ kind: "line_limit" });
@@ -117,5 +146,23 @@ it("reports the actual input line and validates the batch limits before writing"
   expect(quickAddApi.problem(`Valid\n\nSecond ${tags}`, today, { tags: ["# TEAM "] }, []))
     .toEqual({ kind: "tag_limit", line: 3 });
   expect(quickAddApi.previewDrafts("Plan #team", today, { tags: [" TEAM ", "#team"] }, [])?.[0].tags).toEqual(["team"]);
-  expect(quickAddApi.problem("First\n#tag", today, {}, [])).toEqual({ kind: "line_invalid", line: 2 });
+});
+
+it("drops the bullets, numbers and checkboxes of a pasted list, and leaves a single line as written", () => {
+  const pasted = "- Comprar leite\n1. Enviar relatório #work\n2) Ligar\n[ ] Pagar boleto\n- [x] Arquivar\n• Rever\n* Testar\n2026 planos";
+  expect(quickAddApi.previewDrafts(pasted, today, {}, [])?.map(({ title }) => title))
+    .toEqual(["Comprar leite", "Enviar relatório", "Ligar", "Pagar boleto", "Arquivar", "Rever", "Testar", "2026 planos"]);
+  expect(quickAddApi.previewDrafts("- Comprar leite", today, {}, [])?.[0].title).toBe("- Comprar leite");
+  expect(quickAddApi.previewDrafts("1.5h de reunião\n-sem espaço", today, {}, [])?.map(({ title }) => title)).toEqual(["1.5h de reunião", "-sem espaço"]);
+  // A line that is only a marker keeps it, so the line still says what it is.
+  expect(quickAddApi.previewDrafts("Um\n- [ ] ", today, {}, [])?.map(({ title }) => title)).toEqual(["Um", "- [ ]"]);
+});
+
+it("says what is wrong with the line that cannot be saved", () => {
+  expect(quickAddApi.problem("First\n#tag !alta @amanha", today, {}, [])).toEqual({ kind: "title_missing", line: 2 });
+  expect(quickAddApi.problem(`${"a".repeat(301)} #tag`, today, {}, [])).toEqual({ kind: "title_long", line: 1 });
+  // A day the calendar cannot hold is the one refusal without a reason of its own.
+  expect(quickAddApi.problem("Pay\n\nRent tomorrow", "9999-12-31", {}, [])).toEqual({ kind: "line_invalid", line: 3 });
+  expect(quickAddApi.problem(`Plan #${"t".repeat(41)}`, today, {}, [])).toEqual({ kind: "tag_limit", line: 1 });
+  expect(quickAddApi.problem("Plan", "not-a-day", {}, [])).toBeNull();
 });

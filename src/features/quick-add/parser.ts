@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Project } from "@/features/projects/schema";
 import { repeatFrom } from "@/features/recurrence/schema";
 import { durationHoursSchema, HOURS_PER_UNIT, type PartOfDay, type Priority } from "@/features/tasks/schema";
-import { clockTime, dateWord, dueExpression, isDateWord, wordKey } from "./due-words";
+import { clockTime, dateWord, dayAfter, dayAfterLead, dueExpression, isDateWord, wordKey } from "./due-words";
 import {
   quickAddInputSchema, quickTaskSchema, normalizeQuickTag,
   type QuickAddContext, type QuickAddDefaults, type QuickAddProblem, type QuickAddResult, type QuickEdit, type QuickTask,
@@ -23,8 +23,8 @@ function tagToken(token: string): string | null {
   return match ? match[1].toLowerCase() : null;
 }
 
-// Days, hours and minutes in that order: ~30m, t1h, ~1,5h, t1h30m, t1h30, ~1d2h.
-const estimateSyntax = /^(?:~|t)(?:(\d+(?:[.,]\d+)?)d)?(?:(\d+(?:[.,]\d+)?)h)?(?:(\d+(?:[.,]\d+)?)(m)?)?$/i;
+// Days, hours and minutes in that order: ~30m, ~45min, t1h, ~1,5h, t1h30m, t1h30, ~1d2h.
+const estimateSyntax = /^(?:~|t)(?:(\d+(?:[.,]\d+)?)d)?(?:(\d+(?:[.,]\d+)?)h)?(?:(\d+(?:[.,]\d+)?)(m(?:ins?)?)?)?$/i;
 
 function estimateToken(token: string): number | undefined {
   const match = estimateSyntax.exec(token);
@@ -105,7 +105,17 @@ export function parseQuickAdd(text: string, context: QuickAddContext): QuickAddR
       continue;
     }
     const date = today ? dateWord(raw, today) : undefined;
-    if (date) { due = date; time = null; mark("due", date, start, end); continue; }
+    if (date) {
+      const before = words.slice(Math.max(0, index - 3), index).map((word) => word.raw);
+      const lead = dayAfterLead(raw, before);
+      // The words that make it "the day after" belong to the date, as long as they were kept as title so far.
+      const after = lead > 0 && title.slice(-lead).join(" ") === before.slice(-lead).join(" ") ? dayAfter(date) : null;
+      if (after) title.splice(-lead);
+      due = after ?? date;
+      time = null;
+      mark("due", due, after ? words[index - lead].start : start, end);
+      continue;
+    }
     if (date === null) { warnings.push({ kind: "date", text: raw, start, end, fatal: true }); title.push(raw); continue; }
     const hours = estimateToken(raw);
     if (hours !== undefined) { estimate = hours; mark("estimate", hours, start, end); continue; }
@@ -130,6 +140,16 @@ export function quickTextTokens(text: string, context: QuickAddContext): QuickTo
 
 export function quickTextWarnings(text: string, context: QuickAddContext): QuickWarning[] {
   return eachLine(text, (line) => parseQuickAdd(line, context).warnings);
+}
+
+/** Leaves out the warning for the word under the caret: it is still being typed and the next key may settle it. */
+export function settledWarnings(warnings: QuickWarning[], caret: number | null): QuickWarning[] {
+  return caret === null ? warnings : warnings.filter(({ start, end }) => caret <= start || caret > end);
+}
+
+/** The words of a saved title. While that title is edited they stay text, whatever they look like. */
+export function titleWords(title: string): string[] {
+  return title.split(/\s+/u).filter(Boolean);
 }
 
 export function stripQuickTokens(text: string, context: QuickAddContext, type: QuickTokenType, value?: string): string {
@@ -161,7 +181,7 @@ export function parseQuickTask(text: string, today: string, projects: readonly P
  * so a title such as "Call Ana tomorrow" is never reinterpreted.
  */
 export function parseQuickEdit(original: string, edited: string, context: QuickAddContext): QuickEdit {
-  const result = parseQuickAdd(edited, { ...context, literals: original.split(/\s+/u).filter(Boolean) });
+  const result = parseQuickAdd(edited, { ...context, literals: titleWords(original) });
   return {
     title: result.title,
     changes: {
@@ -175,6 +195,8 @@ export function parseQuickEdit(original: string, edited: string, context: QuickA
   };
 }
 
+const LIST_MARKER = /^\s*(?:(?:[-*•–—]|\d{1,3}[.)])\s+)?(?:\[[ xX]?\]\s+)?/u;
+
 export class QuickDraftError extends Error {
   constructor(public problem: QuickAddProblem) { super(problem.kind); }
 }
@@ -186,23 +208,34 @@ export function quickTaskDrafts(text: string, today: string, defaults: QuickAddD
   if (lines.length > 50) throw new QuickDraftError({ kind: "line_limit" });
   return lines.map(({ line, index }) => {
     try {
-      const task = parseQuickTask(line, today, projects);
+      // A pasted list brings its bullets, numbers and checkboxes; they are not part of any title.
+      const task = parseQuickTask(lines.length > 1 ? line.replace(LIST_MARKER, "") || line : line, today, projects);
       const priority = task.priority ?? defaults.priority;
       const estimateHours = task.estimateHours ?? defaults.estimateHours;
       const tagsByKey = new Map([...task.tags, ...(defaults.tags ?? [])].map((tag) => [normalizeQuickTag(tag), normalizeQuickTag(tag)]));
       if (defaults.tag) tagsByKey.set(normalizeQuickTag(defaults.tag), defaults.tag);
       const tags = [...tagsByKey.values()].filter(Boolean);
-      // A repeating task needs a date to repeat from, so one without a date starts today.
-      const due = task.due ?? defaults.due ?? (defaults.repeat ? today : null);
+      const partOfDay = task.partOfDay ?? defaults.partOfDay;
+      // A repeating task needs a date to repeat from, and a part of the day belongs to a day: without a date, that day is today.
+      const due = task.due ?? defaults.due ?? (defaults.repeat || partOfDay ? today : null);
       return quickTaskSchema.parse({
         ...task, tags, due, ...(defaults.repeat && due ? { repeat: repeatFrom(defaults.repeat, due) } : {}),
+        ...(partOfDay ? { partOfDay } : {}),
         projectId: task.projectId ?? defaults.projectId ?? null,
         ...(priority ? { priority } : {}), ...(defaults.plannedFor ? { plannedFor: defaults.plannedFor } : {}),
         ...(estimateHours == null ? {} : { estimateHours }),
       });
     } catch (error) {
-      const tagLimit = error instanceof z.ZodError && error.issues.some((issue) => issue.path[0] === "tags");
-      throw new QuickDraftError({ kind: tagLimit ? "tag_limit" : "line_invalid", line: index + 1 });
+      throw new QuickDraftError({ kind: lineProblem(error), line: index + 1 });
     }
   });
+}
+
+/** Why a line cannot be saved, as closely as the refusal tells. */
+function lineProblem(error: unknown): Extract<QuickAddProblem, { line: number }>["kind"] {
+  const issues = error instanceof z.ZodError ? error.issues : [];
+  if (issues.some((issue) => issue.path[0] === "tags")) return "tag_limit";
+  const title = issues.find((issue) => issue.path[0] === "title");
+  if (title) return title.code === "too_big" ? "title_long" : "title_missing";
+  return "line_invalid";
 }
