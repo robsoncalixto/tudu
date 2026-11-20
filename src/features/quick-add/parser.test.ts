@@ -67,3 +67,16 @@ describe("quick-add dates", () => {
     expect(() => parseQuickTask("Task tomorrow", "9999-12-31")).toThrow();
   });
 });
+
+describe("project and estimate shortcuts", () => {
+  const site = { id: "00000000-0000-4000-8000-000000000001", name: "Révisão do Site" };
+  it.each([["~30m", 0.5], ["~2h", 2], ["~1d", 12], ["~1,5H", 1.5]])("matches a project without case or accents and parses %s", (token, estimateHours) => {
+    expect(parseQuickTask(`Revise @REVISAO-DO-SITE ${token}`, "2026-11-17", [site]))
+      .toMatchObject({ title: "Revise", projectId: site.id, estimateHours });
+  });
+  it("keeps unknown, ambiguous and escaped tokens in the title", () => {
+    const ambiguous = { id: "00000000-0000-4000-8000-000000000002", name: "Revisao do Site" };
+    expect(parseQuickTask(String.raw`Discuss @missing @revisao-do-site \@revisao-do-site \~1d ~0h`, "2026-11-17", [site, ambiguous]))
+      .toMatchObject({ title: "Discuss @missing @revisao-do-site @revisao-do-site ~1d ~0h", projectId: null });
+  });
+});

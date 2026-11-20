@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import type { Settings } from "@/features/settings/schema";
 import { errorMessage } from "@/i18n";
 import { useLocale } from "@/i18n/use-locale";
@@ -65,11 +66,20 @@ export function Board({ settings }: { settings: Settings }) {
     setQuery(""); setFilter(next); setNotice(null);
   }
 
-  async function submit(mode: ComposerMode, text: string) {
+  const composerContext: QuickAddDefaults = filter.kind === "today" ? { plannedFor: today ?? undefined }
+    : filter.kind === "project" ? { projectId: filter.id } : filter.kind === "tag" ? { tag: filter.tag } : {};
+
+  async function submit(mode: ComposerMode, text: string, defaults: QuickAddDefaults) {
     if (!today || !tasks) return false;
     setNotice(null);
     try {
-      const created = mode === "ai" ? await capture(text, today) : await add(text, today, filter);
+      const { tag, tags, projectId, plannedFor, priority, due } = defaults;
+      const aiTags = [...new Set([...(tags ?? []), ...(tag ? [tag] : [])])];
+      const created = mode === "ai" ? await capture(text, today, {
+        ...(priority ? { priority } : {}), ...(due ? { due } : {}),
+        ...(projectId ? { projectId } : {}), ...(plannedFor ? { plannedFor } : {}),
+        ...(aiTags.length ? { tags: aiTags } : {}),
+      }) : await add(text, today, defaults, projects);
       setFresh(new Set(created.map((task) => task.id)));
       setQuery("");
       if (mode === "ai") { setFilter({ kind: "all" }); setNotice({ kind: "ok", text: t.added(created.length) }); }
@@ -114,7 +124,8 @@ export function Board({ settings }: { settings: Settings }) {
       <div className="content">
         <BoardHeader title={title} t={t} today={today ?? ""} date={today ? longDate(today, locale, settings.dateFormat) : null}
           loading={!tasks && !loadFailed} failed={loadFailed} open={view.scopeOpen} done={view.scopeDone} />
-        {tasks && <Composer t={t} text={text} onTextChange={setText} onOpenSettings={rememberForSettings} aiEnabled={aiEnabled} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat} onSubmit={submit} />}
+        {tasks && <Composer t={t} text={text} onTextChange={setText} onOpenSettings={rememberForSettings} aiEnabled={aiEnabled} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat} onSubmit={submit}
+          defaultPriority={settings.defaultPriority} context={composerContext} projects={projects} suggestions={view.tagCounts.map(([tag]) => tag)} />}
         <p className={`board-notice notice${notice ? ` is-${notice.kind}` : ""}`} role="status">{notice?.text}</p>
         {loadFailed && <div className="board-failure"><p role="alert">{t.taskLoadFailed}</p>
           <button type="button" className="btn btn-secondary" onClick={retryLoad}>{t.retry}</button></div>}
