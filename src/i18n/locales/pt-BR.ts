@@ -36,7 +36,7 @@ export const ptBR: Dictionary = {
   agentIntro: "Use sua anotação, tarefas abertas e projetos para sugerir mudanças. Revise e edite cada proposta antes de aceitá-la. Nada muda nas tarefas ou nos projetos até sua aprovação.",
   agentPrompt: "O que você gostaria de organizar?",
   agentPromptHint: "Descreva tarefas, prioridades, projetos ou seu plano para o dia.",
-  pendingAgentCount: (count: number) => `${count} pendentes`,
+  pendingAgentCount: (count: number) => `${count} ${count === 1 ? "pendente" : "pendentes"}`,
   automaticReviewEnabled: "Revisar minhas tarefas automaticamente",
   automaticReviewHint: "Cada revisão programada pode usar um modelo pago. As sugestões aguardam sua aprovação.",
   automaticReviewTime: (zone: string) => `Horário da revisão (${zone})`,

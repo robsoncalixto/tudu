@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { taskSchema, type Task } from "@/features/tasks/schema";
@@ -23,7 +23,7 @@ export function createReviewState(dataDir: string) {
       catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") return { status: null, fingerprint: null };
         if (!recoverAt || !(error instanceof SyntaxError || error instanceof z.ZodError)) throw error;
-        await rename(file, `${file}.corrupt-${randomUUID()}`);
+        await copyFile(file, `${file}.corrupt-${randomUUID()}`);
         console.error("Preserved an invalid automatic review status file");
         const status = { ranAt: recoverAt, outcome: "failed" as const };
         const recovered = { status, fingerprint: null };
