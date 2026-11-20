@@ -17,7 +17,7 @@ export function ProposalCard({ proposal, projects, locale, t, busy, saving, erro
   const heading = useId();
   const uncertain = proposal.status === "applying" || error === "agent_uncertain";
   const action = proposal.approved ?? (uncertain ? draft : proposal.action);
-  const title = action.kind === "create_task" ? action.task.title : action.kind === "update_task" ? proposal.taskBefore?.title : action.name;
+  const title = action.kind === "create_task" ? action.task.title : action.kind === "update_task" || action.kind === "flag_duplicate" ? proposal.taskBefore?.title : action.name;
   const values = (shown = action, before = false) => <ProposalValues action={shown} proposal={proposal} projects={projects} locale={locale} t={t} before={before} />;
   return <article className="card proposal" aria-labelledby={heading} data-proposal-id={proposal.id} tabIndex={-1}>
     <header className="proposal-header"><div><p className="eyebrow">{t.agentKinds[action.kind]}</p><h3 id={heading}>{title}</h3></div>
@@ -49,7 +49,7 @@ export function ProposalCard({ proposal, projects, locale, t, busy, saving, erro
       {proposal.decidedAt && <p className="hint">{formatTimestamp(proposal.decidedAt, locale)}</p>}
     </>}
     {error && <p className="notice is-error" role="alert">{errorMessage(t, error)}</p>}
-    <details className="proposal-source"><summary><Icon name="chevron-right" size={16} />{t.agentSource}</summary><p>{proposal.source.note}</p>
+    <details className="proposal-source"><summary><Icon name="chevron-right" size={16} />{t.agentSource}</summary><p>{proposal.source.note || t.agentReviewTasks}</p>
       <p className="hint">{t.aiProviders[proposal.source.provider]} · {proposal.source.model} · {formatTimestamp(proposal.createdAt, locale)}</p>
     </details>
   </article>;
