@@ -85,24 +85,7 @@ button, a, select, summary, input, textarea, label {
   touch-action: manipulation;
 }
 
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: var(--touch-target);
-  padding: 8px 13px 8px 10px;
-  border: 1px solid var(--control-border);
-  border-radius: var(--r-lg);
-  color: var(--text);
-  background: var(--surface);
-  font: 600 14px/20px var(--heading);
-  text-decoration: none;
-}
-
-.back-link:hover { background: var(--surface-muted); border-color: var(--text-muted); }
-.back-link:active, .btn-secondary:enabled:active { background: var(--border); }
-.back-link svg { flex-shrink: 0; }
+.btn-secondary:enabled:active { background: var(--border); }
 
 .form-control, .select-control {
   max-width: 100%;
@@ -471,24 +454,6 @@ label.chip:hover {
   padding: var(--s-lg) 0 var(--s-xl);
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--s-md);
-}
-
-.page-header a {
-  text-decoration: none;
-}
-
-.brand-name { font: 800 23px/1 var(--heading); letter-spacing: -.055em; }
-
-.page-header .brand-name {
-  color: var(--text);
-}
-
 .page-content h1 {
   font: 650 36px/43px var(--heading);
   margin: var(--s-lg) 0;
@@ -640,18 +605,6 @@ label.chip:hover {
   gap: var(--s-sm);
   font-family: var(--heading);
   min-width: 0;
-}
-
-.agent-header-tools {
-  display: flex;
-  align-items: center;
-  gap: var(--s-md);
-}
-
-@media (max-width: 480px) {
-  .agent-header-tools { gap: var(--s-sm); }
-  .agent-header-tools .btn { width: var(--touch-target); padding-inline: 0; }
-  .agent-header-tools .btn span { display: none; }
 }
 
 .agent-request textarea {

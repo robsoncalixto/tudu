@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, type ReactNode } from "react";
 import type { Dictionary } from "@/i18n";
 import { Icon, type IconName } from "@/lib/Icon";
+import { boardFilterForPage } from "../board-navigation";
 import type { TaskFilter, TaskView } from "../selectors";
 import { usePendingSuggestions } from "../use-pending-suggestions";
 import { useSidebarLayout } from "../use-sidebar-layout";
@@ -14,10 +16,14 @@ interface Props {
   filter: TaskFilter;
   projectManager: Omit<ProjectManagerProps, "t">;
   onFilter: (filter: TaskFilter) => void;
-  onOpenSettings: () => void;
+  page: string;
+  taskLoadFailed: boolean;
+  projectLoadFailed: boolean;
+  onRetryTasks: () => void;
+  onRetryProjects: () => void;
 }
 
-export function Sidebar({ t, view, filter, projectManager, onFilter, onOpenSettings }: Props) {
+export function Sidebar({ t, view, filter, projectManager, onFilter, page, taskLoadFailed, projectLoadFailed, onRetryTasks, onRetryProjects }: Props) {
   const count = usePendingSuggestions();
   const [expanded, setExpanded] = useState(false);
   const [projectDialog, setProjectDialog] = useState<ProjectDialogMode | null>(null);
@@ -33,10 +39,24 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, onOpenSetti
     if (mode === "create" && !layout.projects) update({ projects: true });
     setProjectDialog(mode);
   }
-  const tagFilter = filter.kind === "tag" ? filter.tag : null;
-  const projectName = filter.kind === "project" ? projectManager.projects.find((project) => project.id === filter.id)?.name : undefined;
+  const active = boardFilterForPage(page, filter);
+  const tagFilter = active?.kind === "tag" ? active.tag : null;
+  const projectName = active?.kind === "project" ? projectManager.projects.find((project) => project.id === active.id)?.name : undefined;
   const tags = tagFilter && !view.tagCounts.some(([tag]) => tag === tagFilter)
     ? [[tagFilter, 0] as [string, number], ...view.tagCounts] : view.tagCounts;
+  const links = { "/work-log": [t.workLog, "book"], "/agent": [t.agent, "assistant"], "/settings": [t.settings, "settings"] } as const;
+  function pageLink(href: keyof typeof links) {
+    const [label, icon] = links[href];
+    return <Link href={href} className={`nav-item${page === href ? " is-active" : ""}`}
+      aria-current={page === href ? "page" : undefined} aria-label={label}
+      aria-description={href === "/agent" && count ? t.pendingAgentCount(count) : undefined} title={label} onClick={() => {
+        if (expanded && href !== "/settings") toggle.current?.focus();
+        setExpanded(false);
+      }}>
+      <Icon name={icon} /><span>{label}</span>
+      {href === "/agent" && count > 0 && <span className="nav-count">{count}</span>}
+    </Link>;
+  }
   const sizeLabel = compact ? t.expandSidebar : t.collapseSidebar;
   return <aside className={`sidebar${expanded ? " is-expanded" : ""}${compact ? " is-compact" : ""}`}
     onBlur={(event) => {
@@ -61,24 +81,25 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, onOpenSetti
     </button>
     <nav className="nav" id="task-navigation" aria-label={t.taskViews}>
       <p className="nav-label">{t.workspace}</p>
-      <NavItem label={t.allTasks} icon="list-checks" count={view.openCount} active={filter.kind === "all"}
+      <NavItem label={t.allTasks} icon="list-checks" count={view.openCount} active={active?.kind === "all"}
         ariaLabel={`${t.allTasks}, ${t.countOpen(view.openCount)}`} onClick={() => choose({ kind: "all" })} />
-      <NavItem label={t.today} icon="sun" count={view.todayCount} active={filter.kind === "today"}
+      <NavItem label={t.today} icon="sun" count={view.todayCount} active={active?.kind === "today"}
         ariaLabel={`${t.today}, ${t.countOpen(view.todayCount)}`} onClick={() => choose({ kind: "today" })} />
+      {(taskLoadFailed || projectLoadFailed) && <div className="sidebar-failures">
+        {taskLoadFailed && <LoadFailure message={t.taskLoadFailed} retry={t.retry} onRetry={onRetryTasks} />}
+        {projectLoadFailed && <LoadFailure message={t.projectLoadFailed} retry={t.retry} onRetry={onRetryProjects} />}
+      </div>}
       <div id="nav-library" className="nav-library">
         <div className="nav-tools">
-          <a href="/work-log" className="nav-item" aria-label={t.workLog} title={t.workLog}><Icon name="book" /><span>{t.workLog}</span></a>
-          <a href="/agent" className="nav-item" aria-label={t.agent} title={t.agent}
-            aria-description={count ? t.pendingAgentCount(count) : undefined}><Icon name="assistant" /><span>{t.agent}</span>
-            {count > 0 && <span className="nav-count">{count}</span>}
-          </a>
+          {pageLink("/work-log")}
+          {pageLink("/agent")}
         </div>
         <NavGroup name="projects" label={t.projects} icon="folder" open={layout.projects && !compact}
           currentLabel={projectName} onToggle={() => toggleGroup("projects")} action={
             <button type="button" className="nav-item nav-add-project" aria-label={t.newProject} title={t.newProject}
               aria-haspopup="dialog" onClick={() => openProjects("create")}><Icon name="plus" size={17} /></button>}>
           {view.projectCounts.map(([project, count]) =>
-            <NavItem key={project.id} label={project.name} count={count} active={filter.kind === "project" && filter.id === project.id}
+            <NavItem key={project.id} label={project.name} count={count} active={active?.kind === "project" && active.id === project.id}
               ariaLabel={`${t.project}: ${project.name}, ${t.countOpen(count)}`} onClick={() => choose({ kind: "project", id: project.id })} />)}
           <button type="button" className="nav-item manage-projects" aria-haspopup="dialog"
             onClick={() => openProjects("manage")}>{t.manageProjects}</button>
@@ -92,7 +113,7 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, onOpenSetti
       </div>
     </nav>
     <div className="sidebar-actions">
-      <a href="/settings?from=tasks" onClick={onOpenSettings} className="nav-item" aria-label={t.settings} title={t.settings}><Icon name="settings" /><span>{t.settings}</span></a>
+      {pageLink("/settings")}
     </div>
     <ProjectManager {...projectManager} t={t} mode={projectDialog} onClose={() => setProjectDialog(null)} />
   </aside>;
@@ -122,4 +143,13 @@ function NavItem({ label, icon, count, active, onClick, ariaLabel }: {
     aria-current={active ? "page" : undefined} aria-label={ariaLabel} title={label} onClick={onClick}>
     {icon && <Icon name={icon} />}<span className="nav-text">{label}</span><span className="nav-count">{count}</span>
   </button>;
+}
+
+function LoadFailure({ message, retry, onRetry }: { message: string; retry: string; onRetry: () => void }) {
+  return <div>
+    <p role="alert">{message}</p>
+    <button type="button" className="nav-item" aria-label={`${retry} · ${message}`} onClick={onRetry}>
+      <span>{retry}</span>
+    </button>
+  </div>;
 }

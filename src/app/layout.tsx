@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { TaskWorkspace } from "@/features/tasks/components/TaskWorkspace";
 import { Pwa } from "@/features/pwa/components/Pwa";
 import { appColors } from "@/features/pwa/theme";
 import { getSettings } from "@/features/settings/server/repository";
@@ -28,10 +29,14 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const { locale, theme } = await getSettings();
+  const settings = await getSettings();
+  const { locale, theme } = settings;
   return (
     <html lang={locale} data-theme={theme} className={`${heading.variable} ${body.variable}`}>
-      <body><Pwa locale={locale} theme={theme} />{children}</body>
+      <body>
+        <Pwa locale={locale} theme={theme} />
+        <TaskWorkspace settings={settings}>{children}</TaskWorkspace>
+      </body>
     </html>
   );
 }

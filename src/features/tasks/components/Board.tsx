@@ -1,70 +1,38 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
 import type { QuickAddDefaults } from "@/features/quick-add/schema";
-import type { Settings } from "@/features/settings/schema";
-import { errorMessage } from "@/i18n";
-import { useLocale } from "@/i18n/use-locale";
 import { Icon } from "@/lib/Icon";
 import { dueLabel, longDate } from "@/lib/dates";
+import { useRef, useState } from "react";
 import { errorCode } from "@/lib/http";
-import { useToday } from "@/lib/use-today";
 import type { Task } from "../schema";
-import { buildTaskView, type TaskFilter, type TaskSort } from "../selectors";
-import { useProjects } from "../use-projects";
+import { type TaskSort } from "../selectors";
 import { useTaskActions } from "../use-task-actions";
-import { useBoardNavigation } from "../use-board-navigation";
-import { useTasks } from "../use-tasks";
-import { useTaskInspector } from "../use-task-inspector";
 import { BoardHeader } from "./BoardHeader";
 import { Composer, type ComposerMode } from "./Composer";
-import { Sidebar } from "./Sidebar";
 import { postponementDate, type Postponement } from "../planning";
 import { TaskEmpty } from "./TaskEmpty";
 import { TaskList } from "./TaskList";
 import { TaskPanel } from "./TaskPanel";
 import { TaskPanelFrame } from "./TaskPanelFrame";
 import { TaskDeleteDialog } from "./TaskDeleteDialog";
-import "./board.css";
+import { useTaskWorkspace } from "./TaskWorkspace";
 
-type Notice = { kind: "ok" | "error"; text: string } | null;
-
-export function Board({ settings }: { settings: Settings }) {
-  const { locale, t } = useLocale(settings.locale);
-  const today = useToday();
-  const [notice, setNotice] = useState<Notice>(null);
-  const { filter, setFilter, query, setQuery, sort, setSort, text, setText, rememberForSettings } = useBoardNavigation(settings.startView);
+export function Board() {
+  const { settings, locale, t, today, navigation, inspector, taskData, projectData, selectedTask,
+    view, notice, setNotice, fail, select } = useTaskWorkspace();
+  const { filter, setFilter, query, setQuery, sort, setSort, text, setText } = navigation;
+  const { tasks, aiEnabled, add, capture, patch, remove, loadFailed, retryLoad } = taskData;
+  const { projects } = projectData;
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const search = useRef<HTMLInputElement>(null);
-  const fail = useCallback((code: string) => setNotice({ kind: "error", text: errorMessage(t, code) }), [t]);
-  const scheduled = useCallback((task: Task) => {
-    if (task.due && today) setNotice({ kind: "ok", text: t.nextOccurrence(dueLabel(task.due, today, locale, t, settings.dateFormat)) });
-  }, [today, locale, t, settings.dateFormat]);
-  const inspector = useTaskInspector();
-  const { tasks, aiEnabled, add, capture, patch, remove, clearProject, loadFailed, retryLoad } = useTasks(fail, scheduled, (currentIds) => {
-    if (inspector.selectedId && !currentIds.has(inspector.selectedId)) {
-      inspector.close();
-      setNotice({ kind: "ok", text: t.taskDeletedElsewhere });
-    }
-  });
-  const selectedTask = tasks?.find((task) => task.id === inspector.selectedId);
   const actions = useTaskActions(tasks, patch, async (id) => {
     const removed = await remove(id);
     if (removed) inspector.setSelectedId((current) => current === id ? null : current);
     return removed;
   });
-  const { projects, projectError, clearProjectError, createProject, renameProject, deleteProject } = useProjects(fail, clearProject, (ids) => {
-    if (filter.kind === "project" && !ids.has(filter.id)) select({ kind: "all" });
-  });
-  const view = useMemo(() => buildTaskView(tasks ?? [], filter, today ?? "", projects, query, sort),
-    [tasks, filter, today, projects, query, sort]);
   const title = filter.kind === "project" ? projects.find((p) => p.id === filter.id)?.name ?? t.projects
     : filter.kind === "tag" ? `#${filter.tag}` : filter.kind === "today" ? t.today : t.allTasks;
-
-  function select(next: TaskFilter) {
-    inspector.setSelectedId(null);
-    setQuery(""); setFilter(next); setNotice(null);
-  }
 
   const composerContext: QuickAddDefaults = filter.kind === "today" ? { plannedFor: today ?? undefined }
     : filter.kind === "project" ? { projectId: filter.id } : filter.kind === "tag" ? { tag: filter.tag } : {};
@@ -101,16 +69,9 @@ export function Board({ settings }: { settings: Settings }) {
   const list = { today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: actions.patchFromRow,
     onPostpone: postpone, selectedId: inspector.selectedId, onShowPanel: inspector.toggle, onTag: (tag: string) => select({ kind: "tag", tag }) };
 
-  return <div className={`shell${selectedTask ? " has-inspector" : ""}`} ref={actions.root}>
+  return <div className="board-content" ref={actions.root}>
     <TaskDeleteDialog t={t} {...actions.dialogProps} />
-    <Sidebar t={t} view={view} filter={filter} onFilter={select} onOpenSettings={rememberForSettings}
-      projectManager={{ projects, error: projectError ? errorMessage(t, projectError) : "",
-        clearError: clearProjectError, onCreate: createProject, onRename: renameProject, onDelete: async (id) => {
-          if (!await deleteProject(id)) return false;
-          if (filter.kind === "project" && filter.id === id) select({ kind: "all" });
-          return true;
-        } }} />
-    <main className="panel">
+    <main id="main-content" tabIndex={-1} className="panel">
       <div className="board-bar">
         <div className="board-location"><Icon name="grid" size={16} /><span>{t.workspace}</span>
           <Icon name="chevron-right" size={13} /><strong>{t.tasksLabel}</strong></div>
@@ -124,7 +85,7 @@ export function Board({ settings }: { settings: Settings }) {
       <div className="content">
         <BoardHeader title={title} t={t} today={today ?? ""} date={today ? longDate(today, locale, settings.dateFormat) : null}
           loading={!tasks && !loadFailed} failed={loadFailed} open={view.scopeOpen} done={view.scopeDone} />
-        {tasks && <Composer t={t} text={text} onTextChange={setText} onOpenSettings={rememberForSettings} aiEnabled={aiEnabled} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat} onSubmit={submit}
+        {tasks && <Composer t={t} text={text} onTextChange={setText} aiEnabled={aiEnabled} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat} onSubmit={submit}
           defaultPriority={settings.defaultPriority} context={composerContext} projects={projects} suggestions={view.tagCounts.map(([tag]) => tag)} />}
         <p className={`board-notice notice${notice ? ` is-${notice.kind}` : ""}`} role="status">{notice?.text}</p>
         {loadFailed && <div className="board-failure"><p role="alert">{t.taskLoadFailed}</p>

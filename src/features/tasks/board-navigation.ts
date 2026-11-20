@@ -54,3 +54,9 @@ export function restoreBoardReturn(serialized: string | null, startView: BoardRe
     return null;
   }
 }
+
+export type StartView = BoardReturn["startView"];
+
+export function boardFilterForPage(page: string, filter: TaskFilter): TaskFilter | null {
+  return page === "/" ? filter : null;
+}

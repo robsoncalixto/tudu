@@ -112,8 +112,8 @@ page until it can reach the server again.
 
 ## Using TUDU
 
-The sidebar opens **All tasks**, **Today**, projects, tags, **Work log** and
-**Assistant**. On a phone, use **More views**. **Today** shows tasks planned
+The same sidebar on every screen opens **All tasks**, **Today**, projects,
+tags, **Work log**, **Assistant** and **Settings**. On a phone, use **More views**. **Today** shows tasks planned
 for today, unfinished tasks planned earlier, and tasks due today or overdue.
 Use the sun button to plan a task for today or clear its existing plan.
 The task actions menu can move the planned day to tomorrow or the next Monday

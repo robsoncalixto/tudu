@@ -67,6 +67,8 @@ test("sorting remains usable when device storage is unavailable", async ({ page,
   await sort.selectOption("newest");
   await expect(sort).toHaveValue("newest");
   await sidebar(page).getByRole("link", { name: "Settings" }).click();
-  await page.getByRole("link", { name: "Back to tasks" }).click();
+  await expect(page).toHaveURL("/settings");
+  await page.reload();
+  await page.goBack();
   await expect(sort).toHaveValue("newest");
 });

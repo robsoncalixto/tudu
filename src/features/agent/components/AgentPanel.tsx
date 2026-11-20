@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { errorMessage } from "@/i18n";
 import { useLocale } from "@/i18n/use-locale";
-import { Icon } from "@/lib/Icon";
 import { formatTimestamp } from "@/lib/dates";
 import { useToday } from "@/lib/use-today";
 import type { Settings } from "@/features/settings/schema";
@@ -29,16 +28,7 @@ export function AgentPanel({ settings }: { settings: Settings }) {
   }
   const cards = (proposals: Proposal[]) => proposals.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal}
     projects={agent.state?.projects ?? []} locale={locale} t={t} busy={busy} saving={agent.busyId === proposal.id} error={agent.errors[proposal.id]} onDecision={decide} />);
-  return <main className="page-content agent-page" ref={root} aria-busy={busy}>
-    <header className="page-header">
-      <a className="back-link" href="/"><Icon name="arrow-left" />{t.backToTasks}</a>
-      <div className="agent-header-tools">
-        <a className="btn btn-secondary" href="/settings?from=agent" aria-label={t.settings} title={t.settings}>
-          <Icon name="settings" /><span>{t.settings}</span>
-        </a>
-        <span className="brand-name">TUDU</span>
-      </div>
-    </header>
+  return <main id="main-content" tabIndex={-1} className="page-content agent-page" ref={root} aria-busy={busy}>
     <h1>{t.agent}</h1><p className="agent-intro">{t.agentIntro}</p>
     <form className="card agent-request" onSubmit={(event) => { event.preventDefault(); if (today) void agent.propose(today); }}>
       <label htmlFor="agent-note">{t.agentPrompt}</label>
