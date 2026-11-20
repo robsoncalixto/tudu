@@ -1,5 +1,5 @@
 import { SHORTCUTS, type ShortcutId, type ShortcutScope } from "./schema";
-import { chordOf, scopeShortcuts, type KeyStroke } from "./selectors";
+import { chordOf, keycaps, scopeShortcuts, type KeyStroke } from "./selectors";
 
 /** Returns false to say the key was not used here, so the browser keeps its own behaviour. */
 type ShortcutHandler = (target: HTMLElement | null) => boolean | void;
@@ -11,6 +11,10 @@ let characters: boolean | null = null;
 
 export const shortcutsApi = {
   list: () => SHORTCUTS,
+
+  /** The keys of one field's shortcuts as keycaps, for a hint beside that field. */
+  keys: (scope: ShortcutScope, mac: boolean) => SHORTCUTS.filter((shortcut) => shortcut.scope === scope)
+    .map(({ id, bindings }) => ({ id, caps: keycaps(bindings[0].keys[0], mac) })),
 
   /** The shortcuts a field's own key handler should consider for this key press. */
   match: (scope: Exclude<ShortcutScope, "global" | "list">, event: KeyStroke): ShortcutId[] => scopeShortcuts(scope, chordOf(event)),
