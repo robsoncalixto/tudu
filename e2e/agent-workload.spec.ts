@@ -1,6 +1,6 @@
 import { dueLabel } from "../src/lib/dates";
 import { dictionaries } from "../src/i18n";
-import { fixture, pending, taskDraft } from "./agent-support";
+import { fixture, fixtureUrl, pending, taskDraft } from "./agent-support";
 import { expect, listTasks, row, saveSettings, seed, taskDetails, taskPanel, test, TODAY, TOMORROW } from "./support";
 
 for (const locale of ["en", "pt-BR"] as const) {
@@ -31,5 +31,26 @@ for (const locale of ["en", "pt-BR"] as const) {
     await expect(period).toHaveValue("morning");
     await period.selectOption("afternoon");
     await expect.poll(async () => (await listTasks(request)).find((item) => item.title === "Unscheduled report")?.partOfDay).toBe("afternoon");
+  });
+
+  test(`reviews overload and accepts a new period from the task in ${locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale, aiProvider: "openai", aiModel: "test-agent", workingDays: [2, 3], workHoursPerDay: 4 });
+    await seed(request, [
+      { title: "Fixed deadline", due: TODAY, estimateHours: 4 },
+      { title: "Movable report", plannedFor: TODAY, priority: "low" },
+    ]);
+    expect((await request.put(fixtureUrl, { data: { plan: { summary: "Daily review", proposals: [] } } })).ok()).toBe(true);
+    await page.goto("/agent");
+    await page.getByRole("button", { name: t.agentReviewTasks }).click();
+    await expect(page.getByText(t.agentOverloadedDays(1), { exact: false })).toBeVisible();
+    await page.goto("/");
+    await taskDetails(row(page, "Movable report")).click();
+    const panel = taskPanel(page);
+    await expect(panel.getByText(t.suggestedValue(t.partsOfDay.afternoon))).toBeVisible();
+    const before = (await listTasks(request)).find(({ title }) => title === "Movable report");
+    expect(before).toMatchObject({ partOfDay: null, plannedFor: TODAY });
+    await panel.getByRole("button", { name: t.agentAccept }).click();
+    await expect.poll(async () => (await listTasks(request)).find(({ title }) => title === "Movable report"))
+      .toMatchObject({ partOfDay: "afternoon", plannedFor: TOMORROW, due: null });
   });
 }
