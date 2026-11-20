@@ -25,3 +25,19 @@ export function groupWorkLog(tasks: Task[], projects: Project[], kind: Grouping)
   }
   return [...groups.values()].sort((a, b) => a.label === null ? 1 : b.label === null ? -1 : a.label.localeCompare(b.label));
 }
+
+export interface WorkLogTime {
+  hours: number;
+  missing: number;
+}
+
+export function totalWorkLogTime(tasks: Task[]): WorkLogTime {
+  const unique = new Map(tasks.map((task) => [task.id, task]));
+  let hours = 0;
+  let missing = 0;
+  for (const { realTimeHours } of unique.values()) {
+    if (realTimeHours === null) missing++;
+    else hours += realTimeHours;
+  }
+  return { hours, missing };
+}
