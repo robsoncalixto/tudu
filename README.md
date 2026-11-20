@@ -107,9 +107,10 @@ structured output.
 The sidebar opens **All tasks**, **Today**, projects, tags, **Work log** and
 **Assistant**. On a phone, use **More views**. **Today** shows tasks planned
 for today plus tasks due today or overdue; use the sun button on a task to plan
-it for today.
+it for today. The task actions menu can move the planned day to tomorrow or
+the next Monday while keeping the deadline.
 
-Open the task panel (the icon at the right of a row, or `i`) to edit the title,
+Open the task panel (the icon at the right of a row) to edit the title,
 notes, subtasks, priority, project, tags, planned day, due date, repeat rule,
 time estimate, real execution time and links. Both time fields offer a unit selector
 before the value: Minutes, Hours or Days. Fractional hours are supported, and
@@ -144,19 +145,6 @@ priority, due tomorrow.
 
 Prefix a token with a backslash to keep it as text: `Discuss \#bug` saves
 **Discuss #bug**. Open **Quick-add shortcuts** in the composer for details.
-
-### Keyboard shortcuts
-
-| Key | Action |
-| --- | --- |
-| `n` or `/` | Focus the composer |
-| `j` / `↓`, `k` / `↑` | Move to the next or previous task |
-| `a` | Add a subtask to the focused task |
-| `i` | Open or close the task panel |
-| `x` | Complete or reopen the focused task |
-| Delete or Backspace | Delete the focused task (asks for confirmation) |
-| `?` | Show shortcut help |
-| Escape | Leave the composer, clear search, or close a dialog |
 
 ## MCP server
 

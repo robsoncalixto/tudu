@@ -1,7 +1,6 @@
 "use client";
 
 import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { isTypingTarget } from "@/lib/keyboard";
 
 export function TaskPanelFrame({ taskId, label, onClose, children }: {
   taskId: string; label: string; onClose: () => void; children: ReactNode;
@@ -38,8 +37,7 @@ export function TaskPanelFrame({ taskId, label, onClose, children }: {
       // The native picker consumes Escape itself while an option list is open.
       if (event.key === "Escape" && CSS.supports("selector(select:open)") &&
         event.target instanceof Element && event.target.closest("select:open")) return;
-      if (event.key === "Escape" || (event.key === "i" && !isTypingTarget(event.target) &&
-        !event.altKey && !event.ctrlKey && !event.metaKey && !event.repeat)) {
+      if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
         onClose();

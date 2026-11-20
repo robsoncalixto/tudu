@@ -33,8 +33,7 @@ for (const l of [
     const boardBounds = await first.boundingBox();
     const panelBounds = await panel.boundingBox();
     expect(boardBounds!.x + boardBounds!.width).toBeLessThanOrEqual(panelBounds!.x + 1);
-    await second.focus();
-    await second.press("i");
+    await taskDetails(second).press("Enter");
     await expect(panel.getByRole("heading", { name: "Design review", exact: true })).toBeVisible();
     await expect(taskDetails(first)).toHaveAttribute("aria-expanded", "false");
     await expect(taskDetails(second)).toHaveAttribute("aria-expanded", "true");
@@ -42,14 +41,13 @@ for (const l of [
     await closeTaskPanel(page).click();
     await expect(panel).toBeHidden();
     await expect(taskDetails(second)).toBeFocused();
-    await first.focus();
-    await first.press("i");
+    await taskDetails(first).press("Enter");
     await expect(panel.getByRole("heading", { name: "Launch review", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
     await expect(taskDetails(first)).toBeFocused();
-    await first.press("i");
-    await closeTaskPanel(page).press("i");
+    await taskDetails(first).press("Enter");
+    await closeTaskPanel(page).press("Enter");
     await expect(panel).toBeHidden();
     await expect(taskDetails(first)).toBeFocused();
     await composer(page).focus();

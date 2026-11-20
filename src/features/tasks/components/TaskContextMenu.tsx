@@ -1,58 +1,102 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { Dictionary } from "@/i18n";
 import { Icon } from "@/lib/Icon";
+import type { Postponement } from "../planning";
 
-export function TaskContextMenu({ board, t }: { board: RefObject<HTMLDivElement | null>; t: Dictionary }) {
+interface Props {
+  row: RefObject<HTMLLIElement | null>;
+  t: Dictionary;
+  addSubtask: (() => void) | null;
+  postpone: ((when: Postponement) => void) | null;
+}
+
+export function TaskContextMenu({ row, t, addSubtask, postpone }: Props) {
+  const id = useId();
   const menu = useRef<HTMLDivElement>(null);
-  const parent = useRef<HTMLElement | null>(null);
-  const addButton = useRef<HTMLButtonElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const hasActions = Boolean(addSubtask || postpone);
+
+  function close() {
+    menu.current?.hidePopover();
+    opener.current?.focus({ preventScroll: true });
+  }
+
+  function open(origin: HTMLElement, point?: { x: number; y: number }) {
+    if (typeof menu.current?.showPopover !== "function") return;
+    opener.current = origin;
+    const bounds = trigger.current?.getBoundingClientRect();
+    setAnchor(point ?? { x: bounds?.left ?? 0, y: bounds?.bottom ?? 0 });
+  }
+
+  useLayoutEffect(() => {
+    const popup = menu.current;
+    if (!anchor || !popup) return;
+    popup.showPopover();
+    const bounds = popup.getBoundingClientRect();
+    popup.style.left = `${Math.max(4, Math.min(anchor.x, document.documentElement.clientWidth - bounds.width - 4))}px`;
+    popup.style.top = `${Math.max(4, Math.min(anchor.y, window.innerHeight - bounds.height - 4))}px`;
+    popup.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+  }, [anchor]);
 
   useEffect(() => {
-    const root = board.current;
-    const popup = menu.current;
-    if (!root || !popup || typeof popup.showPopover !== "function") return;
-
-    function open(event: MouseEvent | KeyboardEvent) {
+    const item = row.current;
+    if (!item || !trigger.current || typeof menu.current?.showPopover !== "function") return;
+    const openFromRow = (event: MouseEvent | KeyboardEvent) => {
       if (event.defaultPrevented || !(event.target instanceof Element)) return;
       if (event instanceof KeyboardEvent && !(event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))) return;
-      if (event.target.closest("input, textarea, select, a, dialog, [contenteditable=true], [data-subtasks]")) return;
-      const row = event.target.closest<HTMLElement>("[data-task-id]");
-      const add = row?.querySelector<HTMLButtonElement>("[data-add-subtask]");
-      if (!row || !add || add.disabled || !popup) return;
+      if (event.target.closest("input, textarea, select, a, dialog, [contenteditable=true], [data-subtasks], [role=menu]")) return;
       event.preventDefault();
-      parent.current = row;
-      const anchor = add.getBoundingClientRect();
-      const pointer = event instanceof MouseEvent && (event.clientX !== 0 || event.clientY !== 0);
-      const x = pointer ? event.clientX : anchor.left;
-      const y = pointer ? event.clientY : anchor.bottom;
-      popup.showPopover();
-      const bounds = popup.getBoundingClientRect();
-      popup.style.left = `${Math.max(4, Math.min(x, document.documentElement.clientWidth - bounds.width - 4))}px`;
-      popup.style.top = `${Math.max(4, Math.min(y, window.innerHeight - bounds.height - 4))}px`;
-      addButton.current?.focus({ preventScroll: true });
-    }
-
-    root.addEventListener("contextmenu", open);
-    root.addEventListener("keydown", open);
-    return () => {
-      root.removeEventListener("contextmenu", open);
-      root.removeEventListener("keydown", open);
+      const point = event instanceof MouseEvent && (event.clientX !== 0 || event.clientY !== 0)
+        ? { x: event.clientX, y: event.clientY } : undefined;
+      open(event.target.closest<HTMLElement>("button") ?? item, point);
     };
-  }, [board]);
+    item.addEventListener("contextmenu", openFromRow);
+    item.addEventListener("keydown", openFromRow);
+    return () => {
+      item.removeEventListener("contextmenu", openFromRow);
+      item.removeEventListener("keydown", openFromRow);
+    };
+  }, [row, hasActions]);
 
-  return <div ref={menu} popover="auto" role="menu" aria-label={t.taskActions} className="task-context-menu"
-    onKeyDown={(event) => {
-      if (event.key === "Escape" || event.key === "Tab") {
-        if (event.key === "Escape") event.preventDefault();
-        menu.current?.hidePopover();
-        parent.current?.focus();
-      }
-    }}>
-    <button ref={addButton} type="button" role="menuitem" onClick={() => {
-      menu.current?.hidePopover();
-      parent.current?.querySelector<HTMLButtonElement>("[data-add-subtask]")?.click();
-    }}><Icon name="plus" size={16} />{t.addStep}<kbd aria-hidden="true">A</kbd></button>
-  </div>;
+  if (!hasActions) return null;
+  return <>
+    <button ref={trigger} type="button" className="task-more" aria-label={t.taskActions} title={t.taskActions}
+      aria-haspopup="menu" aria-controls={id} aria-expanded={anchor !== null} onClick={(event) => {
+        if (menu.current?.matches(":popover-open")) close();
+        else open(event.currentTarget);
+      }}><Icon name="more" size={17} /></button>
+    <div ref={menu} id={id} popover="auto" role="menu" aria-label={t.taskActions} className="task-context-menu"
+      onToggle={(event) => { if (event.newState === "closed") setAnchor(null); }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" || event.key === "Tab") {
+          if (event.key === "Escape") event.preventDefault();
+          close();
+          return;
+        }
+        const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("button")];
+        const index = items.indexOf(document.activeElement as HTMLButtonElement);
+        const next = event.key === "ArrowDown" ? (index + 1) % items.length
+          : event.key === "ArrowUp" ? (index - 1 + items.length) % items.length
+          : event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : -1;
+        if (next >= 0) { event.preventDefault(); items[next].focus(); }
+      }}>
+      {anchor && <>
+      {addSubtask && <button type="button" role="menuitem" tabIndex={-1} onClick={() => { close(); addSubtask(); }}>
+        <Icon name="plus" size={16} />{t.addStep}
+      </button>}
+      {postpone && <>
+        <button type="button" role="menuitem" tabIndex={-1} onClick={() => { close(); postpone("tomorrow"); }}>
+          <Icon name="calendar" size={16} />{t.postponeTomorrow}
+        </button>
+        <button type="button" role="menuitem" tabIndex={-1} onClick={() => { close(); postpone("next-week"); }}>
+          <Icon name="calendar" size={16} />{t.postponeNextWeek}
+        </button>
+      </>}
+      </>}
+    </div>
+  </>;
 }
