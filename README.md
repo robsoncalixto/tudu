@@ -180,6 +180,7 @@ claude mcp add --transport http tudu http://localhost:3000/api/mcp \
 | Tool | Description |
 | --- | --- |
 | `list_projects` | List project names and IDs |
+| `create_project` | Create a project by name and return its ID and name |
 | `list_tasks` | Filter and paginate tasks |
 | `add_tasks` | Add 1–50 tasks |
 | `update_task` | Update task fields, or reopen a task; pass `expected` to refuse changes made since the last read |

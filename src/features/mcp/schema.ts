@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PRIORITIES, stepSchema, taskDraftSchema, taskPatchSchema, taskSchema, taskUpdateSchema } from "@/features/tasks/schema";
-import { projectIdSchema, projectSchema } from "@/features/projects/schema";
+import { projectIdSchema, projectInputSchema, projectSchema } from "@/features/projects/schema";
 
 export const listTasksToolSchema = z.object({
   state: z.enum(["all", "open", "done"]).default("all"),
@@ -17,6 +17,7 @@ export const listTasksToolSchema = z.object({
 }).strict().refine((input) => !input.dueFrom || !input.dueTo || input.dueFrom <= input.dueTo);
 export type TaskFilters = z.infer<typeof listTasksToolSchema>;
 export const listProjectsToolSchema = z.object({}).strict();
+export const createProjectToolSchema = projectInputSchema.strict();
 
 // Clients cannot know which ids are free, so new steps may omit theirs and the server assigns one.
 const toolStepsSchema = z.array(stepSchema.extend({
@@ -37,6 +38,7 @@ export const deleteTaskToolSchema = completeTaskToolSchema.extend({
 }).strict();
 
 export const listProjectsOutputSchema = z.object({ projects: z.array(projectSchema) });
+export const createProjectOutputSchema = z.object({ project: projectSchema });
 export const listTasksOutputSchema = z.object({
   tasks: z.array(taskSchema),
   total: z.number().int().min(0),
