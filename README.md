@@ -108,7 +108,8 @@ The sidebar opens **All tasks**, **Today**, projects, tags, **Work log** and
 **Assistant**. On a phone, use **More views**. **Today** shows tasks planned
 for today, unfinished tasks planned earlier, and tasks due today or overdue.
 Use the sun button to plan a task for today or clear its existing plan.
-Your open-task sort is remembered on the device.
+Your open-task sort is remembered on the device. The board refreshes tasks
+and projects on focus and periodically while the tab is visible.
 
 Open the task panel (the icon at the right of a row, or `i`) to edit the title,
 notes, subtasks, priority, project, tags, planned day, due date, repeat rule,

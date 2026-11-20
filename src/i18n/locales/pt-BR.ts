@@ -110,6 +110,7 @@ export const ptBR: Dictionary = {
   emptyBody: "Escreva acima a primeira coisa que vier à cabeça.",
   emptyFiltered: "Nenhuma tarefa aberta com esta etiqueta.",
   loading: "Carregando…",
+  taskDeletedElsewhere: "Essa tarefa foi excluída em outro lugar.",
   taskLoadFailed: "Não foi possível carregar suas tarefas.",
   retry: "Tentar novamente",
   today: "Hoje",
