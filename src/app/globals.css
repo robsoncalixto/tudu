@@ -856,3 +856,6 @@ label.chip:hover {
     position: static;
   }
 }
+
+.settings-ai label.automatic-review-toggle { display: flex; flex-direction: row; align-items: center; }
+.automatic-review-toggle input { width: 20px; height: 20px; accent-color: var(--accent); }

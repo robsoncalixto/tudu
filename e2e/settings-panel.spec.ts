@@ -1,3 +1,4 @@
+import { DEFAULT_SETTINGS } from "../src/features/settings/schema";
 import { expect, listSettings, listTasks, openApp, row, saveSettings, seed, sidebar, test, TODAY } from "./support";
 
 const languages = [
@@ -81,7 +82,7 @@ for (const language of languages) {
     await page.getByRole("combobox", { name: language.format, exact: true }).selectOption("iso");
     await page.getByRole("button", { name: language.save, exact: true }).click();
     await expect(page.getByRole("status")).toHaveText(language.saved);
-    expect(await listSettings(request)).toEqual({ locale: language.locale, theme: "system", defaultPriority: "high", startView: "today", dateFormat: "iso", aiProvider: "anthropic", aiModel: "" });
+    expect(await listSettings(request)).toEqual({ automaticReview: { enabled: false, enabledAt: null, time: "09:00", timeZone: "UTC" }, locale: language.locale, theme: "system", defaultPriority: "high", startView: "today", dateFormat: "iso", aiProvider: "anthropic", aiModel: "" });
     await expect(page.getByRole("heading", { name: language.ai, exact: true })).toBeVisible();
     await page.goBack();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(language.today);
@@ -209,7 +210,7 @@ test("settings API rejects invalid preferences and preserves partial updates", a
     expect(await response.json()).toEqual({ error: "invalid_settings" });
   }
   await saveSettings(request, { dateFormat: "iso" });
-  expect(await listSettings(request)).toEqual({ locale: "en", theme: "system", defaultPriority: "high", startView: "today", dateFormat: "iso", aiProvider: "anthropic", aiModel: "" });
+  expect(await listSettings(request)).toEqual({ ...DEFAULT_SETTINGS, defaultPriority: "high", startView: "today", dateFormat: "iso" });
   const response = await request.post("/api/tasks", { data: [{ title: "Default" }, { title: "Explicit", priority: "low" }] });
   expect(response.status()).toBe(201);
   expect((await listTasks(request)).map((task) => task.priority)).toEqual(["high", "low"]);
@@ -222,7 +223,7 @@ test("saving one preference preserves changes made in another session", async ({
   await page.getByRole("combobox", { name: "Default priority", exact: true }).selectOption("high");
   await page.getByRole("button", { name: "Save settings", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Settings saved.");
-  expect(await listSettings(request)).toEqual({ locale: "en", theme: "system", defaultPriority: "high", startView: "all", dateFormat: "iso", aiProvider: "anthropic", aiModel: "" });
+  expect(await listSettings(request)).toEqual({ ...DEFAULT_SETTINGS, defaultPriority: "high", dateFormat: "iso" });
   await expect(page.getByRole("combobox", { name: "Date format", exact: true })).toHaveValue("iso");
 });
 

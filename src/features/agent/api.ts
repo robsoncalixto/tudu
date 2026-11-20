@@ -5,9 +5,30 @@ import { agentStateSchema, proposalSchema, taskReviewResponseSchema, type Propos
 export const agentApi = {
   get: () => request<unknown>("/api/agent/proposals").then((data) => agentStateSchema.parse(data)),
   propose: (text: string, today: string) => request<unknown>("/api/agent/proposals", { method: "POST", body: { text, today } })
-    .then((data) => z.object({ proposals: z.array(proposalSchema) }).parse(data).proposals),
+    .then((data) => z.object({ proposals: z.array(proposalSchema) }).parse(data).proposals).then(updated),
   review: (text: string, today: string) => request<unknown>("/api/agent/proposals", { method: "POST", body: { text, today, review: true } })
-    .then((data) => taskReviewResponseSchema.parse(data)),
+    .then((data) => taskReviewResponseSchema.parse(data)).then(updated),
   decide: (id: string, decision: ProposalDecision) => request<unknown>(`/api/agent/proposals/${encodeURIComponent(id)}`, { method: "POST", body: decision })
-    .then((data) => z.object({ proposal: proposalSchema }).parse(data).proposal),
+    .then((data) => z.object({ proposal: proposalSchema }).parse(data).proposal).then(updated),
 };
+
+const changeEvent = "tudu:agent-updated";
+
+export function watchAgent(callback: () => void) {
+  function refresh() { if (document.visibilityState === "visible") callback(); }
+  const timer = window.setInterval(refresh, 10_000);
+  window.addEventListener(changeEvent, refresh);
+  window.addEventListener("focus", refresh);
+  document.addEventListener("visibilitychange", refresh);
+  return () => {
+    window.clearInterval(timer);
+    window.removeEventListener(changeEvent, refresh);
+    window.removeEventListener("focus", refresh);
+    document.removeEventListener("visibilitychange", refresh);
+  };
+}
+
+function updated<T>(value: T): T {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(changeEvent));
+  return value;
+}

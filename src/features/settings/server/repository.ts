@@ -29,7 +29,11 @@ export function createSettingsRepository(dataDir: string) {
       const saved = await read();
       const changes = settingsPatchSchema.parse(patch);
       const resetModel = changes.aiProvider !== undefined && changes.aiProvider !== saved.aiProvider;
-      const next = settingsSchema.parse({ ...saved, ...(resetModel ? { aiModel: "" } : {}), ...changes });
+      const schedule = changes.automaticReview;
+      const automaticReview = schedule ? {
+        ...schedule, enabledAt: schedule.enabled ? saved.automaticReview.enabledAt ?? new Date().toISOString() : null,
+      } : saved.automaticReview;
+      const next = settingsSchema.parse({ ...saved, ...(resetModel ? { aiModel: "" } : {}), ...changes, automaticReview });
       await fs.mkdir(dataDir, { recursive: true });
       const temporary = `${file}.${process.pid}.tmp`;
       await fs.writeFile(temporary, JSON.stringify(next, null, 2), { mode: 0o600 });

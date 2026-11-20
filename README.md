@@ -137,7 +137,10 @@ Completing one creates the next occurrence.
 **Assistant** can review open tasks with **Review my tasks**, with or without a
 note. It summarizes what it reviewed and proposes changes with reasons. Every
 change requires approval. Possible duplicate flags record the decision without
-modifying either task.
+modifying either task. You can enable automatic review in Settings and choose
+a local time. It runs at most once per day while TUDU is running and can use a
+paid model. It records a skip when there are no open tasks, the task list has
+not changed, or the selected provider is unavailable.
 
 **Work log** lists the tasks completed on a chosen day, grouped by project or
 tag, with recorded time, estimates alongside recorded time, and totals per
