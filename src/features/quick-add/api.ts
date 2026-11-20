@@ -1,8 +1,8 @@
 import type { Project } from "@/features/projects/schema";
 import { tasksApi } from "@/features/tasks/api";
 import { ApiError } from "@/lib/http";
-import { parseQuickTask, quickTaskDrafts, stripQuickTokens } from "./parser";
-import type { QuickAddDefaults, QuickTask } from "./schema";
+import { QuickDraftError, parseQuickTask, quickTaskDrafts, stripQuickTokens } from "./parser";
+import type { QuickAddDefaults, QuickAddProblem, QuickTask } from "./schema";
 
 export const quickAddApi = {
   preview(text: string, today: string, projects: readonly Project[] = []): QuickTask | null {
@@ -10,6 +10,10 @@ export const quickAddApi = {
   },
   previewDrafts(text: string, today: string, defaults: QuickAddDefaults, projects: readonly Project[] = []): QuickTask[] | null {
     try { return quickTaskDrafts(text, today, defaults, projects); } catch { return null; }
+  },
+  problem(text: string, today: string, defaults: QuickAddDefaults, projects: readonly Project[]): QuickAddProblem | null {
+    try { quickTaskDrafts(text, today, defaults, projects); return null; }
+    catch (error) { return error instanceof QuickDraftError ? error.problem : null; }
   },
   stripTokens: stripQuickTokens,
   async create(text: string, today: string, context: QuickAddDefaults = {}, projects: readonly Project[] = []) {

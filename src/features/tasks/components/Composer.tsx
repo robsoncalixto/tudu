@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Project } from "@/features/projects/schema";
-import type { QuickAddDefaults } from "@/features/quick-add/schema";
+import { normalizeQuickTag, type QuickAddDefaults, type QuickAddProblem } from "@/features/quick-add/schema";
 import { quickAddApi } from "@/features/quick-add/api";
 import type { Dictionary, Locale } from "@/i18n";
 import type { DateFormat } from "@/lib/dates";
@@ -38,8 +38,9 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
   const [chosen, setChosen] = useState<{ priority?: Priority; due?: string; tags: string[] }>({ tags: [] });
   const [tag, setTag] = useState("");
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [problem, setProblem] = useState<QuickAddProblem | null>(null);
   const [tagLimit, setTagLimit] = useState(false);
-  const defaults = { ...context, ...chosen, tags: [...new Set([...chosen.tags, tag.trim()].filter(Boolean))] };
+  const defaults = { ...context, ...chosen, tags: [...new Set([...chosen.tags, normalizeQuickTag(tag)].filter(Boolean))] };
   const drafts = useMemo(() => quickAddApi.previewDrafts(text, today, defaults, projects), [text, today, context, chosen, tag, projects]);
   const selectedPriority = drafts?.every((item) => item.priority === drafts[0].priority) ? drafts[0].priority : chosen.priority;
   const selectedDue = drafts?.every((item) => item.due === drafts[0].due) ? drafts[0].due : chosen.due;
@@ -48,11 +49,11 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
   const hasMetadata = preview.length > 1 || preview.some((item) => item.due || item.priority || item.projectId || item.estimateHours || item.tags.length);
 
   function addTag() {
-    const value = tag.trim();
+    const value = normalizeQuickTag(tag);
     if (!value) return;
     const saved = quickAddApi.previewDrafts(text, today, { ...context, ...chosen }, projects);
     const current = saved ?? [{ tags: [...chosen.tags, ...(context.tag ? [context.tag] : [])] }];
-    if (current.some((item) => new Set([...item.tags, value]).size > 10)) {
+    if (current.some((item) => new Set([...item.tags.map(normalizeQuickTag), value]).size > 10)) {
       setTagLimit(true);
       return;
     }
@@ -63,9 +64,10 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
 
   function removeTag(value: string) {
     setChosen({ ...chosen, tags: chosen.tags.filter((item) => item !== value) });
-    if (tag.trim() === value) setTag("");
+    if (normalizeQuickTag(tag) === value) setTag("");
     setTagLimit(false);
     onTextChange(quickAddApi.stripTokens(text, "tag", value));
+    requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
   }
   const disabled = !text.trim() || busy !== null;
 
@@ -73,12 +75,15 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
     setMod(/Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl");
   }, []);
 
+  useEffect(() => { setProblem(null); }, [text, chosen, tag]);
+
   async function submit(mode: ComposerMode) {
     if (disabled) return;
     if (new Set([...defaults.tags, ...(context.tag ? [context.tag] : [])]).size > 10) {
       setTagLimit(true);
       return;
     }
+    if (mode === "add") setProblem(drafts ? null : quickAddApi.problem(text, today, defaults, projects));
     setBusy(mode);
     try {
       if (await onSubmit(mode, text.trim(), defaults)) {
@@ -134,6 +139,9 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
           setChosen({ ...chosen, due: due || undefined }); onTextChange(quickAddApi.stripTokens(text, "due"));
         }} />
       </div>
+      {problem && <p className="hint" role="alert">{problem.kind === "line_limit" ? t.quickLineLimit
+        : problem.kind === "text_limit" ? t.quickTextLimit
+          : problem.kind === "tag_limit" ? t.quickTagsOnLine(problem.line) : t.quickInvalidLine("line" in problem ? problem.line : 1)}</p>}
       {tagLimit && <p className="hint" role="alert">{t.composerTagLimit}</p>}
       {hasMetadata && <ComposerPreview drafts={preview} today={today} locale={locale} dateFormat={dateFormat}
         projects={projects} fixedTag={context.tag} t={t} onRemoveTag={removeTag} />}

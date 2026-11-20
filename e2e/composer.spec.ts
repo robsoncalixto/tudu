@@ -392,3 +392,23 @@ for (const l of [
     await expect(composer(page)).toHaveValue("");
   });
 }
+
+for (const l of [
+  { locale: "en", tag: "New task tag", lineLimit: "Add up to 50 task lines at a time.", overflow: /^Line 2 has too many tags/ },
+  { locale: "pt-BR", tag: "Etiqueta da nova tarefa", lineLimit: "Adicione até 50 linhas de tarefas por vez.", overflow: /^A linha 2 tem etiquetas demais/ },
+] as const) {
+  test(`identifies the line that exceeds the task or tag limits in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    await page.goto("/");
+    await composer(page).fill(Array.from({ length: 51 }, (_, i) => `Task ${i}`).join("\n"));
+    await composer(page).press("Enter");
+    await expect(page.getByRole("alert").filter({ hasText: l.lineLimit })).toBeVisible();
+    const tags = Array.from({ length: 10 }, (_, i) => `#tag${i}`).join(" ");
+    await composer(page).fill(`First\nSecond ${tags}`);
+    await page.getByLabel(l.tag).fill("#Team");
+    await composer(page).press("Enter");
+    await expect(page.getByRole("alert").filter({ hasText: l.overflow })).toBeVisible();
+    await expect(page.getByLabel(l.tag)).toHaveValue("#Team");
+    expect(await listTasks(request)).toEqual([]);
+  });
+}

@@ -225,6 +225,7 @@
 .composer-tags label { flex: 1; }
 .composer-tags input { width: 100%; }
 .composer-add-tag { min-width: var(--touch-target); padding-inline: 0; }
+button.quick-metadata { min-height: var(--touch-target); padding-inline: var(--s-sm); }
 button.quick-metadata:hover { color: var(--text); }
 
 .composer-mobile-details.icon-btn { display: none; }

@@ -79,3 +79,13 @@ describe("controlled quick-add details", () => {
     expect(quickAddApi.stripTokens(String.raw`#work Draft \#work #docs`, "tag", "work").trim()).toBe(String.raw`Draft \#work #docs`);
   });
 });
+
+it("reports the actual input line and validates the batch limits before writing", () => {
+  expect(quickAddApi.problem(Array.from({ length: 51 }, (_, i) => `Task ${i}`).join("\n"), today, {}, []))
+    .toEqual({ kind: "line_limit" });
+  const tags = Array.from({ length: 10 }, (_, i) => `#tag${i}`).join(" ");
+  expect(quickAddApi.problem(`Valid\n\nSecond ${tags}`, today, { tags: ["# TEAM "] }, []))
+    .toEqual({ kind: "tag_limit", line: 3 });
+  expect(quickAddApi.previewDrafts("Plan #team", today, { tags: [" TEAM ", "#team"] }, [])?.[0].tags).toEqual(["team"]);
+  expect(quickAddApi.problem("First\n#tag", today, {}, [])).toEqual({ kind: "line_invalid", line: 2 });
+});

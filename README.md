@@ -146,7 +146,6 @@ priority, due tomorrow.
 | `today` / `hoje`, `tomorrow` / `amanhã` | Set the due date |
 | Weekday (`friday`, `sexta-feira`) | Due on its next occurrence |
 | `YYYY-MM-DD` | Due on that date |
-
 | `@website-redesign` | Assign an existing project. Use hyphens for spaces. Unknown names stay in the title. |
 | `~30m`, `~2h`, `~1d` | Set an estimate. One day is 12 hours. |
 

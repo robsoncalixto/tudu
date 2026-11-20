@@ -40,11 +40,12 @@ export async function captureTasks(generate: GenerateStructured, note: string, t
     system: systemPrompt(defaultPriority),
     input: `Current date: ${today}\n\n<projects>\n${JSON.stringify(projects)}\n</projects>\n\n<note>\n${note}\n</note>`,
   });
+  const defaultProject = projects.find(({ id }) => id === defaults?.projectId)?.id ?? null;
   return response.tasks
     .filter((task) => task.title.trim().length > 0)
     .map((task) => ({ ...taskInputSchema.parse({
       title: task.title.trim().slice(0, 300),
-      projectId: projects.some((project) => project.id === task.projectId) ? task.projectId : defaults?.projectId ?? null,
+      projectId: projects.some((project) => project.id === task.projectId) ? task.projectId : defaultProject,
       notes: task.notes.trim().slice(0, 2000),
       priority: task.priority,
       due: z.iso.date().safeParse(task.due).success ? task.due : defaults?.due ?? null,

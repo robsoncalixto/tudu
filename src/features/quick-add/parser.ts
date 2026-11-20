@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Project } from "@/features/projects/schema";
 import { durationHoursSchema, HOURS_PER_UNIT, PRIORITIES, type Priority } from "@/features/tasks/schema";
-import { quickAddInputSchema, quickTaskSchema, type QuickAddDefaults, type QuickTask } from "./schema";
+import { quickAddInputSchema, quickTaskSchema, normalizeQuickTag, type QuickAddDefaults, type QuickAddProblem, type QuickTask } from "./schema";
 
 const WEEKDAYS: Record<string, number> = {
   sunday: 0, domingo: 0,
@@ -42,10 +42,11 @@ function tagToken(token: string): string | null {
   return match ? match[1].toLowerCase() : null;
 }
 
+const estimateSyntax = /^~(\d+(?:[.,]\d+)?)([mhd])$/i;
 const durationUnits = { m: "minutes", h: "hours", d: "days" } as const;
 
 function estimateToken(token: string) {
-  const match = /^~(\d+(?:[.,]\d+)?)([mhd])$/i.exec(token);
+  const match = estimateSyntax.exec(token);
   if (!match) return undefined;
   const unit = durationUnits[match[2].toLowerCase() as keyof typeof durationUnits];
   const parsed = durationHoursSchema.safeParse(Number(match[1].replace(",", ".")) * HOURS_PER_UNIT[unit]);
@@ -80,7 +81,7 @@ export function parseQuickTask(text: string, today: string, projects: readonly P
     if (token.startsWith("\\")) {
       const literal = token.slice(1);
       const isShortcut = tagToken(literal) || priorityToken(literal) || isDateShortcut(literal) ||
-        (literal.startsWith("@") && literal.length > 1) || estimateToken(literal);
+        (literal.startsWith("@") && literal.length > 1) || estimateSyntax.test(literal);
       title.push(isShortcut ? literal : token);
       continue;
     }
@@ -103,18 +104,30 @@ export function parseQuickTask(text: string, today: string, projects: readonly P
   });
 }
 
+export class QuickDraftError extends Error {
+  constructor(public problem: QuickAddProblem) { super(problem.kind); }
+}
+
 export function quickTaskDrafts(text: string, today: string, defaults: QuickAddDefaults, projects: readonly Project[]): QuickTask[] {
-  const input = quickAddInputSchema.parse({ text, today });
-  const lines = input.text.split(/\r?\n/u).filter((line) => line.trim());
-  if (lines.length > 50) throw new RangeError("Too many tasks");
-  return lines.map((line) => {
-    const task = parseQuickTask(line, today, projects);
-    const priority = task.priority ?? defaults.priority;
-    const tags = [...new Set([...task.tags, ...(defaults.tags ?? []), ...(defaults.tag ? [defaults.tag] : [])])];
-    return quickTaskSchema.parse({
-      ...task, tags, due: task.due ?? defaults.due ?? null,
-      projectId: task.projectId ?? defaults.projectId ?? null,
-      ...(priority ? { priority } : {}), ...(defaults.plannedFor ? { plannedFor: defaults.plannedFor } : {}),
-    });
+  if (text.trim().length > 40_000) throw new QuickDraftError({ kind: "text_limit" });
+  quickAddInputSchema.parse({ text, today });
+  const lines = text.split(/\r?\n/u).flatMap((line, index) => line.trim() ? [{ line, index }] : []);
+  if (lines.length > 50) throw new QuickDraftError({ kind: "line_limit" });
+  return lines.map(({ line, index }) => {
+    try {
+      const task = parseQuickTask(line, today, projects);
+      const priority = task.priority ?? defaults.priority;
+      const tagsByKey = new Map([...task.tags, ...(defaults.tags ?? [])].map((tag) => [normalizeQuickTag(tag), normalizeQuickTag(tag)]));
+      if (defaults.tag) tagsByKey.set(normalizeQuickTag(defaults.tag), defaults.tag);
+      const tags = [...tagsByKey.values()].filter(Boolean);
+      return quickTaskSchema.parse({
+        ...task, tags, due: task.due ?? defaults.due ?? null,
+        projectId: task.projectId ?? defaults.projectId ?? null,
+        ...(priority ? { priority } : {}), ...(defaults.plannedFor ? { plannedFor: defaults.plannedFor } : {}),
+      });
+    } catch (error) {
+      const tagLimit = error instanceof z.ZodError && error.issues.some((issue) => issue.path[0] === "tags");
+      throw new QuickDraftError({ kind: tagLimit ? "tag_limit" : "line_invalid", line: index + 1 });
+    }
   });
 }
