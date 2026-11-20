@@ -129,15 +129,22 @@ tab is visible.
 Click a task's title to edit it in place: Enter or leaving the field saves,
 Escape cancels, and the [writing syntax](#writing-tasks) works there too, so
 typing `@fri` at the end of a title moves its due date. Completing, reopening
-or deleting a task acts at once and shows a notice with **Undo** for a few
-seconds. A deleted task is only removed when that notice is gone.
+or deleting a task, or changing its due date in the list, acts at once and
+shows a notice that names the task and offers **Undo** for a few seconds.
+Undo takes back one action after another, newest first, for as long as the
+notice shows. A deleted task is only removed when that notice is gone, and
+completing a repeating task creates its next one only then, so undoing either
+leaves nothing behind. A save that could not reach the server offers **Retry**
+in the same notice. The task actions menu of a row also plans the task for
+tomorrow or next week and deletes it.
 
 Open the task panel (the icon at the right of a row, or a double click on the
 row) to edit the title,
 notes, subtasks, priority, project, tags, planned day, due date, part of day,
 repeat rule, time estimate, real execution time and links. Notes are saved a
-moment after you stop typing; a title or tag list is saved on Enter or on
-leaving the field. Both time fields offer a unit selector
+moment after you stop typing and are never taken back: Escape there closes the
+panel and keeps them. A title or tag list is saved on Enter or on leaving the
+field, and Escape drops that edit. Both time fields offer a unit selector
 before the value: Minutes, Hours or Days. Fractional hours are supported, and
 **1 day equals 12 hours**. Clear a field to remove its value. Changing units
 converts the duration; both values are stored as decimal hours (`estimateHours`
@@ -191,30 +198,37 @@ AI provider and model.
 One field writes a task and everything about it. Enter adds it and leaves the
 field ready for the next one; Shift+Enter starts another task on a new line.
 `Review proposal #work @tomorrow 14h !high` creates **Review proposal**, tagged
-`work`, with high priority, due tomorrow afternoon.
+`work`, with high priority, due tomorrow afternoon. A notice names the new
+task and its **Show** button takes you to it, wherever the list's order or a
+chip placed it.
 
 | Write | Meaning |
 | --- | --- |
 | `#tag` | Add a tag. A new tag is created when you save. |
 | `+website-redesign`, `@website-redesign` | Assign an existing project. Use hyphens for spaces. An unknown `+name` stays in the title and is pointed out. |
 | `@today`, `@tomorrow`, `@fri`, `@25/11`, `@2026-12-01` | Set the due date. Portuguese works too: `@hoje`, `@amanha`, `@sex`. |
-| `today` / `hoje`, `tomorrow` / `amanhã`, a full weekday, `YYYY-MM-DD` | The same, without the `@`. |
+| `today` / `hoje`, `tomorrow` / `amanhã`, a full weekday, `YYYY-MM-DD` | The same, without the `@`. `the day after tomorrow` and `depois de amanhã` are read whole. |
 | `@tomorrow 14h`, `@16:00` | Add a time. A due date keeps the day, so the time is saved as morning, afternoon or evening. |
 | `!high`, `!medium`, `!low` | Set the priority. Also `!alta`, `!media`, `!baixa` and `!1`, `!2`, `!3`. |
-| `~30m`, `~2h`, `~1d`, `t1h30m` | Set an estimate. One day is 12 hours. |
+| `~30m`, `~45min`, `~2h`, `~1d`, `t1h30m` | Set an estimate. One day is 12 hours. |
 
 A token is a whole word, so `C#` and `name@example.com` are left alone. Prefix
 a token with a backslash to keep it as text: `Discuss \#bug` saves
 **Discuss #bug**. The field marks each token it recognizes, underlines a date
-it cannot read, and offers saved tags, projects, days and priorities as you
-type `#`, `+`, `@` or `!`.
+it cannot read once you move past it, and offers saved tags, projects, days and
+priorities as you type `#`, `+`, `@` or `!`. What cannot be saved is said under
+the field: a missing title when you press Enter, a title over 300 characters or
+more than 50 lines while you type.
 
 The chips under the field show the same values and can set them with the
 pointer: project, planned day, due date, priority, estimate, repeat and tags.
-A chip takes its field over from the text. A repeating task starts from its due
-date, or from today when it has none. In **Today**, in a project or in a tag, a
-new task starts with that view's value, which the chip can clear. With several
-lines, and with **Create with AI**, the chips are defaults for every task.
+The due date chip also sets the part of the day. A chip takes its field over
+from the text. A repeating task, or one with a part of the day, starts from its
+due date, or from today when it has none. In **Today**, in a project or in a
+tag, a new task starts with that view's value, which the chip can clear. With
+several lines, and with **Create with AI**, the chips are defaults for every
+task. Several lines show what each one becomes before you add them; the
+bullets, numbers and checkboxes of a pasted list are left out of the titles.
 
 ### Keyboard shortcuts
 
@@ -230,8 +244,10 @@ registry its key handlers use. Shortcuts never fire while you type in a field.
 | `Space` or `D` | Complete or reopen the focused task |
 | `Enter`, `E` | Edit its title, open its details |
 | `Delete` | Delete it |
-| `Z` or `Ctrl`/`⌘`+`Z` | Undo the last completion or deletion |
+| `Z` or `Ctrl`/`⌘`+`Z` | Undo the last action in the list, then the one before it |
 | `Esc` in the task field | Close suggestions, then clear the field, then leave it |
+| `Esc` in the search | Clear the search, then go to the list |
+| `Esc` on a task | Clear the search and stay on the task, then close task details |
 
 Single-key shortcuts can be switched off in that list, per device. Arrows,
 Enter, Space, Esc and shortcuts with `Ctrl` or `⌘` keep working.
