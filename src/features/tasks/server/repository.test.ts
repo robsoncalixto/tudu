@@ -358,10 +358,10 @@ describe("default repository", () => {
     expect(await repo.listTasks()).toEqual([{ ...task, title: "Renamed", due: "2026-02-28", repeat, planChangedAt: expect.any(String) }]);
   });
 
-  it("keeps an invalid legacy series open until its next occurrence can be scheduled", async () => {
+  it.each([null, "0000-02-29"])("keeps a legacy series with deadline %s open until it can schedule its next occurrence", async (due) => {
     const repo = await import("./repository");
     const [task] = await repo.addTasks([input("Daily report")]);
-    const legacy = { ...task, due: "0000-02-29", repeat: { frequency: "daily" } };
+    const legacy = { ...task, due, repeat: { frequency: "daily" } };
     await writeFile(path.join(dir, "tasks.json"), JSON.stringify([legacy]));
 
     await expect(repo.updateTask(task.id, { done: true })).rejects.toThrow("invalid_repeat");

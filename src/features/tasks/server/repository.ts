@@ -26,9 +26,11 @@ export function createRepository(store: TaskStore) {
         task.dayRanks = Object.fromEntries(Object.entries(current.dayRanks).filter(([day]) =>
           !task.done && isForToday(task, day)));
       }
-      if (patch.due !== undefined || patch.repeat !== undefined) validateRepeat(task.due, task.repeat);
-      taskDatePatchSchema.parse(patch);
       const completing = !current.done && task.done;
+      if (patch.due !== undefined || patch.repeat !== undefined || (completing && !task.nextOccurrenceId)) {
+        validateRepeat(task.due, task.repeat);
+      }
+      taskDatePatchSchema.parse(patch);
       if (task.done !== current.done) task.completedAt = task.done ? new Date().toISOString() : null;
       let nextTask: Task | null = null;
       // The link survives reopening or deleting the child, so retries cannot branch a series.
