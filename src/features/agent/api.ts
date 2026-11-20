@@ -14,15 +14,20 @@ export const agentApi = {
 
 const changeEvent = "tudu:agent-updated";
 
+export function subscribeAgentUpdates(callback: () => void) {
+  window.addEventListener(changeEvent, callback);
+  return () => window.removeEventListener(changeEvent, callback);
+}
+
 export function watchAgent(callback: () => void) {
   function refresh() { if (document.visibilityState === "visible") callback(); }
   const timer = window.setInterval(refresh, 10_000);
-  window.addEventListener(changeEvent, refresh);
+  const stop = subscribeAgentUpdates(refresh);
   window.addEventListener("focus", refresh);
   document.addEventListener("visibilitychange", refresh);
   return () => {
     window.clearInterval(timer);
-    window.removeEventListener(changeEvent, refresh);
+    stop();
     window.removeEventListener("focus", refresh);
     document.removeEventListener("visibilitychange", refresh);
   };

@@ -372,3 +372,5 @@
 @container (max-width: 490px) {
   .subtask-form .form-control { flex-basis: 100%; }
 }
+
+.task-metadata .task-suggestion-marker { color: var(--accent); }

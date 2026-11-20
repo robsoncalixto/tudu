@@ -12,10 +12,14 @@ import { TaskPanelText } from "./TaskPanelText";
 import { TaskRepeat } from "./TaskRepeat";
 import { TaskLinks } from "./TaskResources";
 import { TaskDuration } from "./TaskDuration";
+import { TaskSuggestionActions, TaskSuggestionField } from "./TaskSuggestions";
+import type { ContextProposal, SuggestedField } from "../task-suggestions";
 import "./task-panel.css";
 
 interface Props {
   task: Task;
+  proposals: ContextProposal[];
+  onProposalApplied: () => void;
   projects: Project[];
   today: string;
   locale: Locale;
@@ -26,7 +30,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function TaskPanel({ task, projects, today, locale, dateFormat, t, onPatch, onDelete, onClose }: Props) {
+export function TaskPanel({ task, proposals, onProposalApplied, projects, today, locale, dateFormat, t, onPatch, onDelete, onClose }: Props) {
   const title = useTaskDraft<string>(task.id);
   const notes = useTaskDraft<string>(task.id);
   const tags = useTaskDraft<string>(task.id);
@@ -57,6 +61,9 @@ export function TaskPanel({ task, projects, today, locale, dateFormat, t, onPatc
     </label>;
   }
 
+  const suggestion = (field: SuggestedField) => <TaskSuggestionField field={field} proposals={proposals}
+    projects={projects} today={today} locale={locale} t={t} dateFormat={dateFormat} />;
+
   return <aside id="task-inspector" className="task-inspector" aria-label={t.taskDetails}>
     <header className="inspector-header">
       <TaskPanelText key={task.id} field="title" {...textProps} {...title} />
@@ -65,10 +72,13 @@ export function TaskPanel({ task, projects, today, locale, dateFormat, t, onPatc
     </header>
     <div className="inspector-content">
       <TaskPanelSubtasks taskId={task.id} t={t} steps={task.steps} onChange={(steps) => patch(task.id, { steps }, false)} />
+      {suggestion("steps")}
       <TaskDuration key={`estimate-${task.id}`} field="estimateHours" {...textProps} {...estimate} />
       <TaskDuration key={`real-time-${task.id}`} field="realTimeHours" {...textProps} {...realTime} />
       {dateField("plannedFor", t.agentPlannedFor, "calendar")}
+      {suggestion("plannedFor")}
       {dateField("due", t.setDate, "flag")}
+      {suggestion("due")}
       <label className="inspector-property">
         <span className="inspector-label"><Icon name="sort" size={17} />{t.priority}</span>
         <select className="select-control" aria-label={t.priority} value={task.priority}
@@ -76,6 +86,7 @@ export function TaskPanel({ task, projects, today, locale, dateFormat, t, onPatc
           {PRIORITIES.map((value) => <option key={value} value={value}>{t[value]}</option>)}
         </select>
       </label>
+      {suggestion("priority")}
       <label className="inspector-property">
         <span className="inspector-label"><Icon name="folder" size={17} />{t.project}</span>
         <select className="select-control" aria-label={t.project} value={task.projectId ?? ""} disabled={!projects.length}
@@ -84,6 +95,8 @@ export function TaskPanel({ task, projects, today, locale, dateFormat, t, onPatc
           {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
         </select>
       </label>
+      {suggestion("projectId")}
+      <TaskSuggestionActions proposals={proposals} t={t} onApplied={onProposalApplied} />
       <TaskPanelText key={`tags-${task.id}`} field="tags" {...textProps} {...tags} />
       <TaskRepeat task={task} today={today} locale={locale} t={t}
         onChange={(changes) => patch(task.id, changes, false)} />

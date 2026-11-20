@@ -16,9 +16,10 @@ interface Props {
   projectManager: Omit<ProjectManagerProps, "t">;
   onFilter: (filter: TaskFilter) => void;
   page: string;
+  pendingCount: number;
 }
 
-export function Sidebar({ t, view, filter, projectManager, onFilter, page }: Props) {
+export function Sidebar({ t, view, filter, projectManager, onFilter, page, pendingCount }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [projectDialog, setProjectDialog] = useState<ProjectDialogMode | null>(null);
   const { layout, compact, update, toggleGroup } = useSidebarLayout();
@@ -42,8 +43,10 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, page }: Pro
   function pageLink(href: keyof typeof links) {
     const [label, icon] = links[href];
     return <Link href={href} className={`nav-item${page === href ? " is-active" : ""}`}
-      aria-current={page === href ? "page" : undefined} aria-label={label} title={label} onClick={() => setExpanded(false)}>
+      aria-current={page === href ? "page" : undefined} aria-label={label}
+      aria-description={href === "/agent" && pendingCount ? t.pendingAgentCount(pendingCount) : undefined} title={label} onClick={() => setExpanded(false)}>
       <Icon name={icon} /><span>{label}</span>
+      {href === "/agent" && pendingCount > 0 && <span className="nav-count">{pendingCount}</span>}
     </Link>;
   }
   const sizeLabel = compact ? t.expandSidebar : t.collapseSidebar;
