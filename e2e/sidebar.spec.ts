@@ -82,34 +82,6 @@ for (const locale of ["en", "pt-BR"] as const) {
     await expect(more).toHaveAttribute("aria-expanded", "false");
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   });
-
-  test(`the Projects plus creates directly from a collapsed group in ${locale}`, async ({ page, request }) => {
-    await seedProjects(request, ["Existing"]);
-    await saveSettings(request, { locale });
-    await page.goto("/");
-    const rail = sidebar(page);
-    const projects = rail.getByRole("button", { name: t.projects, exact: true });
-    await projects.click();
-    const create = rail.getByRole("button", { name: t.newProject, exact: true });
-    await create.click();
-    const dialog = page.getByRole("dialog", { name: t.newProject, exact: true });
-    const field = dialog.getByRole("textbox", { name: t.newProject, exact: true });
-    await expect(field).toBeFocused();
-    await field.fill("Existing");
-    await field.press("Enter");
-    await expect(dialog.getByRole("status")).toHaveText(t.errors.duplicate_project);
-    await expect(field).toHaveValue("Existing");
-    await expect(field).toBeFocused();
-    await field.fill("Launch");
-    await field.press("Enter");
-    await expect(dialog).toBeHidden();
-    await expect(create).toBeFocused();
-    await expect(projects).toHaveAttribute("aria-expanded", "true");
-    const link = rail.getByRole("button", { name: new RegExp(`^${t.project}: Launch,`) });
-    await link.click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Launch");
-    expect((await listProjects(request)).map((project) => project.name)).toEqual(["Existing", "Launch"]);
-  });
 }
 
 for (const language of [

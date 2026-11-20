@@ -21,6 +21,7 @@ import { TaskEmpty } from "./TaskEmpty";
 import { TaskList } from "./TaskList";
 import { TaskPanel } from "./TaskPanel";
 import { TaskPanelFrame } from "./TaskPanelFrame";
+import { TaskSkeleton } from "./TaskSkeleton";
 import { useTaskWorkspace } from "./TaskWorkspace";
 
 export function Board() {
@@ -124,6 +125,7 @@ export function Board() {
         {tasks && <Composer t={t} text={text} onTextChange={setText} aiEnabled={aiEnabled} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat} onSubmit={submit}
           context={composerContext} projects={projects} suggestions={savedTags}
           onLeave={() => (actions.rows()[0] ?? document.getElementById("main-content"))?.focus()} onUndo={undo} />}
+        {!tasks && !loadFailed && <TaskSkeleton />}
         <BoardNotice notice={notice} t={t} onDismiss={dismiss} />
         {loadFailed && <div className="board-failure"><p role="alert">{t.taskLoadFailed}</p>
           <button type="button" className="btn btn-secondary" onClick={retryLoad}>{t.retry}</button></div>}
