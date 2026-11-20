@@ -106,8 +106,9 @@ structured output.
 
 The sidebar opens **All tasks**, **Today**, projects, tags, **Work log** and
 **Assistant**. On a phone, use **More views**. **Today** shows tasks planned
-for today plus tasks due today or overdue; use the sun button on a task to plan
-it for today.
+for today, unfinished tasks planned earlier, and tasks due today or overdue.
+Use the sun button to plan a task for today or clear its existing plan.
+Your open-task sort is remembered on the device.
 
 Open the task panel (the icon at the right of a row, or `i`) to edit the title,
 notes, subtasks, priority, project, tags, planned day, due date, repeat rule,
@@ -182,7 +183,7 @@ claude mcp add --transport http tudu http://localhost:3000/api/mcp \
 | Tool | Description |
 | --- | --- |
 | `list_projects` | List project names and IDs |
-| `list_tasks` | Filter and paginate tasks |
+| `list_tasks` | Filter and paginate tasks. The Today filter includes unfinished earlier plans. |
 | `add_tasks` | Add 1–50 tasks |
 | `update_task` | Update task fields, or reopen a task; pass `expected` to refuse changes made since the last read |
 | `complete_task` | Complete a task and return its next occurrence, if any |
