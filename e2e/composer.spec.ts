@@ -1,4 +1,4 @@
-import { sidebar, addTask, composer, expect, listTasks, openApp, openSection, taskRows, row, rowTitles, saveSettings, seedProjects, taskDetails, taskPanel, test, TODAY, setLanguage } from "./support";
+import { sidebar, addTask, composer, expect, listTasks, openApp, openSection, taskRows, row, rowTitles, saveSettings, seed, seedProjects, taskDetails, taskPanel, test, TODAY, TOMORROW, setLanguage } from "./support";
 
 test.describe("Composer", () => {
   test("Portuguese ordinals stay in ordinary task titles without adding a due date", async ({ page, request }) => {
@@ -54,12 +54,13 @@ test.describe("Composer", () => {
     expect(await listTasks(request)).toEqual([]);
   });
 
-  test("collapses line breaks into a single-line title", async ({ page }) => {
+  test("creates one task per nonempty line", async ({ page }) => {
     await openApp(page);
     await composer(page).fill("first line\nsecond line");
     await page.getByRole("button", { name: "Add", exact: true }).click();
 
-    await expect(row(openSection(page), "first line second line")).toBeVisible();
+    await expect(row(openSection(page), "first line")).toBeVisible();
+    await expect(row(openSection(page), "second line")).toBeVisible();
   });
 
   test("keeps the text and shows an error when saving fails", async ({ page }) => {
@@ -292,7 +293,7 @@ for (const l of [
     expect((await hint.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     expect((await page.getByRole("button", { name: l.add, exact: true }).boundingBox())?.height).toBeGreaterThanOrEqual(44);
     await hint.focus(); await hint.press("Enter");
-    await expect(page.getByText(/Fix login #bug !high tomorrow|Corrigir login #bug !high amanhã/)).toBeVisible();
+    await expect(page.getByText(/#bug !high (tomorrow|amanhã) @[^ ]+ ~2h/)).toBeVisible();
     await expect(hint).toHaveAttribute("aria-expanded", "true");
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     await composer(page).fill(String.raw`Discuss \#bug \!high \tomorrow`);
@@ -314,5 +315,80 @@ for (const l of [
     await page.getByRole("button", { name: l.ai, exact: true }).click();
     await expect(row(openSection(page), "AI result")).toBeVisible();
     expect((await listTasks(request))[0].title).toBe("AI result");
+  });
+}
+
+for (const l of [
+  { locale: "en", details: "New task details", priority: "New task priority", due: "New task due date", tag: "New task tag", preview: "Quick-add preview",
+    project: /^Project: Other,/, error: "Something went wrong. Try again.", ai: "Create with AI", minute: "30 minutes" },
+  { locale: "pt-BR", details: "Detalhes da nova tarefa", priority: "Prioridade da nova tarefa", due: "Prazo da nova tarefa", tag: "Etiqueta da nova tarefa", preview: "Prévia da tarefa",
+    project: /^Projeto: Other,/, error: "Algo deu errado. Tente novamente.", ai: "Criar com IA", minute: "30 minutos" },
+] as const) {
+  test(`combines shortcuts and task controls with view defaults in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale, defaultPriority: "high" });
+    const [other, site] = await seedProjects(request, ["Other", "Révisão do Site"]);
+    await seed(request, [{ title: "Seed tag", tags: ["team"] }]);
+    await page.setViewportSize({ width: 320, height: 760 });
+    await page.goto("/");
+    await page.getByRole("button", { name: l.details }).click();
+    const priority = page.getByRole("combobox", { name: l.priority });
+    const due = page.getByLabel(l.due);
+    const tag = page.getByLabel(l.tag);
+    await expect(priority).toHaveValue("high");
+    await composer(page).fill("Review !low tomorrow #bug @REVISAO-DO-SITE ~30m");
+    await expect(priority).toHaveValue("low");
+    await expect(due).toHaveValue(TOMORROW);
+    const preview = page.getByRole("list", { name: l.preview });
+    await expect(preview).toContainText("Révisão do Site");
+    await expect(preview).toContainText(l.minute);
+    await expect(preview).toContainText("#bug");
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await sidebar(page).getByRole("button", { name: l.project }).click();
+    await priority.selectOption("medium");
+    await due.fill("2026-11-20");
+    await expect(page.locator('#composer-tag-suggestions option[value="team"]')).toHaveCount(1);
+    await tag.fill("team");
+    await tag.press("Enter");
+    await composer(page).press("End");
+    await composer(page).press("Shift+Enter");
+    await composer(page).pressSequentially("Plan @unknown ~1d");
+    await page.route("**/api/tasks", (route) => route.request().method() === "POST"
+      ? route.fulfill({ status: 500, json: { error: "generic" } }) : route.continue());
+    await composer(page).press("Enter");
+    await expect(page.getByRole("status")).toHaveText(l.error);
+    await expect(composer(page)).toHaveValue(/Review.*\nPlan @unknown ~1d/s);
+    await expect(priority).toHaveValue("medium");
+    await expect(due).toHaveValue("2026-11-20");
+    await expect(preview).toContainText("#team");
+    await page.unroute("**/api/tasks");
+    await composer(page).press("Enter");
+    await expect(composer(page)).toHaveValue("");
+    await expect(priority).toHaveValue("high");
+    await expect(due).toHaveValue("");
+    await expect(preview).toHaveCount(0);
+    expect((await listTasks(request)).filter((task) => task.title !== "Seed tag")).toMatchObject([
+      { title: "Review", priority: "medium", due: "2026-11-20", tags: ["bug", "team"], projectId: site.id, estimateHours: 0.5 },
+      { title: "Plan @unknown", priority: "medium", due: "2026-11-20", tags: ["team"], projectId: other.id, estimateHours: 12 },
+    ]);
+  });
+
+  test(`passes composer defaults and the Today plan to AI capture in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale, startView: "today" });
+    const defaults = { plannedFor: TODAY, priority: "low", due: TOMORROW, tags: ["team"] };
+    await page.route("**/api/ai/capture", async (route) => {
+      if (route.request().method() === "GET") return route.fulfill({ json: { enabled: true } });
+      expect(route.request().postDataJSON()).toEqual({ text: "Capture this note", today: TODAY, defaults });
+      const response = await request.post("/api/tasks", { data: [{ title: "Captured action", ...defaults }] });
+      await route.fulfill({ response });
+    });
+    await page.goto("/");
+    await composer(page).fill("Capture this note");
+    await page.getByRole("combobox", { name: l.priority }).selectOption("low");
+    await page.getByLabel(l.due).fill(TOMORROW);
+    await page.getByLabel(l.tag).fill("team");
+    await page.getByRole("button", { name: l.ai, exact: true }).click();
+    await expect(row(openSection(page), "Captured action")).toBeVisible();
+    expect(await listTasks(request)).toMatchObject([{ title: "Captured action", ...defaults }]);
+    await expect(composer(page)).toHaveValue("");
   });
 }

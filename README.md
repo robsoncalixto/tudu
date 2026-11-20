@@ -131,7 +131,9 @@ view, default priority, date format and the AI provider and model.
 
 ### Quick-add shortcuts
 
-When adding a single task, write shortcuts as separate words.
+Write shortcuts as separate words. Enter submits the composer and Shift+Enter
+adds another task on a new line. The priority, due date and tag controls
+provide defaults for each line and for Create with AI.
 `Fix login #bug !high tomorrow` creates **Fix login**, tagged `bug`, with high
 priority, due tomorrow.
 
@@ -142,6 +144,9 @@ priority, due tomorrow.
 | `today` / `hoje`, `tomorrow` / `amanhã` | Set the due date |
 | Weekday (`friday`, `sexta-feira`) | Due on its next occurrence |
 | `YYYY-MM-DD` | Due on that date |
+
+| `@website-redesign` | Assign an existing project. Use hyphens for spaces. Unknown names stay in the title. |
+| `~30m`, `~2h`, `~1d` | Set an estimate. One day is 12 hours. |
 
 Prefix a token with a backslash to keep it as text: `Discuss \#bug` saves
 **Discuss #bug**. Open **Quick-add shortcuts** in the composer for details.

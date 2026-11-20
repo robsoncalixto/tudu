@@ -52,3 +52,15 @@ describe("AI checklist capture", () => {
     expect(task.priority).toBe("low");
   });
 });
+
+it("applies composer defaults to generated drafts without replacing a date stated in the note", async () => {
+  const draft = { title: "Review", notes: "", priority: "low", due: null, tags: ["review"], steps: [], projectId: null };
+  generate.mockResolvedValue({ tasks: [draft, { ...draft, title: "Ship", due: "2026-11-20" }] });
+  const tasks = await captureTasks(run, "Review and ship Friday", "2026-11-17", [], "low", {
+    tags: ["work", "review"], plannedFor: "2026-11-17", due: "2026-11-18",
+  });
+  expect(tasks).toMatchObject([
+    { title: "Review", due: "2026-11-18", tags: ["work", "review"], plannedFor: "2026-11-17" },
+    { title: "Ship", due: "2026-11-20", tags: ["work", "review"], plannedFor: "2026-11-17" },
+  ]);
+});

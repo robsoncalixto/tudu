@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Project } from "@/features/projects/schema";
+import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import { quickAddApi } from "@/features/quick-add/api";
 import type { Dictionary, Locale } from "@/i18n";
-import { dueLabel, type DateFormat } from "@/lib/dates";
+import type { DateFormat } from "@/lib/dates";
 import { Icon } from "@/lib/Icon";
+import type { Priority } from "../schema";
+import { ComposerDetails } from "./ComposerDetails";
+import { ComposerPreview, type PreviewDraft } from "./ComposerPreview";
 import "./composer.css";
 
 export type ComposerMode = "add" | "ai";
@@ -18,16 +23,50 @@ interface Props {
   onTextChange: (value: string) => void;
   onOpenSettings: () => void;
   aiEnabled: boolean;
-  onSubmit: (mode: ComposerMode, text: string) => Promise<boolean>;
+  defaultPriority: Priority;
+  context: QuickAddDefaults;
+  projects: Project[];
+  suggestions: string[];
+  onSubmit: (mode: ComposerMode, text: string, defaults: QuickAddDefaults) => Promise<boolean>;
 }
 
-export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onTextChange, onOpenSettings, onSubmit }: Props) {
+export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onTextChange, onOpenSettings, onSubmit, defaultPriority, context, projects, suggestions }: Props) {
   const [busy, setBusy] = useState<ComposerMode | null>(null);
   const [help, setHelp] = useState<"shortcuts" | "ai" | null>(null);
   const [mod, setMod] = useState("Ctrl");
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const preview = useMemo(() => quickAddApi.preview(text, today), [text, today]);
-  const hasMetadata = preview && (preview.due || preview.priority || preview.tags.length > 0);
+  const [chosen, setChosen] = useState<{ priority?: Priority; due?: string; tags: string[] }>({ tags: [] });
+  const [tag, setTag] = useState("");
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [tagLimit, setTagLimit] = useState(false);
+  const defaults = { ...context, ...chosen, tags: [...new Set([...chosen.tags, tag.trim()].filter(Boolean))] };
+  const drafts = useMemo(() => quickAddApi.previewDrafts(text, today, defaults, projects), [text, today, context, chosen, tag, projects]);
+  const selectedPriority = drafts?.every((item) => item.priority === drafts[0].priority) ? drafts[0].priority : chosen.priority;
+  const selectedDue = drafts?.every((item) => item.due === drafts[0].due) ? drafts[0].due : chosen.due;
+  const emptyPreview: PreviewDraft = { title: "", tags: defaults.tags, projectId: null, due: chosen.due ?? null, priority: chosen.priority };
+  const preview = drafts ?? [emptyPreview];
+  const hasMetadata = preview.length > 1 || preview.some((item) => item.due || item.priority || item.projectId || item.estimateHours || item.tags.length);
+
+  function addTag() {
+    const value = tag.trim();
+    if (!value) return;
+    const saved = quickAddApi.previewDrafts(text, today, { ...context, ...chosen }, projects);
+    const current = saved ?? [{ tags: [...chosen.tags, ...(context.tag ? [context.tag] : [])] }];
+    if (current.some((item) => new Set([...item.tags, value]).size > 10)) {
+      setTagLimit(true);
+      return;
+    }
+    setChosen({ ...chosen, tags: [...new Set([...chosen.tags, value])] });
+    setTag("");
+    setTagLimit(false);
+  }
+
+  function removeTag(value: string) {
+    setChosen({ ...chosen, tags: chosen.tags.filter((item) => item !== value) });
+    if (tag.trim() === value) setTag("");
+    setTagLimit(false);
+    onTextChange(quickAddApi.stripTokens(text, "tag", value));
+  }
   const disabled = !text.trim() || busy !== null;
 
   useEffect(() => {
@@ -36,9 +75,19 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
 
   async function submit(mode: ComposerMode) {
     if (disabled) return;
+    if (new Set([...defaults.tags, ...(context.tag ? [context.tag] : [])]).size > 10) {
+      setTagLimit(true);
+      return;
+    }
     setBusy(mode);
     try {
-      if (await onSubmit(mode, text.trim())) onTextChange("");
+      if (await onSubmit(mode, text.trim(), defaults)) {
+        onTextChange("");
+        setChosen({ tags: [] });
+        setTag("");
+        setTagLimit(false);
+        setDetailsExpanded(false);
+      }
     } finally {
       setBusy(null);
       requestAnimationFrame(() => {
@@ -68,17 +117,26 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
             }}
           />
         </label>
+        <button type="button" className="composer-mobile-details icon-btn" aria-label={t.composerDetails}
+          title={t.composerDetails} aria-expanded={detailsExpanded} aria-controls="composer-task-details"
+          onClick={() => setDetailsExpanded(!detailsExpanded)}><Icon name="settings" size={17} /></button>
         <button type="submit" className="btn btn-primary quick-submit" disabled={disabled}>
           {t.add} <Icon name="corner-down-left" size={14} />
         </button>
       </div>
-      {hasMetadata && (
-        <ul className="quick-preview" id="quick-task-preview" aria-label={t.quickTaskPreview}>
-          {preview.due && <li><Icon name="calendar" size={14} /><span className="sr-only">{t.setDate} </span>{dueLabel(preview.due, today, locale, t, dateFormat)}</li>}
-          {preview.priority && <li><Icon name="flag" size={14} /><span className="sr-only">{t.priority} </span>{t[preview.priority]}</li>}
-          {preview.tags.map((tag) => <li key={tag}>#{tag}</li>)}
-        </ul>
-      )}
+      <div className="composer-fields" id="composer-task-details" data-expanded={detailsExpanded}>
+        <ComposerDetails t={t} priority={selectedPriority ?? defaultPriority} due={selectedDue ?? ""} tag={tag}
+        suggestions={suggestions} busy={busy !== null} onTag={(value) => { setTag(value); setTagLimit(false); }} onAddTag={addTag}
+        onPriority={(priority) => {
+          setChosen({ ...chosen, priority }); onTextChange(quickAddApi.stripTokens(text, "priority"));
+        }}
+        onDue={(due) => {
+          setChosen({ ...chosen, due: due || undefined }); onTextChange(quickAddApi.stripTokens(text, "due"));
+        }} />
+      </div>
+      {tagLimit && <p className="hint" role="alert">{t.composerTagLimit}</p>}
+      {hasMetadata && <ComposerPreview drafts={preview} today={today} locale={locale} dateFormat={dateFormat}
+        projects={projects} fixedTag={context.tag} t={t} onRemoveTag={removeTag} />}
       <div className="capture-options">
         <button type="button" className="capture-option" disabled={!aiEnabled || disabled}
           title={aiEnabled ? t.composerHint.replace("{mod}", mod) : t.aiOff}

@@ -5,3 +5,9 @@ export const quickAddInputSchema = z.object({ text: z.string().trim().min(1).max
 // Leaving priority absent lets the server apply the shared default at save time.
 export const quickTaskSchema = taskDraftSchema;
 export type QuickTask = z.infer<typeof quickTaskSchema>;
+export type QuickAddDefaults = Pick<QuickTask, "priority" | "plannedFor"> & {
+  due?: QuickTask["due"];
+  projectId?: QuickTask["projectId"];
+  tags?: QuickTask["tags"];
+  tag?: string;
+};

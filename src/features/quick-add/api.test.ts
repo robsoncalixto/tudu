@@ -59,3 +59,23 @@ describe("quick-add in the active list", () => {
     expect(create).toHaveBeenCalledOnce();
   });
 });
+
+describe("controlled quick-add details", () => {
+  it("applies common defaults to each line and lets recognized text override them", () => {
+    const project = { id: "00000000-0000-4000-8000-000000000002", name: "Acme Web" };
+    const defaults = { priority: "low", due: today, tags: ["team"], tag: "work",
+      projectId: "00000000-0000-4000-8000-000000000001" } as const;
+    expect(quickAddApi.previewDrafts("First !high tomorrow @acme-web ~30m #bug\n\nSecond @unknown", today, {
+      ...defaults, tags: [...defaults.tags], plannedFor: today,
+    }, [project])).toMatchObject([
+      { title: "First", priority: "high", due: "2026-11-18", estimateHours: 0.5, projectId: project.id, tags: ["bug", "team", "work"], plannedFor: today },
+      { title: "Second @unknown", priority: "low", due: today, projectId: defaults.projectId, tags: ["team", "work"], plannedFor: today },
+    ]);
+  });
+
+  it("removes only the shortcuts that correspond to the control being edited", () => {
+    expect(quickAddApi.stripTokens(String.raw`!high Draft \!low #work`, "priority").trim()).toBe(String.raw`Draft \!low #work`);
+    expect(quickAddApi.stripTokens(String.raw`tomorrow Draft \tomorrow #work`, "due").trim()).toBe(String.raw`Draft \tomorrow #work`);
+    expect(quickAddApi.stripTokens(String.raw`#work Draft \#work #docs`, "tag", "work").trim()).toBe(String.raw`Draft \#work #docs`);
+  });
+});
