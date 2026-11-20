@@ -190,63 +190,39 @@ p {
   outline-offset: -2px;
 }
 
-.task-shortcuts {
+.task-delete-dialog {
   width: min(560px, calc(100% - 2 * var(--s-md)));
   max-height: calc(100% - 2 * var(--s-md));
   overflow-y: auto;
   color: var(--text);
 }
 
-.task-shortcuts::backdrop {
+.task-delete-dialog::backdrop {
   background: rgb(0 0 0 / 0.4);
 }
 
-.task-shortcuts h2 {
+.task-delete-dialog h2 {
   margin: 0 0 var(--s-md);
   font-family: var(--heading);
 }
 
-.task-shortcuts p,
-.task-shortcuts dl {
-  margin-bottom: var(--s-md);
-}
+.task-delete-dialog p { margin-bottom: var(--s-md); }
 
-.task-shortcuts dl > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-sm);
-  margin-bottom: var(--s-sm);
-}
-
-.task-shortcuts dt {
-  flex: 0 1 150px;
-  font-family: var(--heading);
-}
-
-.task-shortcuts kbd {
-  font: inherit;
-}
-
-.task-shortcuts dd {
-  flex: 1 1 180px;
-  margin: 0;
-}
-
-.shortcut-actions {
+.task-delete-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-sm);
 }
 
-.shortcut-error { color: var(--error); }
+.task-delete-error { color: var(--error); }
 
-.shortcut-danger {
+.task-delete-danger {
   color: var(--error);
   background: var(--surface);
   border: 1px solid var(--error);
 }
 
-.shortcut-danger:not(:disabled):hover {
+.task-delete-danger:not(:disabled):hover {
   background: color-mix(in srgb, var(--error) 8%, var(--surface));
 }
 

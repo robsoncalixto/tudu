@@ -46,6 +46,18 @@ export function serializeReview<T>(operation: () => Promise<T>): Promise<T> {
 export function setAutomaticRunning(running: boolean) { state.tuduAutomaticRunning = running; }
 
 export async function getAutomaticStatus() {
-  const { status } = await reviewState.read();
-  return status?.outcome === "running" && !state.tuduAutomaticRunning ? { ...status, outcome: "failed" as const } : status;
+  try {
+    const { status } = await reviewState.read();
+    return status?.outcome === "running" && !state.tuduAutomaticRunning ? { ...status, outcome: "failed" as const } : status;
+  } catch (error) {
+    console.error("Automatic task review status unavailable", error instanceof Error ? error.name : "Unknown error");
+    return null;
+  }
+}
+
+export async function rememberManualReview(tasks: Task[]) {
+  try { await reviewState.write({ ...(await reviewState.read()), fingerprint: taskFingerprint(tasks) }); }
+  catch (error) {
+    console.error("Could not remember reviewed tasks", error instanceof Error ? error.name : "Unknown error");
+  }
 }

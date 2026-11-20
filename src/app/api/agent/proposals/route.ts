@@ -5,7 +5,7 @@ import { listTasks } from "@/features/tasks/server/repository";
 import { listProjects } from "@/features/projects/server/repository";
 import { proposalRepository } from "@/features/agent/server/repository";
 import { proposeChanges, reviewOpenTasks } from "@/features/agent/server/propose";
-import { getAutomaticStatus, reviewState, serializeReview, taskFingerprint } from "@/features/agent/server/review-state";
+import { getAutomaticStatus, rememberManualReview, serializeReview } from "@/features/agent/server/review-state";
 import { proposalRequestSchema } from "@/features/agent/schema";
 import { agentFailure } from "../response";
 
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         note: text, today, ...(review ? { review } : {}), provider: settings.aiProvider,
         model: settings.aiModel || config.models[settings.aiProvider],
       });
-      if (review) await reviewState.write({ ...(await reviewState.read()), fingerprint: taskFingerprint(tasks) });
+      if (review) await rememberManualReview(tasks);
       return Response.json({ proposals, ...(reviewed ? { summary: reviewed.summary } : {}) }, { status: 201 });
     });
   } catch (error) { return agentFailure(error); }

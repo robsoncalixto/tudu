@@ -18,6 +18,10 @@ export function AgentPanel({ settings }: { settings: Settings }) {
   const agent = useAgent();
   const root = useRef<HTMLElement>(null);
   const [historyLimit, setHistoryLimit] = useState(10);
+  const automatic = agent.state?.automaticReview;
+  const automaticOutcome = automatic?.skipReason
+    ? `${t.automaticReviewOutcomes.skipped} · ${t.automaticReviewSkipReasons[automatic.skipReason]}`
+    : automatic && t.automaticReviewOutcomes[automatic.outcome];
   const { pending, history } = splitProposals(agent.state?.proposals ?? []);
   const busy = agent.generating || agent.busyId !== null;
   async function decide(id: string, decision: ProposalDecision) {
@@ -50,8 +54,8 @@ export function AgentPanel({ settings }: { settings: Settings }) {
       {agent.state && !agent.state.enabled && <p className="hint" id="agent-ai-hint">{t.aiOff}</p>}
     </form>
     <p className={`notice${agent.error ? " is-error" : ""}`} role="status">{agent.error ? errorMessage(t, agent.error) : agent.loading ? t.loading : agent.empty ? t.agentNoSuggestions : ""}</p>
-    {agent.state?.automaticReview && <p className="hint">
-      {t.automaticReviewLast(formatTimestamp(agent.state.automaticReview.ranAt, locale), t.automaticReviewOutcomes[agent.state.automaticReview.outcome])}
+    {automatic && automaticOutcome && <p className="hint">
+      {t.automaticReviewLast(formatTimestamp(automatic.ranAt, locale), automaticOutcome)}
     </p>}
     {(agent.summary ?? agent.state?.automaticReview?.summary) && <section className="card work-log-summary" aria-labelledby="agent-review-summary">
       <h2 className="section-title" id="agent-review-summary">{t.agentReviewSummary}</h2>
