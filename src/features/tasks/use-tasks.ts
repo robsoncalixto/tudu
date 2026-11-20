@@ -52,6 +52,7 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   useVisibleRefresh(load, loadAttempt);
 
   const retryLoad = useCallback(() => {
+    // Keep confirmed tasks visible while the next read is in flight.
     setLoadFailed(false);
     setLoadAttempt((attempt) => attempt + 1);
   }, []);

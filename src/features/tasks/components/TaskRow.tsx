@@ -82,7 +82,7 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, s
         )}
         {task.notes && <p className="task-notes is-preview">{task.notes}</p>}
         {hasMetadata && <div className="task-metadata">
-          {suggestionCount > 0 && <span className="task-suggestion-marker" aria-label={t.pendingAgentCount(suggestionCount)}>
+          {suggestionCount > 0 && <span className="task-suggestion-marker">
             <Icon name="assistant" size={14} />{t.taskHasSuggestions}
           </span>}
           {earlierPlan && <span><Icon name="sun" size={13} />
