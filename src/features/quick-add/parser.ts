@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Project } from "@/features/projects/schema";
 import { repeatFrom } from "@/features/recurrence/schema";
 import { durationHoursSchema, HOURS_PER_UNIT, type PartOfDay, type Priority } from "@/features/tasks/schema";
-import { clockTime, dateWord, dayAfter, dayAfterLead, dueExpression, isDateWord, wordKey } from "./due-words";
+import { clockTime, dateWord, dayAfterNext, daysFrom, dueExpression, isDateWord, wordKey } from "./due-words";
 import {
   quickAddInputSchema, quickTaskSchema, normalizeQuickTag,
   type QuickAddContext, type QuickAddDefaults, type QuickAddProblem, type QuickAddResult, type QuickEdit, type QuickTask,
@@ -80,6 +80,18 @@ export function parseQuickAdd(text: string, context: QuickAddContext): QuickAddR
       title.push(/^[#@+!~]/.test(literal) || isDateWord(literal) || estimateToken(literal) !== undefined ? literal : raw);
       continue;
     }
+    // The day after tomorrow takes several words, with or without the @, and is still one date.
+    const spelled = today ? dayAfterNext([raw.replace(/^@/, ""), ...words.slice(index + 1, index + 4).map((word) => word.raw)]) : 0;
+    const dayAfter = spelled ? daysFrom(today, 2) : null;
+    if (dayAfter) {
+      const following = raw.startsWith("@") ? words[index + spelled] : undefined;
+      const clock = following ? clockTime(following.raw) : undefined;
+      due = dayAfter;
+      time = clock ?? null;
+      mark("due", due, start, clock && following ? following.end : words[index + spelled - 1].end);
+      index += spelled - 1 + (clock ? 1 : 0);
+      continue;
+    }
     const tag = tagToken(raw);
     const level = priorityToken(raw);
     if (tag) { tags.add(tag); mark("tag", tag, start, end); continue; }
@@ -105,17 +117,7 @@ export function parseQuickAdd(text: string, context: QuickAddContext): QuickAddR
       continue;
     }
     const date = today ? dateWord(raw, today) : undefined;
-    if (date) {
-      const before = words.slice(Math.max(0, index - 3), index).map((word) => word.raw);
-      const lead = dayAfterLead(raw, before);
-      // The words that make it "the day after" belong to the date, as long as they were kept as title so far.
-      const after = lead > 0 && title.slice(-lead).join(" ") === before.slice(-lead).join(" ") ? dayAfter(date) : null;
-      if (after) title.splice(-lead);
-      due = after ?? date;
-      time = null;
-      mark("due", due, after ? words[index - lead].start : start, end);
-      continue;
-    }
+    if (date) { due = date; time = null; mark("due", date, start, end); continue; }
     if (date === null) { warnings.push({ kind: "date", text: raw, start, end, fatal: true }); title.push(raw); continue; }
     const hours = estimateToken(raw);
     if (hours !== undefined) { estimate = hours; mark("estimate", hours, start, end); continue; }
