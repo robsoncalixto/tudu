@@ -61,7 +61,7 @@ export function TaskSuggestionActions({ proposals, t, onApplied }: {
 
   const fields: Record<SuggestedField, string> = {
     title: t.agentTaskTitle, notes: t.agentNotes, priority: t.priority, due: t.setDate, tags: t.tags,
-    steps: t.suggestedChecklist, projectId: t.project, plannedFor: t.agentPlannedFor,
+    steps: t.suggestedChecklist, projectId: t.project, plannedFor: t.agentPlannedFor, partOfDay: t.partOfDay,
   };
   if (!proposals.length) return null;
   return <section className="inspector-suggestion-decisions" aria-label={t.agentPending}>
