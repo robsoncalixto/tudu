@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { quickAddApi } from "@/features/quick-add/api";
 import type { QuickSuggestion, SuggestionSources } from "@/features/quick-add/schema";
 import { shortcutsApi } from "@/features/shortcuts/api";
@@ -9,6 +9,7 @@ import type { Dictionary, Locale } from "@/i18n";
 import { dayChoiceLabel } from "@/lib/dates";
 import type { Priority } from "../schema";
 import { Icon, type IconName } from "@/lib/Icon";
+import { placeBelow } from "@/lib/popover";
 import { replaceFieldText } from "@/lib/text-field";
 import "./command-field.css";
 
@@ -40,6 +41,7 @@ export function CommandField({ id, value, onChange, label, placeholder, hint, so
   const listId = useId();
   const ownRef = useRef<HTMLTextAreaElement>(null);
   const field = inputRef ?? ownRef;
+  const list = useRef<HTMLUListElement>(null);
   const [caret, setCaret] = useState<number | null>(null);
   const [picked, setPicked] = useState({ at: "", index: 0, moved: false });
   const [dismissed, setDismissed] = useState("");
@@ -62,6 +64,23 @@ export function CommandField({ id, value, onChange, label, placeholder, hint, so
     mirror.push(value.slice(cursor, mark.start), <span key={mark.start} className={mark.known ? "command-token" : "command-unknown"}>{value.slice(mark.start, mark.end)}</span>);
     cursor = mark.end;
   }
+
+  // The list sits in the top layer under the field, so a list or panel that clips its content cannot cut it.
+  useLayoutEffect(() => {
+    const popup = list.current;
+    const input = field.current;
+    if (!popup || !input || typeof popup.showPopover !== "function") return;
+    if (!open) { if (popup.matches(":popover-open")) popup.hidePopover(); return; }
+    const place = () => placeBelow(popup, input.getBoundingClientRect());
+    if (!popup.matches(":popover-open")) popup.showPopover();
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open, value, items.length, field]);
 
   function accept(suggestion: QuickSuggestion) {
     const input = field.current;
@@ -115,7 +134,7 @@ export function CommandField({ id, value, onChange, label, placeholder, hint, so
         }
         onKey?.(event, shortcuts);
       }} />
-    <ul id={listId} role="listbox" aria-label={t.suggestionList} className="command-suggestions" hidden={!open}>
+    <ul ref={list} id={listId} role="listbox" aria-label={t.suggestionList} className="command-suggestions" popover="manual">
       {items.map((suggestion, position) => {
         const [meaning, written] = describe(suggestion);
         return <li key={suggestion.insert} id={`${listId}-${position}`} role="option" aria-selected={position === index}

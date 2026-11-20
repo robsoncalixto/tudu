@@ -7,7 +7,7 @@ export type ShortcutScope = (typeof SHORTCUT_SCOPES)[number];
 export const SHORTCUT_IDS = [
   "newTask", "search", "help", "undo", "goAll", "goToday", "goWorkLog", "goAssistant", "goSettings",
   "nextTask", "previousTask", "toggleTask", "editTask", "openTask", "deleteTask",
-  "submitTask", "newTaskLine", "submitWithAi", "leaveComposer", "nextSuggestion", "previousSuggestion", "acceptSuggestion",
+  "submitTask", "newTaskLine", "submitWithAi", "leaveComposer", "nextSuggestion", "previousSuggestion", "acceptSuggestion", "undoFromField",
   "searchResults", "clearSearch", "closePanel",
   "sendNote", "noteLine", "recallNote",
 ] as const;
@@ -55,6 +55,7 @@ export const SHORTCUTS: readonly Shortcut[] = z.array(shortcutSchema).parse([
   { id: "previousSuggestion", scope: "composer", repeats: true, bindings: one("ArrowUp") },
   { id: "acceptSuggestion", scope: "composer", bindings: one("Enter", "Tab") },
   { id: "leaveComposer", scope: "composer", bindings: one("Escape") },
+  { id: "undoFromField", scope: "composer", bindings: one("Mod+z") },
   { id: "searchResults", scope: "search", bindings: one("ArrowDown", "Enter") },
   { id: "clearSearch", scope: "search", bindings: one("Escape") },
   { id: "closePanel", scope: "panel", bindings: one("Escape") },

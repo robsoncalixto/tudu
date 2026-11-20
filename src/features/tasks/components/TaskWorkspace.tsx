@@ -19,7 +19,13 @@ import { useTasks } from "../use-tasks";
 import { Sidebar } from "./Sidebar";
 import "./board.css";
 
-type Notice = { kind: "ok" | "error"; text: string } | null;
+export type Notice = {
+  kind: "ok" | "error";
+  text: string;
+  action?: { label: string; run: () => void };
+  /** Runs once the notice is replaced or dismissed, for work that waited on a possible undo. */
+  onGone?: () => void;
+} | null;
 
 function useWorkspaceState(settings: Settings) {
   const page = usePathname();
@@ -27,15 +33,33 @@ function useWorkspaceState(settings: Settings) {
   const { locale, t } = useLocale(settings.locale);
   const today = useToday();
   const suggestions = useTaskSuggestions();
-  const [notice, setNotice] = useState<Notice>(null);
+  const [notice, showNotice] = useState<Notice>(null);
+  const shown = useRef<Notice>(null);
+  const setNotice = useCallback((next: Notice | ((current: Notice) => Notice)) => {
+    const previous = shown.current;
+    const value = typeof next === "function" ? next(previous) : next;
+    shown.current = value;
+    showNotice(value);
+    if (previous && previous !== value) previous.onGone?.();
+  }, []);
+  useEffect(() => {
+    // Closing the tab ends the undo window too.
+    const settle = () => shown.current?.onGone?.();
+    window.addEventListener("pagehide", settle);
+    return () => window.removeEventListener("pagehide", settle);
+  }, []);
   const navigation = useBoardNavigation(settings.startView);
   const { filter, query, sort, setFilter, setQuery } = navigation;
   const inspector = useTaskInspector();
   const { selectedId, setSelectedId } = inspector;
-  const fail = useCallback((code: string) => setNotice({ kind: "error", text: errorMessage(t, code) }), [t]);
+  const fail = useCallback((code: string) => setNotice({ kind: "error", text: errorMessage(t, code) }), [t, setNotice]);
   const scheduled = useCallback((task: Task) => {
-    if (task.due && today) setNotice({ kind: "ok", text: t.nextOccurrence(dueLabel(task.due, today, locale, t, settings.dateFormat)) });
-  }, [today, locale, t, settings.dateFormat]);
+    if (!task.due || !today) return;
+    const next = t.nextOccurrence(dueLabel(task.due, today, locale, t, settings.dateFormat));
+    // Completing a repeating task keeps its Undo and adds when the next one is due.
+    setNotice((current) => current?.kind === "ok" && current.action && !current.onGone
+      ? { ...current, text: `${current.text} ${next}` } : { kind: "ok", text: next });
+  }, [today, locale, t, settings.dateFormat, setNotice]);
   const taskData = useTasks(fail, scheduled, (currentIds) => {
     if (selectedId && !currentIds.has(selectedId)) {
       inspector.close();
@@ -66,7 +90,7 @@ function useWorkspaceState(settings: Settings) {
     if (page !== "/") setSelectedId(null);
     refreshTasks();
     refreshProjects();
-  }, [page, setSelectedId, refreshTasks, refreshProjects]);
+  }, [page, setSelectedId, refreshTasks, refreshProjects, setNotice]);
 
   function select(next: TaskFilter) {
     setSelectedId(null);

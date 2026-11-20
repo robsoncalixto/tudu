@@ -1,8 +1,8 @@
-import { closeTaskPanel, expect, listTasks, openSection, row, saveSettings, seed, taskDetails, taskPanel, test } from "./support";
+import { closeTaskPanel, composer, expect, listTasks, openSection, row, saveSettings, seed, taskDetails, taskPanel, test } from "./support";
 
 for (const l of [
-  { locale: "en", edit: "Edit title", error: "Something went wrong. Try again." },
-  { locale: "pt-BR", edit: "Editar título", error: "Algo deu errado. Tente novamente." },
+  { locale: "en", edit: "Edit title", error: "Something went wrong. Try again.", deleted: "Task deleted.", dismiss: "Dismiss" },
+  { locale: "pt-BR", edit: "Editar título", error: "Algo deu errado. Tente novamente.", deleted: "Tarefa excluída.", dismiss: "Dispensar" },
 ] as const) {
   test(`keys move through the list and act on the focused task in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale });
@@ -28,15 +28,15 @@ for (const l of [
     await expect(first).toBeFocused();
 
     await page.keyboard.press("Enter");
-    const edit = page.getByRole("textbox", { name: l.edit });
+    const edit = page.getByRole("combobox", { name: l.edit });
     await expect(edit).toBeFocused();
     await edit.fill("First task renamed");
     await edit.press("Enter");
     const renamed = row(openSection(page), "First task renamed");
-    await expect(renamed).toBeVisible();
+    // An edit started from the row hands the keyboard back to the row.
+    await expect(renamed).toBeFocused();
     await expect.poll(async () => (await listTasks(request)).map((task) => task.title)).toContain("First task renamed");
 
-    await renamed.focus();
     await page.keyboard.press("e");
     await expect(taskPanel(page)).toBeVisible();
     await expect(closeTaskPanel(page)).toBeFocused();
@@ -53,6 +53,21 @@ for (const l of [
     await expect(third).toBeFocused();
     await expect.poll(async () => (await listTasks(request)).filter((task) => task.done).map((task) => task.title).sort())
       .toEqual(["First task renamed", "Second task"]);
+
+    // Delete hides the task at once and nothing is removed while it can be undone.
+    await page.keyboard.press("Delete");
+    await expect(third).toBeHidden();
+    await expect(page.getByRole("status")).toContainText(l.deleted);
+    expect(await listTasks(request)).toHaveLength(3);
+    // The list is empty, so the keyboard is in the task field; with nothing typed its undo reaches the list.
+    await expect(composer(page)).toBeFocused();
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(third).toBeFocused();
+    await expect(page.getByRole("status")).toHaveText("");
+    await page.keyboard.press("Backspace");
+    await expect(third).toBeHidden();
+    await page.getByRole("status").getByRole("button", { name: l.dismiss, exact: true }).click();
+    await expect.poll(async () => (await listTasks(request)).map((task) => task.title).sort()).toEqual(["First task renamed", "Second task"]);
   });
 
   test(`a failed keyboard completion keeps the task open in ${l.locale}`, async ({ page, request }) => {

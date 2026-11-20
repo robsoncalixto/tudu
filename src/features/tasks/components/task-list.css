@@ -108,12 +108,20 @@
 .task-title:hover { text-decoration: underline; text-underline-offset: 3px; }
 .task.is-done .task-title { color: var(--text-muted); text-decoration: line-through; }
 
+/* The editor keeps the title's type so the text does not move when editing starts. */
 .task-edit {
+  display: flex;
+  width: calc(100% + 10px);
   min-width: 0;
-  max-width: 100%;
+  min-height: var(--row-target);
+  padding: 5px 9px;
+  margin-inline-start: -10px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--r-md);
+  background: var(--surface);
 }
-
-.task-edit { width: 100%; }
+.task-edit:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.task-edit .command-field > .command-mirror, .task-edit .command-field > textarea { padding: 0; font: 600 15px/23px var(--heading); }
 
 .task-notes {
   margin-top: 2px;
@@ -246,10 +254,11 @@
   background: var(--accent);
   pointer-events: none;
 }
+/* Secondary row actions wait for the pointer or the keyboard to reach the row. */
 @media (hover: hover) and (pointer: fine) and (min-width: 821px) {
-  .task-disclosure { opacity: 0; }
-  .task:hover .task-disclosure, .task:focus-within .task-disclosure,
-  .task-disclosure[aria-expanded="true"] { opacity: 1; }
+  .task-disclosure, .task-tools .subtask-add, .task-tools .task-more { opacity: 0; transition: opacity .12s; }
+  .task:hover .task-tools > button, .task:focus-within .task-tools > button, .task:focus .task-tools > button,
+  .task-disclosure[aria-expanded="true"], .task-more[aria-expanded="true"] { opacity: 1; }
 }
 
 .repeat-editor summary {
@@ -360,6 +369,7 @@
   }
   .task .check { grid-area: check; align-self: start; }
   .task-body { grid-area: title; align-self: start; }
+  .task-edit { width: 100%; margin-inline-start: 0; }
   .task-tools { display: contents; }
   .subtask-add { grid-area: add; align-self: start; }
   .task-tools .task-more { grid-area: actions; margin-top: 5px; }

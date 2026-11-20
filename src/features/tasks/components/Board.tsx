@@ -3,7 +3,7 @@
 import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import { Icon } from "@/lib/Icon";
 import { longDate } from "@/lib/dates";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { shortcutsApi } from "@/features/shortcuts/api";
 import { errorCode } from "@/lib/http";
 import type { Task } from "../schema";
@@ -14,28 +14,31 @@ import { isForToday, isInFilter, type TaskSort } from "../selectors";
 import { useTaskActions } from "../use-task-actions";
 import { useTaskShortcuts } from "../use-task-shortcuts";
 import { BoardHeader } from "./BoardHeader";
+import { BoardNotice } from "./BoardNotice";
 import { Composer, type ComposerMode } from "./Composer";
 import { postponementDate, type Postponement } from "../planning";
 import { TaskEmpty } from "./TaskEmpty";
 import { TaskList } from "./TaskList";
 import { TaskPanel } from "./TaskPanel";
 import { TaskPanelFrame } from "./TaskPanelFrame";
-import { TaskDeleteDialog } from "./TaskDeleteDialog";
 import { useTaskWorkspace } from "./TaskWorkspace";
 
 export function Board() {
   const { settings, locale, t, today, navigation, inspector, taskData, projectData, selectedTask,
     view, notice, setNotice, fail, select, suggestions, focusRequest } = useTaskWorkspace();
   const { filter, setFilter, query, setQuery, sort, setSort, text, setText } = navigation;
-  const { tasks, reorder, aiEnabled, add, capture, patch, remove, loadFailed, retryLoad } = taskData;
+  const { tasks, reorder, aiEnabled, add, capture, patch, removeLater, loadFailed, retryLoad } = taskData;
   const { projects } = projectData;
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const search = useRef<HTMLInputElement>(null);
-  const actions = useTaskActions(tasks, patch, async (id) => {
-    const removed = await remove(id);
-    if (removed) inspector.setSelectedId((current) => current === id ? null : current);
-    return removed;
+  const { setSelectedId } = inspector;
+  const labels = useMemo(() => ({ completed: t.taskCompleted, reopened: t.taskReopened, deleted: t.taskDeleted, undo: t.undo }), [t]);
+  const actions = useTaskActions({
+    tasks, patch, removeLater, notify: setNotice, labels,
+    onLeave: useCallback((id: string) => setSelectedId((current) => current === id ? null : current), [setSelectedId]),
   });
+  const dismiss = useCallback(() => setNotice(null), [setNotice]);
+  const undo = () => { notice?.action?.run(); return Boolean(notice?.action); };
   const title = filter.kind === "project" ? projects.find((p) => p.id === filter.id)?.name ?? t.projects
     : filter.kind === "tag" ? `#${filter.tag}` : filter.kind === "today" ? t.today : t.allTasks;
 
@@ -83,8 +86,9 @@ export function Board() {
   useTaskShortcuts({
     tasks, rows: actions.rows, focusComposer: actions.focusComposer, focusSearch: () => search.current?.focus(),
     onToggle: (task) => { void actions.patchFromRow(task.id, { done: !task.done }); },
-    onDelete: actions.requestDelete, onUndo: () => false,
+    onDelete: actions.requestDelete, onUndo: undo,
   });
+  const savedTags = useMemo(() => view.tagCounts.map(([tag]) => tag), [view.tagCounts]);
   const loaded = tasks !== null;
   useEffect(() => {
     if (!loaded || !focusRequest.current) return;
@@ -95,11 +99,10 @@ export function Board() {
   const searching = Boolean(query.trim());
   const dayIds = today ? rankDayTasks((tasks ?? []).filter((task) => !task.done && !isProvisional(task) && isForToday(task, today)), today).map((task) => task.id) : [];
   const order = useDayOrder(today, dayIds, filter.kind === "today" && sort === "manual", reorder, fail);
-  const list = { suggestions: suggestions.byTask, order: order && searching ? { ...order, ready: false } : order, today: today ?? "", locale, t, projects, dateFormat: settings.dateFormat, onPatch: actions.patchFromRow,
+  const list = { suggestions: suggestions.byTask, order: order && searching ? { ...order, ready: false } : order, today: today ?? "", locale, t, projects, savedTags, dateFormat: settings.dateFormat, onPatch: actions.patchFromRow,
     onPostpone: postpone, selectedId: inspector.selectedId, onShowPanel: inspector.toggle, onTag: (tag: string) => select({ kind: "tag", tag }) };
 
   return <div className="board-content" ref={actions.root}>
-    <TaskDeleteDialog t={t} {...actions.dialogProps} />
     <main id="main-content" tabIndex={-1} className="panel">
       <div className="board-bar">
         <div className="board-location"><Icon name="grid" size={16} /><span>{t.workspace}</span>
@@ -119,9 +122,9 @@ export function Board() {
         <BoardHeader title={title} t={t} today={today ?? ""} date={today ? longDate(today, locale, settings.dateFormat) : null}
           loading={!tasks && !loadFailed} failed={loadFailed} open={view.scopeOpen} done={view.scopeDone} />
         {tasks && <Composer t={t} text={text} onTextChange={setText} aiEnabled={aiEnabled} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat} onSubmit={submit}
-          context={composerContext} projects={projects} suggestions={view.tagCounts.map(([tag]) => tag)}
-          onLeave={() => (actions.rows()[0] ?? document.getElementById("main-content"))?.focus()} />}
-        <p className={`board-notice notice${notice ? ` is-${notice.kind}` : ""}`} role="status">{notice?.text}</p>
+          context={composerContext} projects={projects} suggestions={savedTags}
+          onLeave={() => (actions.rows()[0] ?? document.getElementById("main-content"))?.focus()} onUndo={undo} />}
+        <BoardNotice notice={notice} t={t} onDismiss={dismiss} />
         {loadFailed && <div className="board-failure"><p role="alert">{t.taskLoadFailed}</p>
           <button type="button" className="btn btn-secondary" onClick={retryLoad}>{t.retry}</button></div>}
         {tasks && <>

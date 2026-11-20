@@ -153,7 +153,22 @@ html:has(.inspector-host:modal) { overflow: hidden; }
 .view-tally progress::-webkit-progress-bar { background: var(--secondary); }
 .view-tally progress::-webkit-progress-value { background: var(--accent); }
 .view-tally progress::-moz-progress-bar { background: var(--accent); }
-.board-notice:empty { min-height: 0; margin: 0; }
+/* Floats over the page so a message never pushes the list down. */
+.board-notice {
+  position: fixed; inset-block-end: max(var(--s-md), env(safe-area-inset-bottom)); inset-inline-start: 50%; translate: -50% 0; z-index: 8;
+  display: flex; align-items: center; gap: 6px; width: max-content; max-width: min(520px, calc(100vw - 2 * var(--s-md)));
+  padding: 4px 4px 4px 14px; border: 1px solid var(--control-border); border-inline-start: 3px solid var(--success);
+  border-radius: var(--r-lg); background: var(--surface); color: var(--text); font: 500 14px/20px var(--body);
+  transition: opacity .15s, translate .15s;
+}
+.board-notice.is-error { border-inline-start-color: var(--error); }
+.board-notice:empty { opacity: 0; translate: -50% 8px; padding: 0; border-width: 0; pointer-events: none; }
+/* Centred on the board, not on the window that also holds the sidebar. */
+@media (min-width: 821px) { .board-notice { inset-inline-start: calc(50% + var(--sidebar-width) / 2); } }
+.board-notice-text { min-width: 0; padding-block: 8px; overflow-wrap: anywhere; }
+.board-notice .chip { min-height: 36px; padding-block: 4px; background: var(--secondary); }
+.board-notice .chip:hover { background: var(--border); }
+.board-notice .icon-btn { width: 36px; height: 36px; }
 .board-failure { display: flex; align-items: center; gap: var(--s-md); margin-top: var(--s-lg); }
 .list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-sm); border-top: 1px solid var(--border); padding: 22px 0 12px; margin-top: var(--s-lg); }
 .content .section-title { margin: 0; font: 650 17px/25px var(--heading); letter-spacing: -.025em; text-transform: none; }
@@ -194,6 +209,8 @@ html:has(.inspector-host:modal) { overflow: hidden; }
   .content { width: calc(100% - 36px); padding-block: 26px 50px; }
   .view-tally { min-width: 96px; }
   .board-search input { font-size: 16px; }
+  .board-notice .chip, .board-notice .icon-btn { min-height: var(--touch-target); }
+  .board-notice .icon-btn { width: var(--touch-target); height: var(--touch-target); }
 }
 @media (max-width: 510px) {
   .board-location span, .board-location svg:nth-of-type(2) { display: none; }
