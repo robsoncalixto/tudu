@@ -13,11 +13,10 @@ interface Props {
   filter: TaskFilter;
   projectManager: Omit<ProjectManagerProps, "t">;
   onFilter: (filter: TaskFilter) => void;
-  onShortcuts: () => void;
   onOpenSettings: () => void;
 }
 
-export function Sidebar({ t, view, filter, projectManager, onFilter, onShortcuts, onOpenSettings }: Props) {
+export function Sidebar({ t, view, filter, projectManager, onFilter, onOpenSettings }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [projectDialog, setProjectDialog] = useState<ProjectDialogMode | null>(null);
   const { layout, compact, update, toggleGroup } = useSidebarLayout();
@@ -88,9 +87,6 @@ export function Sidebar({ t, view, filter, projectManager, onFilter, onShortcuts
       </div>
     </nav>
     <div className="sidebar-actions">
-      <button type="button" className="nav-item shortcut-help" aria-label={t.keyboardShortcuts} title={t.keyboardShortcuts} onClick={onShortcuts}>
-        <Icon name="keyboard" /><span>{t.keyboardShortcuts}</span><kbd>?</kbd>
-      </button>
       <a href="/settings?from=tasks" onClick={onOpenSettings} className="nav-item" aria-label={t.settings} title={t.settings}><Icon name="settings" /><span>{t.settings}</span></a>
     </div>
     <ProjectManager {...projectManager} t={t} mode={projectDialog} onClose={() => setProjectDialog(null)} />
