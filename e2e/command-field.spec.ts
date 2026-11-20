@@ -276,9 +276,16 @@ for (const l of [
       await expect(feedback).toHaveText("");
       expect((await page.locator(".list-toolbar").boundingBox())!.y).toBe(listTop);
     }
-    await field.fill("Pagar @31/02");
+    await field.fill("");
+    await field.pressSequentially("Pagar @31/02");
     await expect(unknown).toHaveCount(0);
-    await field.pressSequentially(" ");
+    // Left at the end of the line, it is still pointed out once the typing pauses: nothing passes in silence.
+    await expect(unknown).toHaveText(["@31/02"]);
+    await expect(feedback).toHaveText(l.notDate);
+    // Typing on takes the mark away until the word is left.
+    await field.press("Backspace");
+    await expect(unknown).toHaveCount(0);
+    await field.pressSequentially("2 ");
     await expect(unknown).toHaveText(["@31/02"]);
     await expect(feedback).toHaveText(l.notDate);
     // The message has its own line kept free, so the list stays where it was.

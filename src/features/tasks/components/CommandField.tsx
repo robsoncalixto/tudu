@@ -7,6 +7,7 @@ import { shortcutsApi } from "@/features/shortcuts/api";
 import type { ShortcutId } from "@/features/shortcuts/schema";
 import type { Dictionary, Locale } from "@/i18n";
 import { replaceFieldText } from "@/lib/text-field";
+import { useSettled } from "@/lib/use-settled";
 import { CommandSuggestions } from "./CommandSuggestions";
 import "./command-field.css";
 
@@ -32,7 +33,7 @@ interface Props {
   inputRef?: RefObject<HTMLTextAreaElement | null>;
   /** Keys the suggestions did not use, with the shortcuts they are bound to. */
   onKey?: (event: KeyboardEvent<HTMLTextAreaElement>, shortcuts: ShortcutId[]) => void;
-  /** Where the caret is, or null while the field is not in use or text is selected. */
+  /** Where the caret is while the person is typing; null once they pause, select text or leave the field. */
   onCaret?: (caret: number | null) => void;
   onBlur?: () => void;
 }
@@ -57,12 +58,14 @@ export function CommandField({ id, value, onChange, label, placeholder, hint, so
   // Escape hides the suggestions for the word being typed only: the next word is offered them again.
   useEffect(() => { if (!typing) setDismissed(""); }, [typing]);
 
-  useEffect(() => onCaret?.(caret), [caret, onCaret]);
+  // A word is not called wrong while it is being typed. Once the caret leaves it or the typing pauses, it is.
+  const typingAt = useSettled(value, 900) === value ? null : caret;
+  useEffect(() => onCaret?.(typingAt), [typingAt, onCaret]);
 
   const marks = [
     ...quickAddApi.tokens(value, sources.today, sources.projects, editing).map((token) => ({ ...token, known: true })),
     // The word being typed is not underlined yet: its next character may settle it.
-    ...quickAddApi.warnings(value, sources.today, sources.projects, { caret, editing }).map((warning) => ({ ...warning, known: false })),
+    ...quickAddApi.warnings(value, sources.today, sources.projects, { caret: typingAt, editing }).map((warning) => ({ ...warning, known: false })),
   ].sort((a, b) => a.start - b.start);
   const mirror: ReactNode[] = [];
   let cursor = 0;
