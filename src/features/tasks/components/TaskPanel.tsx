@@ -71,6 +71,7 @@ export function TaskPanel({ task, proposals, onProposalApplied, projects, today,
         data-close-panel onClick={onClose}><Icon name="panel-right" size={19} /></button>
     </header>
     <div className="inspector-content">
+      {suggestion("title")}
       <TaskPanelSubtasks taskId={task.id} t={t} steps={task.steps} onChange={(steps) => patch(task.id, { steps }, false)} />
       {suggestion("steps")}
       <TaskDuration key={`estimate-${task.id}`} field="estimateHours" {...textProps} {...estimate} />
@@ -96,11 +97,13 @@ export function TaskPanel({ task, proposals, onProposalApplied, projects, today,
         </select>
       </label>
       {suggestion("projectId")}
-      <TaskSuggestionActions proposals={proposals} t={t} onApplied={onProposalApplied} />
       <TaskPanelText key={`tags-${task.id}`} field="tags" {...textProps} {...tags} />
+      {suggestion("tags")}
       <TaskRepeat task={task} today={today} locale={locale} t={t}
         onChange={(changes) => patch(task.id, changes, false)} />
       <TaskPanelText key={`notes-${task.id}`} field="notes" {...textProps} {...notes} />
+      {suggestion("notes")}
+      <TaskSuggestionActions proposals={proposals} t={t} onApplied={onProposalApplied} />
       <TaskLinks key={`links-${task.id}`} {...textProps} {...links} />
       <footer className="inspector-footer">
         <span>{t.taskCreated(dateFormat === "iso" ? toISODate(new Date(task.createdAt)) : formatTimestamp(task.createdAt, locale))}</span>

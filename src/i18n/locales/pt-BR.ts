@@ -55,6 +55,7 @@ export const ptBR: Dictionary = {
   automaticReviewOutcomes: { skipped: "Ignorada", running: "Em andamento", succeeded: "Concluída", failed: "Falhou" },
   automaticReviewSkipReasons: { no_provider: "Nenhum provedor configurado", no_tasks: "Nenhuma tarefa aberta", unchanged: "A lista de tarefas não mudou" },
   taskHasSuggestions: "Sugestões",
+  suggestedChecklist: "Checklist proposto",
   suggestedSubtasks: "Subtarefas sugeridas",
   suggestedValue: (value: string) => `Sugestão: ${value}`,
   agentReviewTasks: "Revisar minhas tarefas",

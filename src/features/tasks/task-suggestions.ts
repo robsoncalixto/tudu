@@ -16,8 +16,13 @@ export function suggestionsByTask(proposals: Proposal[], enabled: boolean): Map<
   return index;
 }
 
-export function suggestedSteps(proposal: ContextProposal) {
-  if (proposal.action.kind !== "update_task") return [];
-  const before = new Set(proposal.taskBefore?.steps.map((step) => step.id));
-  return proposal.action.patch.steps?.filter((step) => !before.has(step.id)) ?? [];
+export function suggestedChecklist(proposal: ContextProposal) {
+  if (proposal.action.kind !== "update_task" || !proposal.action.patch.steps) return null;
+  const previous = proposal.taskBefore?.steps ?? [];
+  const steps = proposal.action.patch.steps;
+  const replaced = previous.length > steps.length || previous.some((step, index) => {
+    const next = steps[index];
+    return !next || step.id !== next.id || step.title !== next.title || step.done !== next.done;
+  });
+  return { replaced, steps: replaced ? steps : steps.slice(previous.length) };
 }
