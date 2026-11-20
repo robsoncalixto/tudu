@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
@@ -17,12 +17,18 @@ export function taskFingerprint(tasks: Task[]) {
 
 export function createReviewState(dataDir: string) {
   const file = path.join(dataDir, "agent-review.json");
-  return {
-    async read(): Promise<StoredReviewState> {
+  const repository = {
+    async read(recoverAt?: string): Promise<StoredReviewState> {
       try { return storedState.parse(JSON.parse(await readFile(file, "utf8"))); }
       catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") return { status: null, fingerprint: null };
-        throw error;
+        if (!recoverAt || !(error instanceof SyntaxError || error instanceof z.ZodError)) throw error;
+        await rename(file, `${file}.corrupt-${randomUUID()}`);
+        console.error("Preserved an invalid automatic review status file");
+        const status = { ranAt: recoverAt, outcome: "failed" as const };
+        const recovered = { status, fingerprint: null };
+        await repository.write(recovered);
+        return recovered;
       }
     },
     async write(next: StoredReviewState): Promise<void> {
@@ -32,6 +38,7 @@ export function createReviewState(dataDir: string) {
       await rename(temporary, file);
     },
   };
+  return repository;
 }
 
 const state = globalThis as typeof globalThis & { tuduReviewQueue?: Promise<unknown>; tuduAutomaticRunning?: boolean };
@@ -56,7 +63,7 @@ export async function getAutomaticStatus() {
 }
 
 export async function rememberManualReview(tasks: Task[]) {
-  try { await reviewState.write({ ...(await reviewState.read()), fingerprint: taskFingerprint(tasks) }); }
+  try { await reviewState.write({ ...(await reviewState.read(new Date().toISOString())), fingerprint: taskFingerprint(tasks) }); }
   catch (error) {
     console.error("Could not remember reviewed tasks", error instanceof Error ? error.name : "Unknown error");
   }

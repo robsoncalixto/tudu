@@ -23,7 +23,7 @@ export function startAutomaticReview() {
         const settings = await getSettings();
         const config = aiPublicConfiguration();
         const now = new Date();
-        const last = await reviewState.read();
+        const last = await reviewState.read(now.toISOString());
         const day = automaticReviewDay(now, settings.automaticReview, last.status?.ranAt ?? null);
         if (!day) return;
         const ranAt = now.toISOString();
