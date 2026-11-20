@@ -109,6 +109,8 @@ export const en = {
   emptyFiltered: "No open tasks with this tag.",
   loading: "Loading…",
   taskLoadFailed: "Couldn’t load your tasks.",
+  offlineTitle: "You’re offline",
+  offlineHint: "Reconnect to view or change your tasks.",
   retry: "Retry",
   today: "Today",
   tomorrow: "Tomorrow",
