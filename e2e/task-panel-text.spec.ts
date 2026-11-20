@@ -58,7 +58,9 @@ for (const l of languages) {
     await expect.poll(async () => (await stored()).notes).toBe("Check the build first");
     await expect(panel).toBeVisible();
 
-    const editTags = panel.getByRole("button", { name: l.editTags, exact: true });
+    // The button is named by what it shows, the tags, and described as the way to edit them.
+    const editTags = panel.getByRole("button", { name: new RegExp(`^${l.tags}`) });
+    await expect(editTags).toHaveAccessibleDescription(l.editTags);
     const tags = panel.getByRole("textbox", { name: l.tags, exact: true });
     await editTags.click();
     await tags.fill("release, work");

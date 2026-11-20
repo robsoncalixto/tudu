@@ -104,7 +104,7 @@ for (const l of languages) {
     const task = row(page, "Launch review");
     const panel = taskPanel(page);
     await taskDetails(task).click();
-    const disclosure = panel.getByRole("button", { name: l.subtasks, exact: true });
+    const disclosure = panel.getByRole("button", { name: new RegExp(`^${l.subtasks}`) });
     await expect(disclosure).toHaveAttribute("aria-expanded", "false");
     await panel.getByRole("button", { name: l.add, exact: true }).click();
     await expect(disclosure).toHaveAttribute("aria-expanded", "true");

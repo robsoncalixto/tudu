@@ -92,11 +92,12 @@ export function TaskRow({ task, projects, savedTags, fresh, today, locale, dateF
           </span>}
           {project && <span><Icon name="folder" size={13} />{project.name}</span>}
           {task.tags.map((tag) => <button type="button" key={tag} onClick={() => onTag(tag)}>#{tag}</button>)}
-          {steps.total > 0 && <button type="button" className="subtask-count" id={`${subtasksId}-toggle`} aria-label={visibilityLabel}
-            title={visibilityLabel} aria-controls={subtasksId} aria-describedby={`${subtasksId}-count`}
+          {/* The name carries the count that is shown, so what is read and what is seen agree. */}
+          {steps.total > 0 && <button type="button" className="subtask-count" id={`${subtasksId}-toggle`}
+            aria-label={`${visibilityLabel} ${t.stepCount(steps.done, steps.total)}`} title={visibilityLabel} aria-controls={subtasksId}
             aria-expanded={nextVisibility !== "all"} onClick={() => setVisibility(nextVisibility)}>
             <Icon name={nextVisibility === "all" ? "chevron-right" : "chevron-down"} size={14} />
-            <span id={`${subtasksId}-count`}>{t.stepCount(steps.done, steps.total)}</span>
+            <span>{t.stepCount(steps.done, steps.total)}</span>
           </button>}
           {task.repeat && <span title={repeatDescription(task.repeat, locale, t)}><Icon name="repeat" size={13} />{t.repeatFrequencies[task.repeat.frequency]}</span>}
         </div>}

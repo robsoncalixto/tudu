@@ -143,12 +143,12 @@ test("refreshes Today when returning to a suspended tab", async ({ page, request
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.locator("header time")).toContainText("November 18");
   await expect(row(page, "Old selection").getByText("Planned earlier · November 17")).toBeVisible();
-  await expect(sidebar(page).getByRole("button", { name: /^Today/ })).toHaveText("Today1");
+  await expect(sidebar(page).getByRole("button", { name: /^Today/ })).toHaveText("Today 1");
 });
 
 for (const l of [
-  { locale: "en", today: /^Today/, count: "Today1", planned: "Planned earlier · November 16", remove: "Remove from today" },
-  { locale: "pt-BR", today: /^Hoje/, count: "Hoje1", planned: "Planejada antes · 16 de novembro", remove: "Remover do dia de hoje" },
+  { locale: "en", today: /^Today/, count: "Today 1", planned: "Planned earlier · November 16", remove: "Remove from today" },
+  { locale: "pt-BR", today: /^Hoje/, count: "Hoje 1", planned: "Planejada antes · 16 de novembro", remove: "Remover do dia de hoje" },
 ] as const) {
   test(`keeps unfinished plans in Today until cleared in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale });

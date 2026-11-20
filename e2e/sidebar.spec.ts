@@ -164,7 +164,7 @@ test.describe("Sidebar", () => {
     await openApp(page);
 
     const all = sidebar(page).getByRole("button", { name: /All tasks/ });
-    await expect(all).toHaveText("All tasks2");
+    await expect(all).toHaveText("All tasks 2");
     await expect(all).toHaveAttribute("aria-current", "page");
   });
 
@@ -183,7 +183,7 @@ test.describe("Sidebar", () => {
     await openApp(page);
 
     await expect(sidebar(page).getByText("Tags", { exact: true })).toBeVisible();
-    await expect(sidebar(page).getByRole("button", { name: /^#/ })).toHaveText(["#alpha1", "#work2"]);
+    await expect(sidebar(page).getByRole("button", { name: /^#/ })).toHaveText(["#alpha 1", "#work 2"]);
   });
 
   test("filters by tag from the sidebar and back to all tasks", async ({ page, request }) => {
@@ -227,7 +227,7 @@ test.describe("Sidebar", () => {
     await row(page, "Only one").getByRole("checkbox").click();
 
     await expect(page.getByText("No open tasks with this tag.")).toBeVisible();
-    await expect(sidebar(page).getByRole("button", { name: "#solo" })).toHaveText("#solo0");
+    await expect(sidebar(page).getByRole("button", { name: "#solo" })).toHaveText("#solo 0");
   });
 
   test("switches the whole interface to Portuguese and back", async ({ page, request }) => {
@@ -297,8 +297,8 @@ for (const language of [
     await openApp(page);
     await setLanguage(page, language.code);
     const todayButton = sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) });
-    await expect(todayButton).toHaveText(`${language.today}4`);
-    await expect(sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) })).toHaveText(`${language.all}6`);
+    await expect(todayButton).toHaveText(`${language.today} 4`);
+    await expect(sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) })).toHaveText(`${language.all} 6`);
     await todayButton.click();
     await expect(todayButton).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("heading", { name: language.today, level: 1, exact: true })).toBeVisible();
@@ -311,7 +311,7 @@ for (const language of [
 
     await sidebar(page).getByRole("button", { name: "#work" }).click();
     expect(await rowTitles(openSection(page))).toEqual(["Later", "Picked"]);
-    await expect(todayButton).toHaveText(`${language.today}4`);
+    await expect(todayButton).toHaveText(`${language.today} 4`);
     await sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) }).click();
     await expect(taskRows(openSection(page))).toHaveCount(6);
   });
@@ -340,12 +340,12 @@ for (const language of [
     await openApp(page);
     await setLanguage(page, language.code);
     const acmeButton = sidebar(page).getByRole("button", { name: new RegExp(`^${language.project}: Acme,`) });
-    await expect(acmeButton).toHaveText("Acme1");
+    await expect(acmeButton).toHaveText("Acme 1");
     await acmeButton.click();
     expect(await rowTitles(openSection(page))).toEqual(["Client work"]);
     await expect(acmeButton).toHaveAttribute("aria-current", "page");
     await sidebar(page).getByRole("button", { name: "#work" }).click();
-    await expect(acmeButton).toHaveText("Acme1");
+    await expect(acmeButton).toHaveText("Acme 1");
     await sidebar(page).getByRole("button", { name: new RegExp(`^${language.project}: Empty client,`) }).click();
     await expect(page.getByText(language.empty, { exact: true })).toBeVisible();
     await sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) }).click();

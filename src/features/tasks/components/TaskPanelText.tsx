@@ -114,7 +114,7 @@ export function TaskPanelText({ field, task, t, draft, onDraftChange, onPatch }:
   </div>;
 
   if (!editing && field === "tags") return <button type="button" className="inspector-property inspector-tags-button"
-    ref={trigger} aria-label={t.editTaskTags} title={t.editTaskTags} onClick={openEditor}>
+    ref={trigger} aria-description={t.editTaskTags} title={t.editTaskTags} onClick={openEditor}>
     <span className="inspector-label"><Icon name="tag" size={17} />{label}</span>
     <span className="inspector-tags-value">{task.tags.length
       ? task.tags.map((tag, index) => <span className="chip" key={index}>#{tag}</span>) : t.noTags}</span>

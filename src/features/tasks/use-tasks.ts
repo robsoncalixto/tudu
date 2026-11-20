@@ -26,6 +26,8 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   const loaded = useRef(false);
   const lastWrite = useRef(new Map<string, Promise<boolean>>());
   const tasks = useMemo(() => confirmed && [...applyTaskMutations(confirmed, pending), ...unsaved], [confirmed, pending, unsaved]);
+  const known = useRef(confirmed);
+  known.current = confirmed;
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -130,6 +132,8 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
   }, []);
 
   const patch = useCallback((id: string, changes: TaskPatch) => {
+    // A late save, such as notes still waiting when the task was deleted elsewhere, has nothing left to change.
+    if (known.current && !known.current.some((task) => task.id === id)) return Promise.resolve(false);
     const mutation = { id, patch: changes };
     setPending((current) => [...current, mutation]);
     return send(mutation);
