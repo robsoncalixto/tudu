@@ -39,10 +39,13 @@ export function upcomingWorkload(tasks: ScheduledTask[], start: string, settings
   return Array.from({ length }, (_, offset) => calendarDay(start, offset)).flatMap((day) => day ? [workloadForDay(tasks, day, settings, start)] : []);
 }
 
-export function recommendPlacement(task: { priority: Priority; estimateHours?: number | null; partOfDay?: PartOfDay | null }, days: DayWorkload[], deferLow = true) {
+export function recommendPlacement(task: { priority: Priority; estimateHours?: number | null; partOfDay?: PartOfDay | null }, days: DayWorkload[], { deferLow = true, allowOverCapacity = false } = {}) {
   const effort = task.estimateHours ?? DEFAULT_EFFORT;
   const candidates = days.filter((day) => day.capacity - day.hours >= effort);
-  const day = (deferLow && task.priority === "low" ? candidates.find((candidate) => candidate.day !== days[0]?.day) : undefined) ?? candidates[0];
+  const fallback = allowOverCapacity ? days.filter((day) => day.capacity > 0)
+    .sort((a, b) => (b.capacity - b.hours) - (a.capacity - a.hours))[0] : undefined;
+  const day = (deferLow && task.priority === "low" ? candidates.find((candidate) => candidate.day !== days[0]?.day) : undefined)
+    ?? candidates[0] ?? fallback;
   if (!day) return null;
   const order = task.priority === "high" ? PARTS_OF_DAY : (["afternoon", "morning", "evening"] as const);
   const partOfDay = task.partOfDay ?? order.find((period) => day.capacity / PARTS_OF_DAY.length - day.periods[period] >= effort)

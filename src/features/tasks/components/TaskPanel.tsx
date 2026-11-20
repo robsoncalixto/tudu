@@ -19,7 +19,6 @@ import "./task-panel.css";
 interface Props {
   task: Task;
   proposals: ContextProposal[];
-  onProposalApplied: () => void;
   projects: Project[];
   today: string;
   locale: Locale;
@@ -30,7 +29,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function TaskPanel({ task, proposals, onProposalApplied, projects, today, locale, dateFormat, t, onPatch, onDelete, onClose }: Props) {
+export function TaskPanel({ task, proposals, projects, today, locale, dateFormat, t, onPatch, onDelete, onClose }: Props) {
   const title = useTaskDraft<string>(task.id);
   const notes = useTaskDraft<string>(task.id);
   const tags = useTaskDraft<string>(task.id);
@@ -113,7 +112,7 @@ export function TaskPanel({ task, proposals, onProposalApplied, projects, today,
         onChange={(changes) => patch(task.id, changes, false)} />
       <TaskPanelText key={`notes-${task.id}`} field="notes" {...textProps} {...notes} />
       {suggestion("notes")}
-      <TaskSuggestionActions proposals={proposals} t={t} onApplied={onProposalApplied} />
+      <TaskSuggestionActions proposals={proposals} t={t} />
       <TaskLinks key={`links-${task.id}`} {...textProps} {...links} />
       <footer className="inspector-footer">
         <span>{t.taskCreated(dateFormat === "iso" ? toISODate(new Date(task.createdAt)) : formatTimestamp(task.createdAt, locale))}</span>

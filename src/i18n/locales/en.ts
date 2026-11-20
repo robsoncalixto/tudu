@@ -85,6 +85,7 @@ export const en = {
   workCapacity: "Work capacity",
   workHoursPerDay: "Hours available per working day",
   agentLoadReason: (day: string, free: number, effort: number) => `${day} has ${workHours(free)} free for an estimated ${workHours(effort)} of work.`,
+  agentOverCapacityPlacement: (day: string, free: number, effort: number) => `${day} has only ${workHours(free)} free for ${workHours(effort)} of work. This task may need to be split across days.`,
   agentDefaultEffort: (hours: number) => `Tasks without estimates use ${workHours(hours)} of effort.`,
   agentOverloaded: (day: string, hours: number, capacity: number) => `${day} has ${workHours(hours)} planned against ${workHours(capacity)} available.`,
   agentOverloadedDays: (count: number) => `${count} ${count === 1 ? "day is" : "days are"} over capacity.`,

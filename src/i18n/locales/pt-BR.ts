@@ -87,6 +87,7 @@ export const ptBR: Dictionary = {
   workCapacity: "Capacidade de trabalho",
   workHoursPerDay: "Horas disponíveis por dia útil",
   agentLoadReason: (day: string, free: number, effort: number) => `${day} tem ${workHours(free)} ${free === 1 ? "livre" : "livres"} para cerca de ${workHours(effort)} de trabalho.`,
+  agentOverCapacityPlacement: (day: string, free: number, effort: number) => `${day} tem apenas ${workHours(free)} para ${workHours(effort)} de trabalho. Talvez seja preciso dividir esta tarefa entre vários dias.`,
   agentDefaultEffort: (hours: number) => `Tarefas sem estimativa contam como ${workHours(hours)} de trabalho.`,
   agentOverloaded: (day: string, hours: number, capacity: number) => `${day} tem ${workHours(hours)} ${hours === 1 ? "planejada" : "planejadas"} para ${workHours(capacity)} ${capacity === 1 ? "disponível" : "disponíveis"}.`,
   agentOverloadedDays: (count: number) => `${count} ${count === 1 ? "dia está" : "dias estão"} acima da capacidade.`,

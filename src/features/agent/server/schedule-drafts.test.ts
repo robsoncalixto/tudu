@@ -44,3 +44,19 @@ it("flags overload in Portuguese and suggests at most three nonconflicting moves
     if (action.kind === "update_task") expect(action.patch).not.toHaveProperty("due");
   }
 });
+
+it.each([{ estimate: 12, capacity: 8 }, { estimate: null, capacity: 0.5 }])(
+  "offers the least loaded working day and explains the limit with $estimate hours and $capacity hours of capacity",
+  async ({ estimate, capacity }) => {
+    const generate = vi.fn<GenerateStructured>().mockResolvedValue({ proposals: [{
+      kind: "create_task", reason: "Write a report.",
+      task: { title: "Report", notes: "", priority: "high", due: null, tags: [], steps: [],
+        projectId: null, plannedFor: null, estimateHours: estimate, partOfDay: null },
+    }] });
+    const drafts = await proposeChanges(generate as GenerateStructured, "Write a report", today,
+      [task("Occupied", { due: today, estimateHours: 4 })], [], "en", "medium", { ...settings, workHoursPerDay: capacity });
+    expect(drafts[0]).toMatchObject({ action: { task: { due: tomorrow, plannedFor: tomorrow, partOfDay: "morning" } } });
+    expect(drafts[0].reason).toContain("This task may need to be split across days.");
+    expect(drafts[0].reason.includes("Tasks without estimates")).toBe(estimate === null);
+  },
+);

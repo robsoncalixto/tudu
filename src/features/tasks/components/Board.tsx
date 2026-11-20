@@ -116,7 +116,7 @@ export function Board() {
     </main>
     {selectedTask && <TaskPanelFrame label={t.taskDetails} resizeLabel={t.resizeTaskPanel} taskId={selectedTask.id} onClose={inspector.close}>
       <TaskPanel task={selectedTask} projects={projects} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat}
-        t={t} proposals={suggestions.byTask.get(selectedTask.id) ?? []} onProposalApplied={retryLoad} onPatch={patch} onDelete={actions.requestDelete} onClose={inspector.close} />
+        t={t} proposals={suggestions.byTask.get(selectedTask.id) ?? []} onPatch={patch} onDelete={actions.requestDelete} onClose={inspector.close} />
     </TaskPanelFrame>}
   </div>;
 }
