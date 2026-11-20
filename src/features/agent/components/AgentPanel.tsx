@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { errorMessage } from "@/i18n";
 import { useLocale } from "@/i18n/use-locale";
+import { formatTimestamp } from "@/lib/dates";
 import { useToday } from "@/lib/use-today";
 import type { Settings } from "@/features/settings/schema";
 import { useAgent } from "../use-agent";
@@ -39,9 +40,12 @@ export function AgentPanel({ settings }: { settings: Settings }) {
       {agent.state && !agent.state.enabled && <p className="hint" id="agent-ai-hint">{t.aiOff}</p>}
     </form>
     <p className={`notice${agent.error ? " is-error" : ""}`} role="status">{agent.error ? errorMessage(t, agent.error) : agent.loading ? t.loading : agent.empty ? t.agentNoSuggestions : ""}</p>
-    {agent.summary && <section className="card work-log-summary" aria-labelledby="agent-review-summary">
+    {agent.state?.automaticReview && <p className="hint">
+      {t.automaticReviewLast(formatTimestamp(agent.state.automaticReview.ranAt, locale), t.automaticReviewOutcomes[agent.state.automaticReview.outcome])}
+    </p>}
+    {(agent.summary ?? agent.state?.automaticReview?.summary) && <section className="card work-log-summary" aria-labelledby="agent-review-summary">
       <h2 className="section-title" id="agent-review-summary">{t.agentReviewSummary}</h2>
-      <p>{agent.summary}</p>
+      <p>{agent.summary ?? agent.state?.automaticReview?.summary}</p>
     </section>}
     {agent.state && <>
       <section aria-labelledby="agent-pending"><h2 className="section-title" id="agent-pending">{t.agentPending} <span>{pending.length}</span></h2>

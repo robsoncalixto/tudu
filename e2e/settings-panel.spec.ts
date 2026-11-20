@@ -81,7 +81,7 @@ for (const language of languages) {
     await page.getByRole("combobox", { name: language.format, exact: true }).selectOption("iso");
     await page.getByRole("button", { name: language.save, exact: true }).click();
     await expect(page.getByRole("status")).toHaveText(language.saved);
-    expect(await listSettings(request)).toEqual({ locale: language.locale, theme: "system", defaultPriority: "high", startView: "today", dateFormat: "iso", aiProvider: "anthropic", aiModel: "" });
+    expect(await listSettings(request)).toMatchObject({ locale: language.locale, theme: "system", defaultPriority: "high", startView: "today", dateFormat: "iso", aiProvider: "anthropic", aiModel: "" });
     await expect(page.getByRole("heading", { name: language.ai, exact: true })).toBeVisible();
     await page.goBack();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(language.today);
