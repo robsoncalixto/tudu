@@ -110,7 +110,7 @@ export function parseQuickAdd(text: string, context: QuickAddContext): QuickAddR
     if (hours !== undefined) { estimate = hours; mark("estimate", hours, start, end); continue; }
     title.push(raw);
   }
-  return { title: title.join(" "), tags: [...tags], project, due, time, priority, estimate, tokens, warnings };
+  return { title: title.join(" "), tags: [...tags], project, due, time, partOfDay: time ? partOfDayAt(time) : null, priority, estimate, tokens, warnings };
 }
 
 function eachLine<T extends { start: number; end: number }>(text: string, read: (line: string) => T[]): T[] {
@@ -151,8 +151,7 @@ export function parseQuickTask(text: string, today: string, projects: readonly P
     title: result.title, tags: result.tags, due: result.due,
     ...(result.priority ? { priority: result.priority } : {}), ...(result.project ? { projectId: result.project } : {}),
     ...(result.estimate === null ? {} : { estimateHours: result.estimate }),
-    // The deadline stores a day; the hour survives as its part of the day.
-    ...(result.time ? { partOfDay: partOfDayAt(result.time) } : {}),
+    ...(result.partOfDay ? { partOfDay: result.partOfDay } : {}),
   });
 }
 
@@ -168,7 +167,7 @@ export function parseQuickEdit(original: string, edited: string, context: QuickA
       ...(result.tags.length ? { tags: result.tags } : {}),
       ...(result.priority ? { priority: result.priority } : {}),
       ...(result.due ? { due: result.due } : {}),
-      ...(result.time ? { partOfDay: partOfDayAt(result.time) } : {}),
+      ...(result.partOfDay ? { partOfDay: result.partOfDay } : {}),
       ...(result.project ? { projectId: result.project } : {}),
       ...(result.estimate === null ? {} : { estimateHours: result.estimate }),
     },

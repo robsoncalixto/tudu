@@ -1,8 +1,9 @@
 import type { Project } from "@/features/projects/schema";
 import { tasksApi } from "@/features/tasks/api";
 import { ApiError } from "@/lib/http";
+import { completionAt, isTyped, quickSuggestions } from "./completion";
 import { QuickDraftError, parseQuickAdd, parseQuickEdit, parseQuickTask, quickTaskDrafts, quickTextTokens, quickTextWarnings, stripQuickTokens } from "./parser";
-import type { QuickAddDefaults, QuickAddProblem, QuickTask, QuickTokenType } from "./schema";
+import type { QuickAddDefaults, QuickAddProblem, QuickCompletion, QuickSuggestion, QuickTask, QuickTokenType, SuggestionSources } from "./schema";
 
 export const quickAddApi = {
   preview(text: string, today: string, projects: readonly Project[] = []): QuickTask | null {
@@ -23,6 +24,10 @@ export const quickAddApi = {
     stripQuickTokens(text, { today, projects }, type, value),
   edit: (original: string, edited: string, today: string, projects: readonly Project[] = []) =>
     parseQuickEdit(original, edited, { today, projects }),
+  /** The token being typed at the caret, what could complete it, and whether it is already complete. */
+  completion: completionAt,
+  suggestions: (completion: QuickCompletion, sources: SuggestionSources, used: readonly string[] = []) => quickSuggestions(completion, sources, used),
+  isTyped: (word: string, suggestion: QuickSuggestion, sources: SuggestionSources) => isTyped(word, suggestion, sources),
   async create(text: string, today: string, context: QuickAddDefaults = {}, projects: readonly Project[] = []) {
     const drafts = quickAddApi.previewDrafts(text, today, context, projects);
     if (!drafts) throw new ApiError("invalid_quick_task", 400);
