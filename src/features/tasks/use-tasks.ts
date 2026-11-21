@@ -3,27 +3,36 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { captureApi } from "@/features/capture/api";
 import { quickAddApi } from "@/features/quick-add/api";
-import { errorCode } from "@/lib/http";
+import { ApiError, errorCode } from "@/lib/http";
 import type { Project } from "@/features/projects/schema";
 import type { CaptureDefaults } from "@/features/capture/schema";
 import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import { useVisibleRefresh } from "@/lib/use-visible-refresh";
 import { tasksApi } from "./api";
-import { applyTaskMutations, type PendingTaskMutation } from "./optimistic-tasks";
-import type { Task, TaskPatch } from "./schema";
+import { applyTaskMutations, arrivalTime, provisionalTask, type PendingTaskMutation } from "./optimistic-tasks";
+import type { Priority, Task, TaskPatch } from "./schema";
 
 /**
- * Owns the task list. `add` and `capture` reject with an ApiError so the
- * caller can keep the user's text; `patch` and `remove` update optimistically,
+ * Owns the task list. `add` shows the new tasks at once and `capture` waits for
+ * the server; both reject with an ApiError so the caller can keep the user's
+ * text. `patch`, `changeLater` and what `capture` finishes update optimistically,
  * roll back on failure and report the error code through `onError`.
  */
-export function useTasks(onError: (code: string) => void, onNext?: (task: Task) => void, onRefreshed?: (currentIds: ReadonlySet<string>) => void, provider?: string) {
+export function useTasks(onError: (code: string, retry?: () => void) => void, onNext?: (task: Task) => void, onRefreshed?: (currentIds: ReadonlySet<string>) => void, provider?: string) {
   const [confirmed, setConfirmed] = useState<Task[] | null>(null);
   const [pending, setPending] = useState<PendingTaskMutation[]>([]);
+  const [unsaved, setUnsaved] = useState<Task[]>([]);
   const revision = useRef(0);
   const loaded = useRef(false);
   const lastWrite = useRef(new Map<string, Promise<boolean>>());
-  const tasks = useMemo(() => confirmed && applyTaskMutations(confirmed, pending), [confirmed, pending]);
+  const tasks = useMemo(() => confirmed && [...applyTaskMutations(confirmed, pending), ...unsaved], [confirmed, pending, unsaved]);
+  const known = useRef(confirmed);
+  known.current = confirmed;
+  const shown = useRef(tasks);
+  shown.current = tasks;
+  // The saved task keeps the row of the one shown while it was being saved, so that row neither blinks nor moves.
+  const rows = useRef(new Map<string, string>());
+  const rowKey = useCallback((id: string) => rows.current.get(id) ?? id, []);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -74,21 +83,27 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
     return created;
   }, []);
 
-  const add = useCallback((text: string, today: string, defaults: QuickAddDefaults, projects: Project[]) =>
-    quickAddApi.create(text, today, defaults, projects).then(append), [append]);
+  const add = useCallback((text: string, today: string, defaults: QuickAddDefaults, projects: Project[], priority: Priority) => {
+    const drafts = quickAddApi.previewDrafts(text, today, defaults, projects);
+    if (!drafts) throw new ApiError("invalid_quick_task", 400);
+    const first = arrivalTime(shown.current ?? [], new Date());
+    const written = drafts.map((draft, index) => provisionalTask(draft, priority, new Date(first.getTime() + index)));
+    const settle = () => setUnsaved((current) => current.filter((task) => !written.includes(task)));
+    setUnsaved((current) => [...current, ...written]);
+    // The saved tasks take the place of the shown ones in a single render.
+    const saved = tasksApi.create(drafts.length === 1 ? drafts[0] : drafts).then((created) => {
+      created.forEach((task, index) => { if (written[index]) rows.current.set(task.id, written[index].id); });
+      settle();
+      return append(created);
+    }, (error: unknown) => { settle(); throw error; });
+    return { shown: written, saved };
+  }, [append]);
 
-  const capture = useCallback(
-    (text: string, today: string, defaults: CaptureDefaults) => captureApi.capture(text, today, defaults).then(append),
-    [append],
-  );
-
-  const mutate = useCallback((id: string, changes: TaskPatch | null) => {
-    const mutation = { id, patch: changes };
-    setPending((current) => [...current, mutation]);
-
-    // Order writes to the same task while other tasks remain independent.
-    const previous = lastWrite.current.get(id) ?? Promise.resolve();
-    const request: Promise<boolean> = previous.then(async () => {
+  /** `quiet` leaves the next occurrence of a repeating task unannounced: whoever held the change back already said it. */
+  const send = useCallback((mutation: PendingTaskMutation, quiet = false) => {
+    const { id, patch: changes } = mutation;
+    const turn: { request?: Promise<boolean> } = {};
+    const run = async () => {
       try {
         if (changes === null) {
           await tasksApi.remove(id);
@@ -104,23 +119,72 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
             if (nextTask && !next.some((item) => item.id === nextTask.id)) next.push(nextTask);
             return next;
           });
-          if (changes.done && nextTask && !nextTask.done) scheduled.current?.(nextTask);
+          if (!quiet && changes.done && nextTask && !nextTask.done) scheduled.current?.(nextTask);
         }
         return true;
       } catch (error) {
-        report.current(errorCode(error));
+        // A refusal would be refused again; only a failure to reach or to answer is worth sending once more.
+        const again = error instanceof ApiError && error.status < 500 ? undefined
+          : () => { setPending((current) => [...current, mutation]); void send(mutation, quiet); };
+        report.current(errorCode(error), again);
         return false;
       } finally {
         setPending((current) => current.filter((item) => item !== mutation));
-        if (lastWrite.current.get(id) === request) lastWrite.current.delete(id);
+        if (lastWrite.current.get(id) === turn.request) lastWrite.current.delete(id);
       }
-    });
-    lastWrite.current.set(id, request);
-    return request;
+    };
+    // Writes to one task go in order while other tasks stay independent. With none in flight the request
+    // leaves in this same turn, which is what lets a change held for Undo still go out as the page closes.
+    const waiting = lastWrite.current.get(id);
+    turn.request = waiting ? waiting.then(run) : run();
+    lastWrite.current.set(id, turn.request);
+    return turn.request;
   }, []);
 
-  const patch = useCallback((id: string, changes: TaskPatch) => mutate(id, changes), [mutate]);
-  const remove = useCallback((id: string) => mutate(id, null), [mutate]);
+  const change = useCallback((id: string, changes: TaskPatch) => {
+    const mutation = { id, patch: changes };
+    setPending((current) => [...current, mutation]);
+    return send(mutation);
+  }, [send]);
+
+  const patch = useCallback((id: string, changes: TaskPatch) => {
+    // A late save, such as notes still waiting when the task was deleted elsewhere, has nothing left to change.
+    if (known.current && !known.current.some((task) => task.id === id)) return Promise.resolve(false);
+    return change(id, changes);
+  }, [change]);
+
+  /** `finish` returns what the capture request could not carry for a task it created, saved as a change to it. */
+  const capture = useCallback(async (text: string, today: string, defaults: CaptureDefaults, finish?: (task: Task) => TaskPatch | null) => {
+    const created = append(await captureApi.capture(text, today, defaults));
+    for (const task of created) {
+      const changes = finish?.(task);
+      if (changes) void change(task.id, changes);
+    }
+    return created;
+  }, [append, change]);
+
+  /**
+   * Shows a change now and saves it only on `commit`, so `undo` leaves nothing to put right on the server.
+   * `null` deletes the task.
+   */
+  const changeLater = useCallback((id: string, changes: TaskPatch | null) => {
+    const mutation: PendingTaskMutation = { id, patch: changes };
+    let settled = false;
+    setPending((current) => [...current, mutation]);
+    return {
+      undo() {
+        if (settled) return false;
+        settled = true;
+        setPending((current) => current.filter((item) => item !== mutation));
+        return true;
+      },
+      commit() {
+        if (settled) return Promise.resolve(false);
+        settled = true;
+        return send(mutation, true);
+      },
+    };
+  }, [send]);
 
   const clearProject = useCallback((id: string) => {
     revision.current++;
@@ -138,5 +202,5 @@ export function useTasks(onError: (code: string) => void, onNext?: (task: Task) 
       return position === undefined ? task : { ...task, dayRanks: { ...task.dayRanks, [day]: position } };
     }) ?? null);
   }, [retryLoad]);
-  return { reorder, tasks, aiEnabled, loadFailed, retryLoad, add, capture, patch, remove, clearProject };
+  return { reorder, tasks, rowKey, aiEnabled, loadFailed, retryLoad, add, capture, patch, changeLater, clearProject };
 }

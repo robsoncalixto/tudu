@@ -44,16 +44,16 @@ for (const l of languages) {
     await expect.poll(async () => (await listTasks(request))[0].steps[0].done).toBe(true);
     expect((await listTasks(request))[0].done).toBe(false);
 
-    const hideDone = task.getByRole("button", { name: l.hideDone, exact: true });
+    const hideDone = task.getByRole("button", { name: new RegExp(`^${l.hideDone} \\d+/\\d+$`) });
     await expect(hideDone).toHaveText("1/2");
     await hideDone.click();
     await expect(written).toBeHidden();
     await expect(review).toBeVisible();
-    const hide = task.getByRole("button", { name: l.hide, exact: true });
+    const hide = task.getByRole("button", { name: new RegExp(`^${l.hide} \\d+/\\d+$`) });
     await expect(hide).toHaveAttribute("aria-expanded", "true");
     await hide.click();
     await expect(review).toBeHidden();
-    const show = task.getByRole("button", { name: l.show, exact: true });
+    const show = task.getByRole("button", { name: new RegExp(`^${l.show} \\d+/\\d+$`) });
     await expect(show).toHaveAttribute("aria-expanded", "false");
     await expect(show).toHaveText("1/2");
     await show.click();
@@ -103,7 +103,7 @@ for (const l of languages) {
     await fail();
     await input.fill("Keep this draft");
     await submit.click();
-    await expect(page.getByRole("status")).toHaveText(l.error);
+    await expect(page.getByRole("status")).toContainText(l.error);
     await expect(input).toHaveValue("Keep this draft");
     await expect(children.getByRole("checkbox", { name: "Keep this draft", exact: true })).toHaveCount(0);
     await recover();
@@ -146,7 +146,7 @@ for (const l of languages) {
       await setLanguage(page, l.code);
       const task = row(page, "Small screen");
       const add = task.getByRole("button", { name: l.add, exact: true });
-      const toggle = task.getByRole("button", { name: l.hide, exact: true });
+      const toggle = task.getByRole("button", { name: new RegExp(`^${l.hide} \\d+/\\d+$`) });
       const children = task.getByRole("list", { name: l.subtasks, exact: true });
       const completed = children.getByRole("checkbox", { name: longTitle, exact: true });
       const rename = children.getByRole("button", { name: l.rename + longTitle, exact: true });
@@ -191,7 +191,7 @@ for (const l of languages) {
     await composer(page).fill("Prepare the report: draft, then review");
     await page.getByRole("button", { name: l.capture, exact: true }).click();
     const task = row(page, "Captured plan");
-    await expect(task.getByRole("button", { name: l.hide, exact: true })).toHaveText("0/2");
+    await expect(task.getByRole("button", { name: new RegExp(`^${l.hide} \\d+/\\d+$`) })).toHaveText("0/2");
     const children = task.getByRole("list", { name: l.subtasks, exact: true });
     await expect(children.getByRole("checkbox", { name: "Draft", exact: true })).toBeVisible();
     await expect(taskDetails(task)).toHaveAttribute("aria-expanded", "false");

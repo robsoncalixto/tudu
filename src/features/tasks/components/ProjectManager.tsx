@@ -15,21 +15,16 @@ export interface ProjectManagerProps {
   onDelete: (id: string) => Promise<boolean>;
 }
 
-export type ProjectDialogMode = "create" | "manage";
-
-export function ProjectManager({ projects, t, error, clearError, onCreate, onRename, onDelete, mode, onClose }:
-  ProjectManagerProps & { mode: ProjectDialogMode | null; onClose: () => void }) {
+export function ProjectManager({ projects, t, error, clearError, onCreate, onRename, onDelete, open, onClose }:
+  ProjectManagerProps & { open: boolean; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const newName = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
   useLayoutEffect(() => {
-    if (mode && !dialog.current?.open) {
-      dialog.current?.showModal();
-      if (mode === "create") newName.current?.focus();
-    }
-  }, [mode]);
+    if (open && !dialog.current?.open) dialog.current?.showModal();
+  }, [open]);
   async function save(operation: () => Promise<boolean>) {
     clearError();
     setBusy(true);
@@ -46,14 +41,14 @@ export function ProjectManager({ projects, t, error, clearError, onCreate, onRen
   return (
     <dialog ref={dialog} className="card project-manager" aria-labelledby="project-manager-title"
       onCancel={(event) => { if (busy) event.preventDefault(); }} onClose={() => { clearError(); setEditing(null); onClose(); }}>
-      <header><h2 id="project-manager-title">{mode === "create" ? t.newProject : t.manageProjects}</h2>
+      <header><h2 id="project-manager-title">{t.manageProjects}</h2>
         <button type="button" disabled={busy} className="icon-btn project-icon" title={t.close} aria-label={t.close} onClick={() => dialog.current?.close()}>
           <Icon name="x" />
         </button>
       </header>
       <fieldset disabled={busy}>
         <legend className="sr-only">{t.projects}</legend>
-        {mode === "manage" && <>
+        <>
           <p>{t.projectDeleteHint}</p>
           <ul className="project-list">
             {projects.map((project) => (
@@ -88,14 +83,11 @@ export function ProjectManager({ projects, t, error, clearError, onCreate, onRen
               </li>
             ))}
           </ul>
-        </>}
+        </>
         <form className="project-form" onSubmit={async (event) => {
           event.preventDefault();
           if (!draft.trim()) return;
-          if (await save(() => onCreate(draft))) {
-            setDraft("");
-            if (mode === "create") { dialog.current?.close(); return; }
-          }
+          if (await save(() => onCreate(draft))) setDraft("");
           requestAnimationFrame(() => { if (dialog.current?.open) newName.current?.focus(); });
         }}>
           <label className="project-name-field">{t.newProject}

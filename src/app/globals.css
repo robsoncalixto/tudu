@@ -81,6 +81,11 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Hover and focus changes are quick, never abrupt. Reduced motion turns them off below. */
+button, a, .chip {
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s, opacity 0.12s;
+}
+
 button, a, select, summary, input, textarea, label {
   touch-action: manipulation;
 }
@@ -174,42 +179,6 @@ p {
   outline-offset: -2px;
 }
 
-.task-delete-dialog {
-  width: min(560px, calc(100% - 2 * var(--s-md)));
-  max-height: calc(100% - 2 * var(--s-md));
-  overflow-y: auto;
-  color: var(--text);
-}
-
-.task-delete-dialog::backdrop {
-  background: rgb(0 0 0 / 0.4);
-}
-
-.task-delete-dialog h2 {
-  margin: 0 0 var(--s-md);
-  font-family: var(--heading);
-}
-
-.task-delete-dialog p { margin-bottom: var(--s-md); }
-
-.task-delete-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-sm);
-}
-
-.task-delete-error { color: var(--error); }
-
-.task-delete-danger {
-  color: var(--error);
-  background: var(--surface);
-  border: 1px solid var(--error);
-}
-
-.task-delete-danger:not(:disabled):hover {
-  background: color-mix(in srgb, var(--error) 8%, var(--surface));
-}
-
 /* Chips */
 
 .chip {
@@ -241,6 +210,20 @@ label.chip:hover {
 .chip-tag {
   padding: 2px 10px;
   color: var(--text-muted);
+}
+
+kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--r-sm);
+  background: var(--surface-muted);
+  color: var(--text);
+  font: 600 12px/1 var(--body);
+  white-space: nowrap;
 }
 
 /* Cards */
@@ -613,6 +596,10 @@ label.chip:hover {
   margin: var(--s-sm) 0 var(--s-md);
   resize: vertical;
 }
+
+.agent-keys { display: flex; flex-wrap: wrap; gap: 4px var(--s-md); margin: calc(-1 * var(--s-sm)) 0 var(--s-md); font-size: 12px; }
+.agent-keys > span { display: inline-flex; align-items: center; gap: 4px; }
+.agent-keys kbd { min-width: 20px; height: 20px; padding: 0 5px; font-size: 11px; }
 
 .proposal-actions {
   display: flex;

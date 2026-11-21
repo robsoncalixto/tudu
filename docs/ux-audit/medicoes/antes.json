@@ -1,0 +1,65 @@
+{
+  "C1_form": {
+    "clicks": 8,
+    "keys": 24,
+    "saved": {
+      "title": "Revisar proposta",
+      "tags": [
+        "trabalho"
+      ],
+      "due": "2026-11-18",
+      "priority": "high"
+    },
+    "note": "14h cannot be recorded"
+  },
+  "C1_syntax": {
+    "clicks": 1,
+    "keys": 40,
+    "saved": {
+      "title": "Revisar proposta",
+      "tags": [
+        "trabalho"
+      ],
+      "due": "2026-11-18",
+      "priority": "high"
+    },
+    "note": "!alta, @amanha and 14h are not understood"
+  },
+  "C1_acceptance_sentence_today": {
+    "title": "Revisar proposta @amanha 14h !alta",
+    "tags": [
+      "trabalho"
+    ],
+    "due": null,
+    "priority": "medium"
+  },
+  "C2": {
+    "clicks": 2,
+    "keys": 49,
+    "created": 5,
+    "plannedToday": true,
+    "focusKept": true
+  },
+  "C3_mouse": {
+    "clicks": 2,
+    "keys": 0,
+    "due": "2026-11-20"
+  },
+  "C3_keyboard": {
+    "clicks": 0,
+    "keys": 138,
+    "tabs": 130,
+    "note": "Tab presses from page load to the row's date field, then 8 digits"
+  },
+  "C4": {
+    "clicks": 3,
+    "keys": 0,
+    "done": false,
+    "feedbackAfterComplete": "(none)"
+  },
+  "C5": {
+    "clicks": 2,
+    "keys": 10,
+    "title": "Draft the newsletter v2"
+  }
+}

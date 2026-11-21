@@ -1,0 +1,66 @@
+{
+  "C1": {
+    "clicks": 0,
+    "keys": 46,
+    "saved": {
+      "title": "Revisar proposta",
+      "tags": [
+        "trabalho"
+      ],
+      "due": "2026-11-18",
+      "priority": "high",
+      "partOfDay": "afternoon"
+    },
+    "focusKept": true,
+    "note": "14h is kept as the part of the day"
+  },
+  "C1_chips": {
+    "clicks": 9,
+    "keys": 26,
+    "saved": {
+      "title": "Revisar proposta",
+      "tags": [
+        "trabalho"
+      ],
+      "due": "2026-11-18",
+      "priority": "high",
+      "partOfDay": "afternoon"
+    }
+  },
+  "C2": {
+    "clicks": 0,
+    "keys": 52,
+    "created": 5,
+    "plannedToday": true,
+    "focusKept": true
+  },
+  "C3_keyboard": {
+    "clicks": 0,
+    "keys": 12,
+    "dueBefore": "2026-11-19",
+    "due": "2026-11-20",
+    "title": "Renew the domain",
+    "feedback": "Due date of “Renew the domain”: Nov 20.UndoZ"
+  },
+  "C3_pointer": {
+    "clicks": 1,
+    "keys": 6,
+    "due": "2026-11-20"
+  },
+  "C4_keyboard": {
+    "clicks": 0,
+    "keys": 3,
+    "done": false,
+    "feedbackAfterComplete": "Completed “Pay the electricity bill”.UndoZ"
+  },
+  "C4_pointer": {
+    "clicks": 2,
+    "keys": 0,
+    "done": false
+  },
+  "C5": {
+    "clicks": 0,
+    "keys": 12,
+    "title": "Draft the newsletter v2"
+  }
+}

@@ -42,7 +42,7 @@ test.describe("Board", () => {
 
   test("still shows saved tasks after a reload", async ({ page, request }) => {
     await openApp(page);
-    await page.getByRole("textbox", { name: /Write a task/ }).fill("Survive a reload");
+    await page.getByRole("combobox", { name: /Write a task/ }).fill("Survive a reload");
     await page.getByRole("button", { name: "Add", exact: true }).click();
     await expect(row(page, "Survive a reload")).toBeVisible();
 
@@ -98,6 +98,8 @@ for (const language of [
       await sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) }).click();
       const task = row(page, "A longer task title for the daily plan");
       const control = task.getByRole("button", { name: language.add });
+      // The task field and its chips come first on a phone; the row is a scroll away.
+      await control.scrollIntoViewIfNeeded();
       await expect(control).toBeInViewport();
       await control.focus();
       await expect(control).toBeFocused();
@@ -143,12 +145,12 @@ test("refreshes Today when returning to a suspended tab", async ({ page, request
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.locator("header time")).toContainText("November 18");
   await expect(row(page, "Old selection").getByText("Planned earlier · November 17")).toBeVisible();
-  await expect(sidebar(page).getByRole("button", { name: /^Today/ })).toHaveText("Today1");
+  await expect(sidebar(page).getByRole("button", { name: /^Today/ })).toHaveText("Today 1");
 });
 
 for (const l of [
-  { locale: "en", today: /^Today/, count: "Today1", planned: "Planned earlier · November 16", remove: "Remove from today" },
-  { locale: "pt-BR", today: /^Hoje/, count: "Hoje1", planned: "Planejada antes · 16 de novembro", remove: "Remover do dia de hoje" },
+  { locale: "en", today: /^Today/, count: "Today 1", planned: "Planned earlier · November 16", remove: "Remove from today" },
+  { locale: "pt-BR", today: /^Hoje/, count: "Hoje 1", planned: "Planejada antes · 16 de novembro", remove: "Remover do dia de hoje" },
 ] as const) {
   test(`keeps unfinished plans in Today until cleared in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale });

@@ -12,6 +12,7 @@ export interface TaskActions {
   order?: DayOrderControl;
   suggestions: ReadonlyMap<string, ContextProposal[]>;
   onPatch: (id: string, patch: TaskPatch) => Promise<boolean>;
+  onDelete: (id: string) => void;
   onPostpone: (id: string, when: Postponement) => Promise<void>;
   selectedId: string | null;
   onShowPanel: (id: string, trigger: HTMLButtonElement) => void;
@@ -21,17 +22,20 @@ export interface TaskActions {
 interface Props extends TaskActions {
   tasks: Task[];
   projects: Project[];
+  savedTags: string[];
   dateFormat: DateFormat;
   today: string;
   locale: Locale;
   t: Dictionary;
   /** Show the column labels above the rows. */
   header?: boolean;
-  /** Ids of tasks that were just created, to animate them in. */
+  /** Rows that were just created, to mark them where they landed. */
   fresh?: ReadonlySet<string>;
+  /** The row a task holds: a saved task keeps the row it had while it was being saved. */
+  rowKey: (id: string) => string;
 }
 
-export function TaskList({ tasks, header, fresh, ...row }: Props) {
+export function TaskList({ tasks, header, fresh, rowKey, ...row }: Props) {
   return (
     <div className="card list">
       {header && (
@@ -45,7 +49,7 @@ export function TaskList({ tasks, header, fresh, ...row }: Props) {
       )}
       <ul className="tasks">
         {tasks.map((task) => (
-          <TaskRow key={task.id} task={task} fresh={fresh?.has(task.id)} {...row} />
+          <TaskRow key={rowKey(task.id)} task={task} fresh={fresh?.has(rowKey(task.id))} {...row} />
         ))}
       </ul>
     </div>

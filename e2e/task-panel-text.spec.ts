@@ -2,13 +2,13 @@ import { expect, listTasks, openApp, row, seed, setLanguage, taskDetails, taskPa
 
 const languages = [
   { code: "en", editTitle: "Edit title", title: "Task title", notes: "Notes", editTags: "Edit tags", tags: "Tags",
-    save: "Save", cancel: "Cancel", error: "Something went wrong. Try again." },
+    saved: "Saved.", limit: "Use up to 10 tags of 40 characters each.", retry: "Retry", error: "Something went wrong. Try again." },
   { code: "pt-BR", editTitle: "Editar título", title: "Título da tarefa", notes: "Anotações", editTags: "Editar etiquetas", tags: "Etiquetas",
-    save: "Salvar", cancel: "Cancelar", error: "Algo deu errado. Tente novamente." },
+    saved: "Salvo.", limit: "Use até 10 etiquetas de 40 caracteres cada.", retry: "Tentar novamente", error: "Algo deu errado. Tente novamente." },
 ];
 
 for (const l of languages) {
-  test(`edits the title, notes and tags and preserves them after reload in ${l.code}`, async ({ page, request }) => {
+  test(`saves the title, notes and tags without a save button and keeps them after reload in ${l.code}`, async ({ page, request }) => {
     await seed(request, [
       { title: "Release draft", notes: "Original notes", tags: ["work"] },
       { title: "Other task", notes: "Different notes" },
@@ -17,45 +17,86 @@ for (const l of languages) {
     await setLanguage(page, l.code);
     await taskDetails(row(page, "Release draft")).click();
     const panel = taskPanel(page);
-    const save = panel.getByRole("button", { name: l.save, exact: true });
+    const stored = async () => (await listTasks(request))[0];
     const title = panel.getByRole("textbox", { name: l.title, exact: true });
     const editTitle = panel.getByRole("button", { name: l.editTitle, exact: true });
+    await expect(panel.getByRole("button", { name: /^(Save|Salvar|Cancel|Cancelar)$/ })).toHaveCount(0);
     await editTitle.click();
     await title.fill("Discarded");
     await title.press("Escape");
     await expect(panel.getByRole("heading", { name: "Release draft", exact: true })).toBeVisible();
+    await expect(editTitle).toBeFocused();
     await editTitle.click();
     await title.fill("Publish release");
-    await save.click();
+    await title.press("Enter");
     const task = row(page, "Publish release");
     await expect(task).toBeVisible();
+    await expect(panel.getByRole("heading", { name: "Publish release", exact: true })).toBeVisible();
+    await expect(panel.getByText(l.saved, { exact: true })).toBeVisible();
+    await expect(editTitle).toBeFocused();
+
+    // Notes are saved a moment after the typing stops, with the field still in use.
     const notes = panel.getByRole("textbox", { name: l.notes, exact: true });
     await expect(notes).toHaveValue("Original notes");
     await notes.fill("Check the build");
+    await expect.poll(async () => (await stored()).notes).toBe("Check the build");
+    await expect(notes).toBeFocused();
+    // The confirmation is beside the label, in view without scrolling the panel.
+    await expect(panel.getByRole("group", { name: l.notes, exact: true }).getByText(l.saved, { exact: true })).toBeInViewport();
+    await expect(task.getByText("Check the build", { exact: true })).toBeVisible();
+    // Moving to another task saves what was still waiting.
+    await notes.pressSequentially(" first");
     await taskDetails(row(page, "Other task")).click();
     await expect(notes).toHaveValue("Different notes");
+    await expect.poll(async () => (await stored()).notes).toBe("Check the build first");
     await taskDetails(task).click();
-    await expect(notes).toHaveValue("Check the build");
-    await save.click();
-    await expect(task.getByText("Check the build", { exact: true })).toBeVisible();
-    const editTags = panel.getByRole("button", { name: l.editTags, exact: true });
+    await expect(notes).toHaveValue("Check the build first");
+    // Escape never takes notes back. It closes the panel and keeps them, saved already or still waiting.
+    await notes.fill("Saved before Escape");
+    await expect.poll(async () => (await stored()).notes).toBe("Saved before Escape");
+    await notes.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect(taskDetails(task)).toBeFocused();
+    expect((await stored()).notes).toBe("Saved before Escape");
+    await taskDetails(task).click();
+    await notes.fill("Check the build first");
+    await notes.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect.poll(async () => (await stored()).notes).toBe("Check the build first");
+    await taskDetails(task).click();
+    await expect(notes).toHaveValue("Check the build first");
+
+    // The button is named by what it shows, the tags, and described as the way to edit them.
+    const editTags = panel.getByRole("button", { name: new RegExp(`^${l.tags}`) });
+    await expect(editTags).toHaveAccessibleDescription(l.editTags);
     const tags = panel.getByRole("textbox", { name: l.tags, exact: true });
     await editTags.click();
     await tags.fill("release, work");
-    await save.click();
+    await tags.press("Enter");
     await expect(task.getByRole("button", { name: "#release", exact: true })).toBeVisible();
-    await expect.poll(async () => (await listTasks(request))[0]).toMatchObject({
-      title: "Publish release", notes: "Check the build", tags: ["release", "work"],
-    });
+    await expect(editTags).toBeFocused();
+    await expect.poll(stored).toMatchObject({ title: "Publish release", notes: "Check the build first", tags: ["release", "work"] });
+    // A list that cannot be saved says why and is dropped on leaving the field.
+    await editTags.click();
+    await tags.fill(Array.from({ length: 11 }, (_, index) => `t${index}`).join(", "));
+    await expect(panel.getByText(l.limit, { exact: true })).toBeVisible();
+    await panel.getByRole("heading", { name: "Publish release", exact: true }).click();
+    await expect(tags).toBeHidden();
+    // Notes still waiting for their pause are saved when the page goes away.
+    await notes.fill("Check the build first and ship");
     await page.reload();
+    await expect.poll(async () => (await stored()).notes).toBe("Check the build first and ship");
     await taskDetails(task).click();
     await expect(panel.getByRole("heading", { name: "Publish release", exact: true })).toBeVisible();
-    await expect(notes).toHaveValue("Check the build");
+    await expect(notes).toHaveValue("Check the build first and ship");
+    await notes.fill("Check the build first");
+    await expect.poll(async () => (await stored()).notes).toBe("Check the build first");
     await editTags.click();
     await tags.fill("discard");
-    await panel.getByRole("button", { name: l.cancel, exact: true }).click();
+    await tags.press("Escape");
     await expect(tags).toBeHidden();
-    expect((await listTasks(request))[0].tags).toEqual(["release", "work"]);
+    await expect(panel).toBeVisible();
+    expect((await stored()).tags).toEqual(["release", "work"]);
   });
 
   test(`a failed notes save keeps the edit available to retry in ${l.code}`, async ({ page, request }) => {
@@ -65,18 +106,17 @@ for (const l of languages) {
     await taskDetails(row(page, before.title)).click();
     const panel = taskPanel(page);
     const notes = panel.getByRole("textbox", { name: l.notes, exact: true });
-    const save = panel.getByRole("button", { name: l.save, exact: true });
     const endpoint = `**/api/tasks/${before.id}`;
     await page.route(endpoint, (route) => route.fulfill({ status: 500, json: { error: "failed" } }));
     await notes.fill("Keep my revision");
-    await save.click();
-    await expect(panel.getByRole("alert")).toHaveText(l.error);
+    await expect(panel.getByRole("alert")).toContainText(l.error);
     await expect(notes).toHaveValue("Keep my revision");
-    await expect(save).toBeEnabled();
+    await expect(panel.getByText(l.saved, { exact: true })).toHaveCount(0);
     expect((await listTasks(request))[0].notes).toBe("Original");
     await page.unroute(endpoint);
-    await save.click();
+    await panel.getByRole("alert").getByRole("button", { name: l.retry, exact: true }).click();
     await expect.poll(async () => (await listTasks(request))[0].notes).toBe("Keep my revision");
+    await expect(panel.getByRole("alert")).toHaveCount(0);
     await expect(row(page, before.title).getByText("Keep my revision", { exact: true })).toBeVisible();
   });
 }

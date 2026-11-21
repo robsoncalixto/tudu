@@ -24,7 +24,7 @@ for (const l of [
     await page.unroute("**/api/tasks");
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await expect(row(openSection(page), "Remote task")).toBeVisible();
-    await expect(sidebar(page).getByRole("button", { name: l.all })).toHaveText(`${l.allLabel}2`);
+    await expect(sidebar(page).getByRole("button", { name: l.all })).toHaveText(`${l.allLabel} 2`);
     await expect(composer(page)).toHaveValue("Unsubmitted entry");
     await expect(notes).toHaveValue("In-progress notes");
     await row(openSection(page), first.title).getByRole("combobox", { name: l.priority }).selectOption("high");

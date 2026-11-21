@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { subscribeAgentUpdates } from "@/features/agent/api";
 import type { Settings } from "@/features/settings/schema";
@@ -11,6 +11,8 @@ import { useToday } from "@/lib/use-today";
 import type { Task } from "../schema";
 import { buildTaskView, type TaskFilter } from "../selectors";
 import { useBoardNavigation } from "../use-board-navigation";
+import { useNavigationShortcuts } from "../use-navigation-shortcuts";
+import { useNotice } from "../use-notice";
 import { useProjects } from "../use-projects";
 import { useTaskInspector } from "../use-task-inspector";
 import { useTaskSuggestions } from "../use-task-suggestions";
@@ -18,23 +20,27 @@ import { useTasks } from "../use-tasks";
 import { Sidebar } from "./Sidebar";
 import "./board.css";
 
-type Notice = { kind: "ok" | "error"; text: string } | null;
-
 function useWorkspaceState(settings: Settings) {
   const page = usePathname();
   const router = useRouter();
   const { locale, t } = useLocale(settings.locale);
   const today = useToday();
   const suggestions = useTaskSuggestions();
-  const [notice, setNotice] = useState<Notice>(null);
+  const [notice, setNotice] = useNotice();
   const navigation = useBoardNavigation(settings.startView);
   const { filter, query, sort, setFilter, setQuery } = navigation;
   const inspector = useTaskInspector();
   const { selectedId, setSelectedId } = inspector;
-  const fail = useCallback((code: string) => setNotice({ kind: "error", text: errorMessage(t, code) }), [t]);
+  const fail = useCallback((code: string, retry?: () => void) => setNotice({
+    kind: "error", text: errorMessage(t, code), ...(retry ? { action: { label: t.retry, run: () => { setNotice(null); retry(); } } } : {}),
+  }), [t, setNotice]);
   const scheduled = useCallback((task: Task) => {
-    if (task.due && today) setNotice({ kind: "ok", text: t.nextOccurrence(dueLabel(task.due, today, locale, t, settings.dateFormat)) });
-  }, [today, locale, t, settings.dateFormat]);
+    if (!task.due || !today) return;
+    const next = t.nextOccurrence(dueLabel(task.due, today, locale, t, settings.dateFormat));
+    // Completing a repeating task keeps its Undo and adds when the next one is due.
+    setNotice((current) => current?.kind === "ok" && current.undo && !current.onGone
+      ? { ...current, text: `${current.text} ${next}` } : { kind: "ok", text: next });
+  }, [today, locale, t, settings.dateFormat, setNotice]);
   const taskData = useTasks(fail, scheduled, (currentIds) => {
     if (selectedId && !currentIds.has(selectedId)) {
       inspector.close();
@@ -65,16 +71,19 @@ function useWorkspaceState(settings: Settings) {
     if (page !== "/") setSelectedId(null);
     refreshTasks();
     refreshProjects();
-  }, [page, setSelectedId, refreshTasks, refreshProjects]);
+  }, [page, setSelectedId, refreshTasks, refreshProjects, setNotice]);
 
   function select(next: TaskFilter) {
     setSelectedId(null);
-    setQuery(""); setFilter(next); setNotice(null);
+    // Changing list is no reason to lose the chance to undo what was just done.
+    setQuery(""); setFilter(next); setNotice((current) => current?.undo ? current : null);
     if (page !== "/") router.push("/");
   }
 
+  const focusRequest = useNavigationShortcuts({ page, select, push: (path) => router.push(path) });
+
   return { page, settings, locale, t, today, navigation, taskData, projectData, selectedTask, inspector,
-    view, notice, setNotice, fail, select, suggestions };
+    view, notice, setNotice, fail, select, suggestions, focusRequest };
 }
 
 const WorkspaceContext = createContext<ReturnType<typeof useWorkspaceState> | null>(null);

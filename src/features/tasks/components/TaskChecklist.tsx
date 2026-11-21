@@ -29,7 +29,7 @@ export function TaskPanelSubtasks({ taskId, steps, t, onChange }: Pick<Props, "s
   const progress = stepProgress(steps);
   return <section className="inspector-subtasks">
     <div className="inspector-disclosure-line">
-      <button className="inspector-disclosure" type="button" id={`${id}-toggle`} aria-label={t.checklist}
+      <button className="inspector-disclosure" type="button" id={`${id}-toggle`}
         aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
         <Icon name="list-checks" size={18} /><span>{t.checklist}</span>
         {progress.total > 0 && <span className="inspector-count">{t.stepCount(progress.done, progress.total)}</span>}
