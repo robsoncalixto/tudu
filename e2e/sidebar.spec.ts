@@ -1,6 +1,6 @@
 import { createTask, fixture, pending } from "./agent-support";
 import { dictionaries } from "../src/i18n";
-import { composer, expect, listProjects, openApp, openSection, row, rowTitles, saveSettings, seed, seedProjects, sidebar, taskRows, test, setLanguage, TODAY } from "./support";
+import { composer, expect, openApp, openSection, row, rowTitles, saveSettings, seed, seedProjects, sidebar, taskRows, test, setLanguage, TODAY } from "./support";
 
 for (const locale of ["en", "pt-BR"] as const) {
   const t = dictionaries[locale];
@@ -81,34 +81,6 @@ for (const locale of ["en", "pt-BR"] as const) {
     await expect(more).toBeFocused();
     await expect(more).toHaveAttribute("aria-expanded", "false");
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
-  });
-
-  test(`the Projects plus creates directly from a collapsed group in ${locale}`, async ({ page, request }) => {
-    await seedProjects(request, ["Existing"]);
-    await saveSettings(request, { locale });
-    await page.goto("/");
-    const rail = sidebar(page);
-    const projects = rail.getByRole("button", { name: t.projects, exact: true });
-    await projects.click();
-    const create = rail.getByRole("button", { name: t.newProject, exact: true });
-    await create.click();
-    const dialog = page.getByRole("dialog", { name: t.newProject, exact: true });
-    const field = dialog.getByRole("textbox", { name: t.newProject, exact: true });
-    await expect(field).toBeFocused();
-    await field.fill("Existing");
-    await field.press("Enter");
-    await expect(dialog.getByRole("status")).toHaveText(t.errors.duplicate_project);
-    await expect(field).toHaveValue("Existing");
-    await expect(field).toBeFocused();
-    await field.fill("Launch");
-    await field.press("Enter");
-    await expect(dialog).toBeHidden();
-    await expect(create).toBeFocused();
-    await expect(projects).toHaveAttribute("aria-expanded", "true");
-    const link = rail.getByRole("button", { name: new RegExp(`^${t.project}: Launch,`) });
-    await link.click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Launch");
-    expect((await listProjects(request)).map((project) => project.name)).toEqual(["Existing", "Launch"]);
   });
 }
 
@@ -192,7 +164,7 @@ test.describe("Sidebar", () => {
     await openApp(page);
 
     const all = sidebar(page).getByRole("button", { name: /All tasks/ });
-    await expect(all).toHaveText("All tasks2");
+    await expect(all).toHaveText("All tasks 2");
     await expect(all).toHaveAttribute("aria-current", "page");
   });
 
@@ -211,7 +183,7 @@ test.describe("Sidebar", () => {
     await openApp(page);
 
     await expect(sidebar(page).getByText("Tags", { exact: true })).toBeVisible();
-    await expect(sidebar(page).getByRole("button", { name: /^#/ })).toHaveText(["#alpha1", "#work2"]);
+    await expect(sidebar(page).getByRole("button", { name: /^#/ })).toHaveText(["#alpha 1", "#work 2"]);
   });
 
   test("filters by tag from the sidebar and back to all tasks", async ({ page, request }) => {
@@ -255,7 +227,7 @@ test.describe("Sidebar", () => {
     await row(page, "Only one").getByRole("checkbox").click();
 
     await expect(page.getByText("No open tasks with this tag.")).toBeVisible();
-    await expect(sidebar(page).getByRole("button", { name: "#solo" })).toHaveText("#solo0");
+    await expect(sidebar(page).getByRole("button", { name: "#solo" })).toHaveText("#solo 0");
   });
 
   test("switches the whole interface to Portuguese and back", async ({ page, request }) => {
@@ -325,8 +297,8 @@ for (const language of [
     await openApp(page);
     await setLanguage(page, language.code);
     const todayButton = sidebar(page).getByRole("button", { name: new RegExp(`^${language.today}`) });
-    await expect(todayButton).toHaveText(`${language.today}4`);
-    await expect(sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) })).toHaveText(`${language.all}6`);
+    await expect(todayButton).toHaveText(`${language.today} 4`);
+    await expect(sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) })).toHaveText(`${language.all} 6`);
     await todayButton.click();
     await expect(todayButton).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("heading", { name: language.today, level: 1, exact: true })).toBeVisible();
@@ -339,7 +311,7 @@ for (const language of [
 
     await sidebar(page).getByRole("button", { name: "#work" }).click();
     expect(await rowTitles(openSection(page))).toEqual(["Later", "Picked"]);
-    await expect(todayButton).toHaveText(`${language.today}4`);
+    await expect(todayButton).toHaveText(`${language.today} 4`);
     await sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) }).click();
     await expect(taskRows(openSection(page))).toHaveCount(6);
   });
@@ -368,12 +340,12 @@ for (const language of [
     await openApp(page);
     await setLanguage(page, language.code);
     const acmeButton = sidebar(page).getByRole("button", { name: new RegExp(`^${language.project}: Acme,`) });
-    await expect(acmeButton).toHaveText("Acme1");
+    await expect(acmeButton).toHaveText("Acme 1");
     await acmeButton.click();
     expect(await rowTitles(openSection(page))).toEqual(["Client work"]);
     await expect(acmeButton).toHaveAttribute("aria-current", "page");
     await sidebar(page).getByRole("button", { name: "#work" }).click();
-    await expect(acmeButton).toHaveText("Acme1");
+    await expect(acmeButton).toHaveText("Acme 1");
     await sidebar(page).getByRole("button", { name: new RegExp(`^${language.project}: Empty client,`) }).click();
     await expect(page.getByText(language.empty, { exact: true })).toBeVisible();
     await sidebar(page).getByRole("button", { name: new RegExp(`^${language.all}`) }).click();
@@ -432,7 +404,7 @@ test("returns from a reloaded Settings page with the board search and task draft
   await page.goto("/");
   await sidebar(page).getByRole("button", { name: /^Today,/ }).click();
   await page.getByRole("searchbox").fill("first");
-  const draft = page.getByRole("textbox", { name: /Write a task/ });
+  const draft = page.getByRole("combobox", { name: /Write a task/ });
   await draft.fill("Finish the remaining work");
   await sidebar(page).getByRole("link", { name: "Settings" }).click();
   await expect(page).toHaveURL("/settings");

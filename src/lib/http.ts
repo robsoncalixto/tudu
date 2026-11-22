@@ -8,9 +8,10 @@ export class ApiError extends Error {
   }
 }
 
-export async function request<T>(url: string, init?: { method?: string; body?: unknown }): Promise<T> {
+export async function request<T>(url: string, init?: { method?: string; body?: unknown; keepalive?: boolean }): Promise<T> {
   const response = await fetch(url, {
     method: init?.method,
+    keepalive: init?.keepalive,
     headers: init?.body === undefined ? undefined : { "Content-Type": "application/json" },
     body: init?.body === undefined ? undefined : JSON.stringify(init.body),
   });

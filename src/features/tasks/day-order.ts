@@ -1,6 +1,13 @@
 import type { Task } from "./schema";
 import { calendarDayOrNull } from "@/lib/dates";
 
+/** Keep the server's slots for tasks that are temporarily absent from the visible list. */
+export function orderVisibleDayTasks(saved: string[], visible: string[]): string[] {
+  const included = new Set(visible);
+  let index = 0;
+  return saved.map((id) => included.has(id) ? visible[index++] : id);
+}
+
 function arrival(task: Task, day: string) {
   const placed = task.planChangedAt ?? task.createdAt;
   const plan = calendarDayOrNull(task.plannedFor);

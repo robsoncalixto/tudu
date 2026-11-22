@@ -30,10 +30,10 @@ for (const labels of [
 }
 
 for (const l of [
-  { locale: "en", menu: "Task actions", today: /^Today,/, tomorrow: "Tomorrow", nextWeek: "Next week", planned: "Planned for November 18.",
-    error: "Something went wrong. Try again.", done: /^Done/ },
-  { locale: "pt-BR", menu: "Ações da tarefa", today: /^Hoje,/, tomorrow: "Amanhã", nextWeek: "Próxima semana", planned: "Planejada para 18 de novembro.",
-    error: "Algo deu errado. Tente novamente.", done: /^Concluídas/ },
+  { locale: "en", menu: "Task actions", today: /^Today,/, tomorrow: "Plan for tomorrow", nextWeek: "Plan for next week", planned: "Planned for November 18.",
+    error: "Something went wrong. Try again.", done: /^Done/, remove: "Delete task", deleted: "Deleted “Future deadline”.", undo: "Undo" },
+  { locale: "pt-BR", menu: "Ações da tarefa", today: /^Hoje,/, tomorrow: "Planejar para amanhã", nextWeek: "Planejar para a próxima semana", planned: "Planejada para 18 de novembro.",
+    error: "Algo deu errado. Tente novamente.", done: /^Concluídas/, remove: "Excluir tarefa", deleted: "“Future deadline” excluída.", undo: "Desfazer" },
 ] as const) {
   test(`postpones from the keyboard and restores a failed plan in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale });
@@ -48,13 +48,13 @@ for (const l of [
     const menu = page.getByRole("menu", { name: l.menu });
     const target = row(page, planned.title);
     const opener = target.getByRole("button", { name: l.menu });
-    const tomorrow = menu.getByRole("menuitem", { name: l.tomorrow });
+    const tomorrow = menu.getByRole("menuitem", { name: l.tomorrow, exact: true });
     await page.route(`**/api/tasks/${planned.id}`, (route) => route.fulfill({ status: 500, json: { error: "generic" } }));
     await opener.press("Enter");
     await page.keyboard.press("ArrowDown");
     await expect(tomorrow).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("status")).toHaveText(l.error);
+    await expect(page.getByRole("status")).toContainText(l.error);
     await expect(target).toBeVisible();
     expect((await listTasks(request)).find((task) => task.id === planned.id)?.plannedFor).toBe(TODAY);
     await page.unroute(`**/api/tasks/${planned.id}`);
@@ -74,6 +74,35 @@ for (const l of [
     await row(page, completed.title).getByRole("button", { name: l.menu }).click();
     await expect(menu.getByRole("menuitem", { name: l.tomorrow })).toHaveCount(0);
     await expect(menu.getByRole("menuitem", { name: l.nextWeek })).toHaveCount(0);
+    // A finished task can still be deleted from its menu.
+    await expect(menu.getByRole("menuitem", { name: l.remove, exact: true })).toBeVisible();
+  });
+
+  test(`deletes from the row's menu and takes it back in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    await seed(request, [{ title: "Future deadline" }, { title: "Stays" }]);
+    await page.goto("/");
+    const target = row(page, "Future deadline");
+    await target.focus();
+    await page.keyboard.press("Shift+F10");
+    const menu = page.getByRole("menu", { name: l.menu });
+    await page.keyboard.press("End");
+    await expect(menu.getByRole("menuitem", { name: l.remove, exact: true })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(target).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("status")).toContainText(l.deleted);
+    await expect(row(page, "Stays")).toBeFocused();
+    // Nothing is removed while it can still be taken back.
+    expect(await listTasks(request)).toHaveLength(2);
+    await page.getByRole("status").getByRole("button", { name: l.undo, exact: true }).click();
+    await expect(target).toBeFocused();
+    // With the pointer, and for good this time.
+    await target.hover();
+    await target.getByRole("button", { name: l.menu }).click();
+    await menu.getByRole("menuitem", { name: l.remove, exact: true }).click();
+    await page.getByRole("status").getByRole("button", { name: /^(Dismiss|Dispensar)$/ }).click();
+    await expect.poll(async () => (await listTasks(request)).map((task) => task.title)).toEqual(["Stays"]);
   });
 
   test.describe(`touch task actions in ${l.locale}`, () => {

@@ -1,12 +1,21 @@
+"use client";
+
+import { shortcutsApi } from "@/features/shortcuts/api";
+import type { ShortcutId } from "@/features/shortcuts/schema";
 import type { Dictionary } from "@/i18n";
 import { Icon } from "@/lib/Icon";
 import type { TaskFilter } from "../selectors";
+import { useCharacterKeys } from "../use-character-keys";
 
 export function TaskEmpty({ filter, searching, t, onAction }: {
   filter: TaskFilter; searching: boolean; t: Dictionary; onAction: () => void;
 }) {
+  const characters = useCharacterKeys();
   const title = searching ? t.emptySearch : { all: t.emptyTitle, today: t.emptyToday, tag: t.emptyFiltered, project: t.emptyProject }[filter.kind];
   const detail = searching ? t.emptySearchHint : filter.kind === "today" ? t.emptyTodayBody : filter.kind === "all" ? t.emptyBody : "";
+  // The keys come from the shortcut registry, so the hint cannot drift from what the keys do.
+  const wanted: ShortcutId[] = searching ? ["clearSearch"] : characters ? ["newTask", "help"] : [];
+  const keys = shortcutsApi.keys(searching ? "search" : "global", false).filter(({ id }) => wanted.includes(id));
   return <div className="task-empty">
     {searching ? <Icon name="search" size={36} /> :
       <svg className="empty-pages" aria-hidden="true" width="92" height="76" viewBox="0 0 92 76" fill="none">
@@ -23,5 +32,11 @@ export function TaskEmpty({ filter, searching, t, onAction }: {
     <button type="button" className="empty-action" onClick={onAction}>
       <Icon name={searching ? "x" : "plus"} size={15} />{searching ? t.clearSearch : t.addTask}
     </button>
+    {keys.length > 0 && <p className="empty-keys">
+      {keys.map(({ id, caps }) => <span key={id}>
+        {caps.map((cap) => <kbd key={cap}>{Object.hasOwn(t.shortcuts.keys, cap) ? t.shortcuts.keys[cap as keyof typeof t.shortcuts.keys] : cap}</kbd>)}
+        {t.shortcuts.labels[id]}
+      </span>)}
+    </p>}
   </div>;
 }

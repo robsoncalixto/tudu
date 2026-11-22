@@ -120,7 +120,28 @@ export async function openApp(page: Page) {
   await expect(page.getByText("Loading…")).toHaveCount(0);
 }
 
-export const composer = (page: Page) => page.getByRole("textbox", { name: /Write a task|Escreva uma tarefa/ });
+export const composer = (page: Page) => page.getByRole("combobox", { name: /Write a task|Escreva uma tarefa/ });
+export const composerForm = (page: Page) => page.getByRole("form", { name: /^(Add a task|Adicionar uma tarefa)$/ });
+/** The chips under the task field: one per field of the task being written. */
+export const chips = (page: Page) => page.getByRole("group", { name: /^(New task details|Detalhes da nova tarefa)$/ });
+export const chip = (page: Page, name: string) => chips(page).getByRole("button", { name: new RegExp(`^${name}(:|$)`) });
+/** A tag on the task being written, found by its remove button. */
+export const tagChip = (page: Page, tag: string) => chips(page).getByRole("button", { name: new RegExp(`^(Remove tag|Remover etiqueta) #${tag}$`) });
+
+/** Opens a chip's menu and picks one of its options. */
+export async function pickChip(page: Page, name: string, option: string) {
+  await chip(page, name).click();
+  await page.getByRole("menu", { name, exact: true }).getByRole("menuitemradio", { name: option, exact: true }).click();
+}
+
+/** Adds a tag through the Tags chip. */
+export async function pickTag(page: Page, tags: string, field: string, tag: string) {
+  await chip(page, tags).click();
+  const input = page.getByRole("dialog", { name: tags, exact: true }).getByRole("combobox", { name: field });
+  await input.fill(tag);
+  await input.press("Enter");
+  await input.press("Escape");
+}
 export const sidebar = (page: Page) => page.getByRole("complementary").filter({
   has: page.getByRole("navigation", { name: /^(Task views|Visualizações de tarefas)$/ }),
 });

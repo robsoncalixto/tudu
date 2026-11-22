@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rankDayTasks, moveDayTask } from "./day-order";
+import { rankDayTasks, moveDayTask, orderVisibleDayTasks } from "./day-order";
 import { taskSchema } from "./schema";
 
 const day = "2026-11-17";
@@ -19,5 +19,8 @@ describe("execution order", () => {
     expect(moveDayTask(ids, "c", "a")).toEqual(["c", "a", "b"]);
     expect(moveDayTask(ids, "a", "c")).toEqual(["b", "c", "a"]);
     expect(moveDayTask(ids, "a", "nope")).toBe(ids);
+  });
+  it("keeps temporarily hidden tasks in the server order when the visible tasks move", () => {
+    expect(orderVisibleDayTasks(["a", "held", "b", "c"], ["c", "a", "b"])).toEqual(["c", "held", "a", "b"]);
   });
 });

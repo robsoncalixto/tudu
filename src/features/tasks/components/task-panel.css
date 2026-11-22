@@ -97,11 +97,17 @@
 .inspector-tags-button > svg { flex: none; color: var(--text-muted); }
 .inspector-tags-value .chip { min-width: 0; max-width: 100%; }
 .inspector-text-editor { display: grid; align-content: start; gap: 7px; min-width: 0; }
+/* The confirmation sits beside the label, where it shows however far the field runs down the panel. */
+.inspector-field-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-sm); min-height: 20px; }
 .inspector-notes, .inspector-tags { padding-block: var(--s-md); }
 .inspector-text-editor .form-control { width: 100%; min-width: 0; }
 .inspector-text-editor textarea { resize: vertical; line-height: 1.5; }
-.inspector-editor-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.inspector-editor-actions .btn { min-height: 36px; height: auto; padding: 6px 12px; font-size: 13px; }
+.inspector-save-state { display: inline-flex; align-items: center; gap: 4px; min-height: 18px; color: var(--text-muted); font: 400 12px/18px var(--body); white-space: nowrap; }
+.inspector-save-state svg { color: var(--success); }
+.inspector-save-state:empty { display: none; }
+.inspector-title-line .inspector-save-state { align-self: center; }
+.inspector-text-editor .inspector-error { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-sm); }
+.inspector-text-editor .inspector-error .chip { min-height: var(--row-target); }
 .task-inspector .repeat-editor summary {
   width: 100%;
   min-height: 52px;
@@ -126,7 +132,6 @@
   .task-inspector { --row-target: var(--touch-target); --panel-inset: var(--s-md); }
   .inspector-property .select-control { --select-height: var(--touch-target); font-size: 16px; }
   .task-inspector .inspector-date { min-height: calc(var(--touch-target) + 2px); }
-  .inspector-editor-actions .btn { min-height: var(--touch-target); }
 }
 
 .inspector-suggestion { border-inline-start: 2px solid var(--accent); padding: var(--s-sm); margin-block: var(--s-sm); background: var(--surface-muted); }

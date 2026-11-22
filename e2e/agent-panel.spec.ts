@@ -28,6 +28,42 @@ for (const locale of ["en", "pt-BR"] as const) {
     expect((await listTasks(request)).map((task) => task.title)).toEqual(["Draft survives"]);
   });
 
+  test(`the note field sends with Enter, breaks lines with Shift+Enter and recalls the last note in ${locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale, aiProvider: "openai", aiModel: "test-agent" }); await fixture(request, [createTask()]);
+    await page.goto("/agent");
+    const note = page.getByRole("textbox", { name: t.agentPrompt, exact: true });
+    const sent = async () => (await (await request.get(fixtureUrl)).json()).requests.length;
+    // The hint beside the field is built from the shortcut registry.
+    await expect(note).toHaveAccessibleDescription(new RegExp(`Enter\\s*${t.shortcuts.labels.sendNote}.*${t.shortcuts.labels.noteLine}.*${t.shortcuts.labels.recallNote.replace(/[()]/g, "\\$&")}`));
+    await note.press("Enter");
+    await note.press("ArrowUp");
+    await expect(note).toHaveValue("");
+    await note.fill("Plan the launch");
+    await note.press("Shift+Enter");
+    await note.pressSequentially("with Ana");
+    await expect(note).toHaveValue("Plan the launch\nwith Ana");
+    expect(await sent()).toBe(0);
+    await note.press("Enter");
+    await expect(pending(page, locale).getByRole("article", { name: "Suggested report", exact: true })).toBeVisible();
+    await expect(note).toHaveValue("");
+    await expect(note).toBeFocused();
+    expect(await sent()).toBe(1);
+    await note.press("ArrowUp");
+    await expect(note).toHaveValue("Plan the launch\nwith Ana");
+    // With text in the field the arrow only moves the caret.
+    await note.press("ArrowUp");
+    await expect(note).toHaveValue("Plan the launch\nwith Ana");
+    // A failed request keeps the note in the field, and the last note survives a reload.
+    await fixture(request, [], 500);
+    await note.fill("Keep this one");
+    await note.press("Enter");
+    await expect(page.getByRole("status")).toHaveText(t.errors.agent_failed);
+    await expect(note).toHaveValue("Keep this one");
+    await page.reload();
+    await note.press("ArrowUp");
+    await expect(note).toHaveValue("Keep this one");
+  });
+
   test(`load recovery, empty suggestions, no-key controls and phone layout in ${locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale }); await page.setViewportSize({ width: 320, height: 900 });
     await page.route("**/api/agent/proposals", (route) => route.fulfill({ status: 500, json: { error: "failed" } }));

@@ -7,6 +7,7 @@ import type { Dictionary, Locale } from "@/i18n";
 import type { Project } from "@/features/projects/schema";
 import { PRIORITIES, type Priority, type Task } from "../schema";
 import { nextSubtaskVisibility, stepProgress, type SubtaskVisibility } from "../checklist";
+import { isProvisional } from "../optimistic-tasks";
 import { repeatDescription } from "../recurrence";
 import { isPlannedForToday } from "../selectors";
 import { TASK_ORDER_DRAG_TYPE } from "../use-day-order";
@@ -14,10 +15,13 @@ import { TaskOrderControls } from "./TaskOrderControls";
 import type { TaskActions } from "./TaskList";
 import { TaskContextMenu } from "./TaskContextMenu";
 import { TaskChecklist } from "./TaskChecklist";
+import { TaskTitle } from "./TaskTitle";
 
 interface Props extends TaskActions {
   task: Task;
   projects: Project[];
+  /** Saved tags, offered while a title is edited. */
+  savedTags: string[];
   fresh?: boolean;
   today: string;
   locale: Locale;
@@ -25,9 +29,7 @@ interface Props extends TaskActions {
   t: Dictionary;
 }
 
-export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, order, suggestions, onPatch, onPostpone, selectedId, onShowPanel, onTag }: Props) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(task.title);
+export function TaskRow({ task, projects, savedTags, fresh, today, locale, dateFormat, t, order, suggestions, onPatch, onDelete, onPostpone, selectedId, onShowPanel, onTag }: Props) {
   const selected = selectedId === task.id;
   const [visibility, setVisibility] = useState<SubtaskVisibility>("all");
   const [adding, setAdding] = useState(false);
@@ -35,7 +37,7 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
   const addButton = useRef<HTMLButtonElement>(null);
   const subtaskInput = useRef<HTMLInputElement>(null);
   const row = useRef<HTMLLIElement>(null);
-  const titleButton = useRef<HTMLButtonElement>(null);
+  const disclosure = useRef<HTMLButtonElement>(null);
   const overdue = !task.done && task.due !== null && dayDiff(task.due, today) < 0;
   const project = projects.find((item) => item.id === task.projectId);
   const steps = stepProgress(task.steps);
@@ -46,21 +48,26 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
   const planLabel = planned ? t.removeFromToday : t.addToToday;
   const suggestionCount = suggestions.get(task.id)?.length ?? 0;
   const hasMetadata = suggestionCount > 0 || project || task.tags.length > 0 || steps.total > 0 || task.repeat || earlierPlan;
+  // Shown the moment it was written; it becomes reachable when the saved task replaces it.
+  const unsaved = isProvisional(task);
 
   function addSubtask() {
     setVisibility("all"); setAdding(true);
     requestAnimationFrame(() => subtaskInput.current?.focus());
   }
 
-  function commit() {
-    const title = draft.trim();
-    setEditing(false);
-    if (title && title !== task.title) void onPatch(task.id, { title });
-  }
-
   return (
     <li ref={row} className={`task${task.done ? " is-done" : ""}${fresh ? " is-new" : ""}`} data-priority={task.priority}
-      data-task-id={task.id} data-inspected={selected || undefined} tabIndex={-1} aria-label={task.title}
+      data-task-id={unsaved ? undefined : task.id} data-inspected={selected || undefined} tabIndex={-1} aria-label={task.title}
+      inert={unsaved} aria-hidden={unsaved || undefined}
+      onMouseDown={(event) => {
+        // The second press of a double-click would select the word under the pointer instead of only opening the details.
+        if (event.detail > 1 && !(event.target as Element).closest("input, select, textarea")) event.preventDefault();
+      }}
+      onDoubleClick={(event) => {
+        // Double-clicking the row itself opens its details; controls keep their own double-click.
+        if (!(event.target as Element).closest("button, input, select, textarea, a, label, [data-subtasks]")) disclosure.current?.click();
+      }}
       onDragOver={(event) => {
         if (order?.ready && order.positions.has(task.id) && event.dataTransfer.types.includes(TASK_ORDER_DRAG_TYPE)) {
           event.preventDefault();
@@ -78,22 +85,7 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
         {task.done && <Icon name="check" size={14} />}
       </button>
       <div className="task-body">
-        {editing ? (
-          <input className="form-control task-edit" value={draft} autoFocus maxLength={300} aria-label={t.editTitle}
-            onChange={(event) => setDraft(event.target.value)} onBlur={commit}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== "Escape") return;
-              event.preventDefault();
-              if (event.key === "Enter") event.currentTarget.blur();
-              else setEditing(false);
-              requestAnimationFrame(() => {
-                if (document.activeElement === document.body) titleButton.current?.focus();
-              });
-            }} />
-        ) : (
-          <button type="button" className="task-title" ref={titleButton} title={t.editTitle}
-            onClick={() => { setDraft(task.title); setEditing(true); }}>{task.title}</button>
-        )}
+        <TaskTitle task={task} row={row} today={today} locale={locale} t={t} projects={projects} savedTags={savedTags} onPatch={onPatch} />
         {task.notes && <p className="task-notes is-preview">{task.notes}</p>}
         {hasMetadata && <div className="task-metadata">
           {suggestionCount > 0 && <span className="task-suggestion-marker">
@@ -104,11 +96,12 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
           </span>}
           {project && <span><Icon name="folder" size={13} />{project.name}</span>}
           {task.tags.map((tag) => <button type="button" key={tag} onClick={() => onTag(tag)}>#{tag}</button>)}
-          {steps.total > 0 && <button type="button" className="subtask-count" id={`${subtasksId}-toggle`} aria-label={visibilityLabel}
-            title={visibilityLabel} aria-controls={subtasksId} aria-describedby={`${subtasksId}-count`}
+          {/* The name carries the count that is shown, so what is read and what is seen agree. */}
+          {steps.total > 0 && <button type="button" className="subtask-count" id={`${subtasksId}-toggle`}
+            aria-label={`${visibilityLabel} ${t.stepCount(steps.done, steps.total)}`} title={visibilityLabel} aria-controls={subtasksId}
             aria-expanded={nextVisibility !== "all"} onClick={() => setVisibility(nextVisibility)}>
             <Icon name={nextVisibility === "all" ? "chevron-right" : "chevron-down"} size={14} />
-            <span id={`${subtasksId}-count`}>{t.stepCount(steps.done, steps.total)}</span>
+            <span>{t.stepCount(steps.done, steps.total)}</span>
           </button>}
           {task.repeat && <span title={repeatDescription(task.repeat, locale, t)}><Icon name="repeat" size={13} />{t.repeatFrequencies[task.repeat.frequency]}</span>}
         </div>}
@@ -138,8 +131,8 @@ export function TaskRow({ task, projects, fresh, today, locale, dateFormat, t, o
           aria-label={planLabel} title={planLabel} disabled={!today}
           onClick={() => onPatch(task.id, { plannedFor: planned ? null : today })}><Icon name="sun" size={16} /></button>}
         <TaskContextMenu row={row} t={t} addSubtask={steps.total < 100 ? addSubtask : null}
-          postpone={!task.done && today ? (when) => { void onPostpone(task.id, when); } : null} />
-        <button type="button" className="task-disclosure" title={t.taskDetails} aria-label={t.taskDetails}
+          postpone={!task.done && today ? (when) => { void onPostpone(task.id, when); } : null} onDelete={() => onDelete(task.id)} />
+        <button type="button" className="task-disclosure" ref={disclosure} title={t.taskDetails} aria-label={t.taskDetails}
           aria-expanded={selected} aria-controls={selected ? "task-inspector" : undefined}
           onClick={(event) => onShowPanel(task.id, event.currentTarget)}>
           <Icon name={selected ? "x" : "panel-right"} size={18} />

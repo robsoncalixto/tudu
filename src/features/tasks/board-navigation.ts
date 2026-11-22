@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { settingsSchema } from "@/features/settings/schema";
 import { projectSchema } from "@/features/projects/schema";
+import { normalizeQuickTag } from "@/features/quick-add/schema";
+import { calendarDayOrNull } from "@/lib/dates";
+import { composerChoiceSchema } from "./composer-draft";
 import { taskInputSchema } from "./schema";
 
 export const TASK_SORTS = ["due", "priority", "newest", "manual"] as const;
@@ -44,6 +47,7 @@ const boardReturnSchema = z.object({
   daySort: taskSortSchema.optional().catch(undefined),
   sort: taskSortSchema.optional().catch(undefined),
   text: z.string(),
+  choice: composerChoiceSchema.optional().catch(undefined),
   details: z.object({
     priority: taskInputSchema.shape.priority.unwrap().optional(),
     due: z.iso.date().optional(),
@@ -51,12 +55,22 @@ const boardReturnSchema = z.object({
     tagInput: z.string().max(40),
   }).optional().catch(undefined),
 });
-export type BoardReturn = Omit<z.infer<typeof boardReturnSchema>, "sort">;
+export type BoardReturn = Omit<z.infer<typeof boardReturnSchema>, "sort" | "details">;
+export type ComposerDraft = Pick<BoardReturn, "text" | "choice">;
 
 export function restoreBoardReturn(serialized: string | null, startView: BoardReturn["startView"]): BoardReturn | null {
   if (!serialized) return null;
   try {
-    const { sort, ...previous } = boardReturnSchema.parse(JSON.parse(serialized));
+    const { sort, details, ...previous } = boardReturnSchema.parse(JSON.parse(serialized));
+    if (!previous.choice && details) {
+      // The old composer included the uncommitted tag when submitted.
+      const tag = normalizeQuickTag(details.tagInput);
+      const tags = [...new Set([...details.tags, ...(tag ? [tag] : [])])].slice(0, 10);
+      previous.choice = {
+        priority: details.priority, due: calendarDayOrNull(details.due ?? null) ?? undefined,
+        tags, tagInput: details.tagInput,
+      };
+    }
     // Older sessions kept one unsaved sort alongside their active filter.
     if (sort) {
       if (previous.filter.kind === "today") previous.daySort ??= sort;
