@@ -7,8 +7,8 @@ import { captureTasks } from "./capture";
 beforeEach(() => vi.clearAllMocks());
 
 describe("AI checklist capture", () => {
-  it("drops impossible model dates rather than saving invalid calendar days", async () => {
-    generate.mockResolvedValue({ tasks: [{ title: "Report", notes: "", priority: "medium", due: "2026-02-30", tags: [], steps: [], projectId: null }] });
+  it.each(["2026-02-30", "0000-01-01"])("drops the impossible model date %s", async (due) => {
+    generate.mockResolvedValue({ tasks: [{ title: "Report", notes: "", priority: "medium", due, tags: [], steps: [], projectId: null }] });
     expect((await captureTasks(run, "Report", "2026-11-17"))[0].due).toBeNull();
   });
   it("returns trimmed steps with unique ids and skips blank steps", async () => {

@@ -26,6 +26,12 @@ describe("MCP task filters", () => {
     expect(filterTasks(tasks, listTasksToolSchema.parse({ plannedFor: "2026-11-17" })).tasks).toEqual([tasks[2]]);
     expect(filterTasks(tasks, listTasksToolSchema.parse({ today: "2026-11-17" })).tasks).toEqual(tasks.slice(0, 3));
   });
+  it("keeps legacy dates available for repair while excluding them from date ranges", () => {
+    const legacy = { ...task("Legacy"), due: "2026-02-30", plannedFor: "0000-01-01" };
+    expect(filterTasks([legacy], listTasksToolSchema.parse({})).tasks).toEqual([legacy]);
+    expect(filterTasks([legacy], listTasksToolSchema.parse({ dueTo: "2026-11-17" })).tasks).toEqual([]);
+    expect(filterTasks([legacy], listTasksToolSchema.parse({ today: "2026-11-17" })).tasks).toEqual([]);
+  });
   it("carries open plans forward but keeps completed and future plans on their original days", () => {
     const candidates = [
       { ...task("Carry-over"), plannedFor: "2026-11-16" },

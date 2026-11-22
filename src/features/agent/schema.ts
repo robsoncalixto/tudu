@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { dayOrderSchema, taskInputSchema, taskPatchSchema, storedTaskSchema } from "@/features/tasks/schema";
+import { calendarDateSchema } from "@/lib/dates";
+import { dayOrderSchema, taskDatePatchSchema, taskInputSchema, taskPatchSchema, storedTaskSchema } from "@/features/tasks/schema";
 import { projectInputSchema, projectSchema } from "@/features/projects/schema";
 import { aiProviderSchema } from "@/features/ai/schema";
 
@@ -8,7 +9,7 @@ export const proposedTaskSchema = taskInputSchema.extend({ due: day, repeat: z.n
   partOfDay: taskPatchSchema.shape.partOfDay, estimateHours: taskPatchSchema.shape.estimateHours }).strict();
 export const proposedPatchSchema = taskPatchSchema.pick({
   title: true, notes: true, priority: true, due: true, tags: true, steps: true, projectId: true, plannedFor: true, partOfDay: true,
-}).extend({ due: day.optional() }).strict().refine((patch) => Object.keys(patch).length > 0);
+}).extend({ due: day.optional(), plannedFor: day.optional() }).strict().refine((patch) => Object.keys(patch).length > 0);
 export const proposalActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("create_task"), task: proposedTaskSchema }).strict(),
   z.object({ kind: z.literal("update_task"), taskId: z.string().min(1).max(100), patch: proposedPatchSchema }).strict(),
@@ -27,6 +28,13 @@ export const proposalActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("rename_project"), projectId: z.uuid(), name: projectInputSchema.shape.name }).strict(),
 ]);
 export type ProposalAction = z.infer<typeof proposalActionSchema>;
+
+// Validate new proposals and decisions while leaving historical actions readable.
+export function hasValidTaskDates(action: ProposalAction): boolean {
+  if (action.kind === "create_task") return taskDatePatchSchema.safeParse(action.task).success;
+  if (action.kind === "update_task") return taskDatePatchSchema.safeParse(action.patch).success;
+  return true;
+}
 export const proposalDraftSchema = z.object({
   action: proposalActionSchema, reason: z.string().trim().min(1).max(21_000),
   taskBefore: storedTaskSchema.nullable(), projectBefore: projectSchema.nullable(),
@@ -68,11 +76,11 @@ export const agentStateSchema = z.object({
 });
 export type AgentState = z.infer<typeof agentStateSchema>;
 export const proposalRequestSchema = z.object({
-  text: z.string().trim().max(8000), today: z.iso.date(), review: z.literal(true).optional(),
+  text: z.string().trim().max(8000), today: calendarDateSchema, review: z.literal(true).optional(),
 }).strict().refine((input) => input.review || input.text.length > 0);
 export const taskReviewResponseSchema = z.object({ summary: z.string(), proposals: z.array(proposalSchema) });
 export const proposalDecisionSchema = z.discriminatedUnion("decision", [
-  z.object({ decision: z.literal("accept"), action: proposalActionSchema, today: z.iso.date().optional() }).strict(),
+  z.object({ decision: z.literal("accept"), action: proposalActionSchema, today: calendarDateSchema.optional() }).strict(),
   z.object({ decision: z.literal("reject") }).strict(),
   z.object({ decision: z.literal("recheck") }).strict(),
   z.object({ decision: z.literal("dismiss") }).strict(),
