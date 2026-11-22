@@ -179,7 +179,9 @@ AI provider and model.
 
 Write shortcuts as separate words. Enter submits the composer and Shift+Enter
 adds another task on a new line. The priority, due date and tag controls
-provide defaults for each line and for Create with AI.
+provide defaults for each line and for Create with AI. The current tab keeps
+your unfinished text, priority, due date and tags when you visit another screen
+or reload. Adding the task clears the draft.
 `Fix login #bug !high tomorrow` creates **Fix login**, tagged `bug`, with high
 priority, due tomorrow.
 

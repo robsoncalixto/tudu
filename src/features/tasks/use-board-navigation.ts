@@ -7,6 +7,8 @@ const SORT_KEY = "tudu.taskSort";
 const DAY_SORT_KEY = "tudu.todaySort";
 const RETURN_KEY = "tudu.boardReturn";
 
+export type ComposerDraft = Pick<BoardReturn, "text" | "details">;
+
 export function useBoardNavigation(startView: StartView) {
   const [view, setView] = useState<BoardReturn>({ startView, filter: { kind: startView }, query: "", text: "" });
   const [listSort, updateListSort] = useState<TaskSort>("due");
@@ -15,6 +17,7 @@ export function useBoardNavigation(startView: StartView) {
   const [ready, setReady] = useState(false);
 
   useLayoutEffect(() => {
+    if (ready) return;
     try {
       const previous = restoreBoardReturn(sessionStorage.getItem(RETURN_KEY), startView);
       if (previous) setView(previous);
@@ -24,7 +27,7 @@ export function useBoardNavigation(startView: StartView) {
       updateDaySort(restoreTaskSort(localStorage.getItem(DAY_SORT_KEY), "manual"));
     } catch { /* Keep the session fallback. */ }
     setReady(true);
-  }, [startView]);
+  }, [ready, startView]);
 
   useLayoutEffect(() => {
     if (!ready) return;
@@ -51,11 +54,15 @@ export function useBoardNavigation(startView: StartView) {
   return {
     filter: view.filter,
     query: view.query,
-    text: view.text,
+    draft: { text: view.text, details: view.details },
     sort,
     setSort,
     setFilter: (filter: TaskFilter) => setView((current) => ({ ...current, filter })),
     setQuery: (query: string) => setView((current) => ({ ...current, query })),
-    setText: (text: string) => setView((current) => ({ ...current, text })),
+    setDraft: (draft: ComposerDraft, submitted?: ComposerDraft) => setView((current) => {
+      // A save may finish after the user returns and starts editing the next draft.
+      if (submitted && (current.text !== submitted.text || current.details !== submitted.details)) return current;
+      return { ...current, text: draft.text, details: draft.details };
+    }),
   };
 }
