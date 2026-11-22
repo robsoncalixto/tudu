@@ -1,4 +1,5 @@
-import { chips, composer, expect, listTasks, openSection, row, rowTitles, saveSettings, seed, seedProjects, taskRows, test, TODAY, TOMORROW, tagChip } from "./support";
+import { dictionaries } from "../src/i18n";
+import { chips, composer, expect, listTasks, openSection, row, rowTitles, saveSettings, seed, seedProjects, sidebar, taskRows, test, TODAY, TOMORROW, tagChip } from "./support";
 
 const tokens = (page: import("@playwright/test").Page) => page.locator(".command-mirror .command-token").allTextContents();
 
@@ -216,6 +217,63 @@ for (const l of [
     await field.press("Enter");
     await expect(status).toHaveText(l.error);
     await expect(field).toHaveValue("Third");
+  });
+
+  test(`two failed submissions can both be retried in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    await page.goto("/");
+    const field = composer(page);
+    const status = page.getByRole("status");
+    const releases = new Map<string, () => void>();
+    await page.route("**/api/tasks", async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      const { title } = route.request().postDataJSON();
+      await new Promise<void>((release) => releases.set(title, release));
+      await route.fulfill({ status: 500, json: { error: "generic" } });
+    });
+    for (const [title, tag] of [["First", "one"], ["Second", "two"]]) {
+      await field.fill(`${title} #${tag}`);
+      await field.press("Enter");
+      await expect.poll(() => releases.has(title)).toBe(true);
+    }
+    await field.fill("Third #three");
+    releases.get("First")?.();
+    await expect(status).toContainText(l.notSaved("First"));
+    const rejected = page.waitForResponse((response) => response.url().endsWith("/api/tasks")
+      && response.status() === 500 && response.request().postDataJSON()?.title === "Second");
+    releases.get("Second")?.();
+    await rejected;
+    await page.unroute("**/api/tasks");
+    let firstRetries = 0;
+    let releaseRetry = () => {};
+    const heldRetry = new Promise<void>((resolve) => { releaseRetry = resolve; });
+    await page.route("**/api/tasks", async (route) => {
+      if (route.request().method() === "POST" && route.request().postDataJSON().title === "First") {
+        firstRetries++;
+        await heldRetry;
+      }
+      await route.continue();
+    });
+    const retry = status.getByRole("button", { name: l.retry, exact: true });
+    try {
+      await expect(status).toContainText(l.notSaved("First"));
+      await retry.click();
+      await expect.poll(() => firstRetries).toBe(1);
+      await sidebar(page).getByRole("link", { name: dictionaries[l.locale].settings }).click();
+      await expect(page).toHaveURL("/settings");
+      await page.goBack();
+      await expect(status).toContainText(l.notSaved("First"));
+      await retry.click();
+    } finally {
+      releaseRetry();
+    }
+    await expect(row(openSection(page), "First")).toBeVisible();
+    await expect(status).toContainText(l.notSaved("Second"));
+    await retry.click();
+    await expect(row(openSection(page), "Second")).toBeVisible();
+    expect(firstRetries).toBe(1);
+    await expect(field).toHaveValue("Third #three");
+    expect(await listTasks(request)).toMatchObject([{ title: "First", tags: ["one"] }, { title: "Second", tags: ["two"] }]);
   });
 
   test(`a new task is named in a notice that leads to it, and its row keeps its place while it is saved, in ${l.locale}`, async ({ page, request }) => {

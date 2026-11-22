@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { subscribeAgentUpdates } from "@/features/agent/api";
+import type { QuickTask } from "@/features/quick-add/schema";
 import type { Settings } from "@/features/settings/schema";
 import { errorMessage } from "@/i18n";
 import { useLocale } from "@/i18n/use-locale";
@@ -27,6 +28,8 @@ function useWorkspaceState(settings: Settings) {
   const today = useToday();
   const suggestions = useTaskSuggestions();
   const [notice, setNotice] = useNotice();
+  const [failedSubmissions, setFailedSubmissions] = useState<QuickTask[][]>([]);
+  const retryingSubmissions = useRef(new Set<QuickTask[]>());
   const navigation = useBoardNavigation(settings.startView);
   const { filter, query, sort, setFilter, setQuery } = navigation;
   const inspector = useTaskInspector();
@@ -83,7 +86,7 @@ function useWorkspaceState(settings: Settings) {
   const focusRequest = useNavigationShortcuts({ page, select, push: (path) => router.push(path) });
 
   return { page, settings, locale, t, today, navigation, taskData, projectData, selectedTask, inspector,
-    view, notice, setNotice, fail, select, suggestions, focusRequest };
+    view, notice, setNotice, fail, select, suggestions, focusRequest, failedSubmissions, setFailedSubmissions, retryingSubmissions };
 }
 
 const WorkspaceContext = createContext<ReturnType<typeof useWorkspaceState> | null>(null);

@@ -2,11 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { captureApi } from "@/features/capture/api";
-import { quickAddApi } from "@/features/quick-add/api";
 import { ApiError, errorCode } from "@/lib/http";
-import type { Project } from "@/features/projects/schema";
 import type { CaptureDefaults } from "@/features/capture/schema";
-import type { QuickAddDefaults } from "@/features/quick-add/schema";
+import type { QuickTask } from "@/features/quick-add/schema";
 import { useVisibleRefresh } from "@/lib/use-visible-refresh";
 import { tasksApi } from "./api";
 import { applyTaskMutations, arrivalTime, provisionalTask, type PendingTaskMutation } from "./optimistic-tasks";
@@ -83,9 +81,7 @@ export function useTasks(onError: (code: string, retry?: () => void) => void, on
     return created;
   }, []);
 
-  const add = useCallback((text: string, today: string, defaults: QuickAddDefaults, projects: Project[], priority: Priority) => {
-    const drafts = quickAddApi.previewDrafts(text, today, defaults, projects);
-    if (!drafts) throw new ApiError("invalid_quick_task", 400);
+  const add = useCallback((drafts: QuickTask[], priority: Priority) => {
     const first = arrivalTime(shown.current ?? [], new Date());
     const written = drafts.map((draft, index) => provisionalTask(draft, priority, new Date(first.getTime() + index)));
     const settle = () => setUnsaved((current) => current.filter((task) => !written.includes(task)));
@@ -202,5 +198,5 @@ export function useTasks(onError: (code: string, retry?: () => void) => void, on
       return position === undefined ? task : { ...task, dayRanks: { ...task.dayRanks, [day]: position } };
     }) ?? null);
   }, [retryLoad]);
-  return { reorder, tasks, rowKey, aiEnabled, loadFailed, retryLoad, add, capture, patch, changeLater, clearProject };
+  return { reorder, tasks, confirmed, rowKey, aiEnabled, loadFailed, retryLoad, add, capture, patch, changeLater, clearProject };
 }

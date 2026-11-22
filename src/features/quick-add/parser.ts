@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { calendarDateSchema } from "@/lib/dates";
 import type { Project } from "@/features/projects/schema";
 import { repeatFrom } from "@/features/recurrence/schema";
 import { durationHoursSchema, HOURS_PER_UNIT, type PartOfDay, type Priority } from "@/features/tasks/schema";
@@ -55,7 +56,7 @@ export function partOfDayAt(time: string): PartOfDay {
  * It never throws and reads no clock: invalid dates and unknown +projects stay in the title and are reported.
  */
 export function parseQuickAdd(text: string, context: QuickAddContext): QuickAddResult {
-  const today = z.iso.date().safeParse(context.today).success ? context.today : "";
+  const today = calendarDateSchema.safeParse(context.today).success ? context.today : "";
   const projects = context.projects ?? [];
   const literals = new Map<string, number>();
   for (const word of context.literals ?? []) literals.set(word, (literals.get(word) ?? 0) + 1);

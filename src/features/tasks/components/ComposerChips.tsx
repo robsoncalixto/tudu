@@ -33,6 +33,8 @@ interface Props {
   onProject: (value: string | null) => void;
   onEstimate: (value: number | null) => void;
   onRepeat: (value: RepeatFrequency | null) => void;
+  tagInput?: string;
+  onTagInput?: (value: string) => void;
   onAddTag: (tag: string) => void;
   onRemoveTag: (tag: string) => void;
 }
@@ -120,7 +122,8 @@ export function ComposerChips({ t, locale, dateFormat, today, values, projects, 
           key: frequency, label: t.repeatFrequencies[frequency], checked: values.repeat === frequency, onSelect: () => on.onRepeat(frequency),
         })),
       ]} clearLabel={t.composerClear(t.repeat)} onClear={() => on.onRepeat(null)} />
-    <TagPicker t={t} tags={values.tags} saved={savedTags} disabled={disabled} onAdd={on.onAddTag} onRemove={on.onRemoveTag} />
+    <TagPicker t={t} tags={values.tags} saved={savedTags} disabled={disabled} text={on.tagInput ?? ""}
+      onTextChange={on.onTagInput} onAdd={on.onAddTag} onRemove={on.onRemoveTag} />
     <span className="sr-only" aria-live="polite">{understood}</span>
   </div>;
 }

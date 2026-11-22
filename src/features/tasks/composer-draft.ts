@@ -1,24 +1,28 @@
+import { z } from "zod";
 import type { Project } from "@/features/projects/schema";
 import { quickAddApi } from "@/features/quick-add/api";
 import { normalizeQuickTag, type QuickAddDefaults } from "@/features/quick-add/schema";
-import { repeatFrom, type RepeatFrequency } from "@/features/recurrence/schema";
-import type { PartOfDay, Priority, Task, TaskPatch } from "./schema";
+import { REPEAT_FREQUENCIES, repeatFrom, type RepeatFrequency } from "@/features/recurrence/schema";
+import { calendarDateSchema } from "@/lib/dates";
+import { durationHoursSchema, partOfDaySchema, PRIORITIES, taskInputSchema, type PartOfDay, type Priority, type Task, type TaskPatch } from "./schema";
 
 export const MAX_DRAFT_TAGS = 10;
 
 /** What the person picked with the chips. A missing field follows the current view. */
-export interface ComposerChoice {
-  priority?: Priority;
-  due?: string;
-  estimateHours?: number;
-  repeat?: RepeatFrequency;
-  partOfDay?: PartOfDay;
-  /** `null` drops the day or project that the current view would add. */
-  plannedFor?: string | null;
-  projectId?: string | null;
-  tags: string[];
-  withoutViewTag?: boolean;
-}
+export const composerChoiceSchema = z.object({
+  priority: z.enum(PRIORITIES).optional(),
+  due: calendarDateSchema.optional(),
+  estimateHours: durationHoursSchema.unwrap().optional(),
+  repeat: z.enum(REPEAT_FREQUENCIES).optional(),
+  partOfDay: partOfDaySchema.optional(),
+  // Null drops the day or project that the current view would add.
+  plannedFor: calendarDateSchema.nullable().optional(),
+  projectId: taskInputSchema.shape.projectId.unwrap().optional(),
+  tags: taskInputSchema.shape.tags.unwrap(),
+  tagInput: z.string().max(40).optional(),
+  withoutViewTag: z.boolean().optional(),
+});
+export type ComposerChoice = z.infer<typeof composerChoiceSchema>;
 
 export const NO_CHOICE: ComposerChoice = { tags: [] };
 

@@ -4,14 +4,16 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Project } from "@/features/projects/schema";
 import { quickAddApi } from "@/features/quick-add/api";
-import type { QuickAddDefaults } from "@/features/quick-add/schema";
+import type { QuickAddDefaults, QuickTask } from "@/features/quick-add/schema";
 import { shortcutsApi } from "@/features/shortcuts/api";
 import type { Dictionary, Locale } from "@/i18n";
 import type { DateFormat } from "@/lib/dates";
 import { Icon } from "@/lib/Icon";
+import type { ComposerDraft } from "../board-navigation";
 import { withoutTag } from "../composer-draft";
+import type { SetComposerDraft } from "../use-board-navigation";
 import { useComposer } from "../use-composer";
-import type { ComposerMode } from "../use-composer-submit";
+import type { ComposerSubmission } from "../use-composer-submit";
 import { CommandField } from "./CommandField";
 import { ComposerBatch } from "./ComposerBatch";
 import { ComposerChips } from "./ComposerChips";
@@ -23,16 +25,16 @@ interface Props {
   today: string;
   locale: Locale;
   dateFormat: DateFormat;
-  text: string;
-  onTextChange: (value: string) => void;
+  draft: ComposerDraft;
+  onDraftChange: SetComposerDraft;
   aiEnabled: boolean;
   /** What the current view adds to a new task. */
   context: QuickAddDefaults;
   projects: Project[];
   /** Saved tags. */
   suggestions: string[];
-  onSubmit: (mode: ComposerMode, text: string, defaults: QuickAddDefaults) => Promise<boolean>;
-  onUnsaved: (text: string, defaults: QuickAddDefaults, titles: string[]) => void;
+  onSubmit: (submission: ComposerSubmission) => Promise<boolean>;
+  onUnsaved: (drafts: QuickTask[]) => void;
   /** Escape on an empty field hands the keyboard back to the list. */
   onLeave: () => void;
   /** Undoes the last completion or deletion while its notice is showing; false when there is nothing to undo. */
@@ -40,11 +42,12 @@ interface Props {
 }
 
 /** One field writes the task; the chips under it show and set the same values. */
-export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onTextChange, onSubmit, onUnsaved, onLeave, onUndo, context, projects, suggestions }: Props) {
+export function Composer({ t, today, locale, dateFormat, aiEnabled, draft: savedDraft, onDraftChange, onSubmit, onUnsaved, onLeave, onUndo, context, projects, suggestions }: Props) {
   const [setup, setSetup] = useState(false);
   const [mod, setMod] = useState("Ctrl");
   const [caret, setCaret] = useState<number | null>(null);
-  const draft = useComposer({ text, onTextChange, today, context, projects, onSubmit, onUnsaved });
+  const { text } = savedDraft;
+  const draft = useComposer({ draft: savedDraft, onDraftChange, today, context, projects, onSubmit, onUnsaved });
   const { field, choice, values, capturing, submit } = draft;
   const lines = text.split(/\r?\n/u).filter((line) => line.trim()).length;
   // Once saving was refused, everything unread is shown, the word under the caret included.
@@ -94,7 +97,7 @@ export function Composer({ t, today, locale, dateFormat, aiEnabled, text, onText
         onProject={(projectId) => draft.choose({ ...choice, projectId }, "project")}
         onEstimate={(estimateHours) => draft.choose({ ...choice, estimateHours: estimateHours ?? undefined }, "estimate")}
         onRepeat={(repeat) => draft.choose({ ...choice, repeat: repeat ?? undefined })}
-        onAddTag={draft.addTag}
+        tagInput={choice.tagInput ?? ""} onTagInput={draft.setTagInput} onAddTag={draft.addTag}
         onRemoveTag={(tag) => draft.choose(withoutTag(choice, tag, context.tag), "tag", tag)} />
       {values.batch && <ComposerBatch drafts={draft.drafts} count={lines} today={today} locale={locale} dateFormat={dateFormat} projects={projects} t={t}
         disabled={capturing} blocked={draft.blocked} onJoin={() => { draft.rewrite(text.split(/\s*\r?\n\s*/u).filter(Boolean).join(" ")); draft.refocus(); }} />}

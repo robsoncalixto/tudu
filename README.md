@@ -132,9 +132,9 @@ typing `@fri` at the end of a title moves its due date. Completing, reopening
 or deleting a task, or changing its due date in the list, acts at once and
 shows a notice that names the task and offers **Undo** for a few seconds.
 Undo takes back one action after another, newest first, for as long as the
-notice shows, in whichever list you move to. A deleted task is only removed
-when that notice is gone, and completing a repeating task creates its next one
-only then, so undoing either leaves nothing behind. Closing or reloading the
+notice shows, in whichever list you move to. Deleting or reopening a task waits
+until the notice is gone. The same applies to completing a repeating task or
+one with a saved position in Today. Closing or reloading the
 page ends that wait and sends what was held; so does hiding it on a phone. A save that could not reach the server offers **Retry**
 in the same notice. The task actions menu of a row also plans the task for
 tomorrow or next week and deletes it.
@@ -152,6 +152,9 @@ converts the duration; both values are stored as decimal hours (`estimateHours`
 and `realTimeHours` in the API). Existing minute estimates are converted to hours
 automatically. New repeating occurrences keep the estimate and start with no real
 execution time.
+
+If a legacy task has an invalid due date, correct it or remove the repeat
+rule before completing the series.
 
 Repeating tasks can be daily, on weekdays, weekly on selected days, or monthly.
 Completing one creates the next occurrence.
@@ -202,6 +205,10 @@ field ready for the next one; Shift+Enter starts another task on a new line.
 `work`, with high priority, due tomorrow afternoon. A notice names the new
 task and its **Show** button takes you to it, wherever the list's order or a
 chip placed it.
+
+The browser tab keeps unfinished text, chip selections, and tag input as
+you navigate or reload. If several quick adds fail while you keep typing,
+the notice lets you retry each one without disturbing the current draft.
 
 | Write | Meaning |
 | --- | --- |

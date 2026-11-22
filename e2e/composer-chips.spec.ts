@@ -1,4 +1,5 @@
 import { chip, chips, composer, expect, listTasks, openSection, pickChip, row, saveSettings, seedProjects, sidebar, test, TODAY, TOMORROW, tagChip } from "./support";
+import { dictionaries } from "../src/i18n";
 
 for (const l of [
   { locale: "en", priority: "Priority", high: "High", medium: "Medium", low: "Low", due: "Due date", today: "Today", tomorrow: "Tomorrow", nextWeek: "Next week", noDate: "No date",
@@ -14,6 +15,42 @@ for (const l of [
     note: "14:00 é salvo como tarde. O prazo guarda o dia, não a hora.", partOfDay: "Período do dia", morning: "Manhã", afternoon: "Tarde", evening: "Noite", anyTime: "Qualquer horário",
     repeat: "Repetir", weekly: "Semanalmente", monthly: "Mensalmente", friday: "20 de nov.", heard: "Prazo: Amanhã · Tarde. Prioridade: Alta. Etiquetas: #work" },
 ] as const) {
+  test(`restores unfinished text, chips and tag input after navigation and reload in ${l.locale}`, async ({ page, request }) => {
+    const t = dictionaries[l.locale];
+    await saveSettings(request, { locale: l.locale });
+    await page.goto("/");
+    const field = composer(page);
+    await field.fill("Submit payroll");
+    await pickChip(page, l.priority, l.high);
+    await pickChip(page, l.due, l.tomorrow);
+    await pickChip(page, l.estimate, l.hour);
+    await chip(page, t.tags).click();
+    const tagField = page.getByRole("dialog", { name: t.tags }).getByRole("combobox", { name: t.composerTag });
+    await tagField.fill("payroll");
+    await tagField.press("Escape");
+    await sidebar(page).getByRole("link", { name: t.settings }).click();
+    await expect(page).toHaveURL("/settings");
+    await page.goBack();
+    const check = async () => {
+      await expect(field).toHaveValue("Submit payroll");
+      await expect(chip(page, l.priority)).toHaveAccessibleName(`${l.priority}: ${l.high}`);
+      await expect(chip(page, l.due)).toHaveAccessibleName(`${l.due}: ${l.tomorrow}`);
+      await expect(chip(page, l.estimate)).toHaveAccessibleName(`${l.estimate}: ${l.hour}`);
+    };
+    await check();
+    await page.reload();
+    await check();
+    await chip(page, t.tags).click();
+    await expect(tagField).toHaveValue("payroll");
+    await tagField.press("Enter");
+    await tagField.press("Escape");
+    await field.press("Enter");
+    await expect(row(openSection(page), "Submit payroll")).toBeVisible();
+    expect(await listTasks(request)).toMatchObject([
+      { title: "Submit payroll", priority: "high", due: TOMORROW, estimateHours: 1, tags: ["payroll"] },
+    ]);
+  });
+
   test(`chips mirror typed tokens and keep text and values in step in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale });
     await page.goto("/");
@@ -256,3 +293,44 @@ for (const l of [
     expect(await listTasks(request)).toEqual([]);
   });
 }
+
+test("a delayed save leaves the newer draft alone after a start-view change with full session storage", async ({ page, request }) => {
+  await page.goto("/");
+  const field = composer(page);
+  await field.fill("Older draft");
+  await page.evaluate(() => {
+    const write = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (this === sessionStorage && key === "tudu.boardReturn") throw new DOMException("Full", "QuotaExceededError");
+      write.call(this, key, value);
+    };
+  });
+  await field.fill("Send report");
+  await pickChip(page, "Due date", "Today");
+  let release = () => {};
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/api/tasks", async (route) => {
+    if (route.request().method() === "POST") await held;
+    await route.continue();
+  });
+  try {
+    const posting = page.waitForRequest((req) => req.method() === "POST" && req.url().endsWith("/api/tasks"));
+    await field.press("Enter");
+    await posting;
+    await sidebar(page).getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("combobox", { name: "Start view" }).selectOption("today");
+    await page.getByRole("button", { name: "Save settings" }).click();
+    await expect(page.getByRole("status")).toHaveText("Settings saved.");
+    await page.goBack();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Today");
+    await expect(field).toHaveValue("");
+    await field.fill("New report");
+    await pickChip(page, "Priority", "High");
+  } finally {
+    release();
+  }
+  await expect(row(page, "Send report")).toBeVisible();
+  await expect(field).toHaveValue("New report");
+  await expect(chip(page, "Priority")).toHaveAccessibleName("Priority: High");
+  expect(await listTasks(request)).toMatchObject([{ title: "Send report", due: TODAY }]);
+});

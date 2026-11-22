@@ -86,6 +86,8 @@ test.describe("TaskRow", () => {
 
     await expect(row(openSection(page), "Toggle me")).toBeVisible();
     await expect(doneSection(page)).toHaveCount(0);
+    expect((await listTasks(request))[0].done).toBe(true);
+    await page.getByRole("status").getByRole("button", { name: "Dismiss", exact: true }).click();
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(false);
   });
 
@@ -258,8 +260,8 @@ for (const language of [
 }
 
 for (const language of [
-  { code: "EN", today: "Today", all: "All tasks", add: "Add to today", remove: "Remove from today", error: "Something went wrong. Try again." },
-  { code: "PT", today: "Hoje", all: "Todas as tarefas", add: "Adicionar ao dia de hoje", remove: "Remover do dia de hoje", error: "Algo deu errado. Tente novamente." },
+  { code: "EN", today: "Today", all: "All tasks", add: "Add to today", remove: "Remove from today", dismiss: "Dismiss", error: "Something went wrong. Try again." },
+  { code: "PT", today: "Hoje", all: "Todas as tarefas", add: "Adicionar ao dia de hoje", remove: "Remover do dia de hoje", dismiss: "Dispensar", error: "Algo deu errado. Tente novamente." },
 ]) {
   test(`adds and removes a persisted daily selection in ${language.code}`, async ({ page, request }) => {
     await seed(request, [{ title: "Daily pick" }]);
@@ -302,6 +304,8 @@ for (const language of [
     await doneSection(page).locator(":scope > summary").click();
     await row(doneSection(page), "Deadline pick").getByRole("checkbox").click();
     await expect(todayButton).toHaveText(`${language.today} 2`);
+    expect((await listTasks(request))[0].done).toBe(true);
+    await page.getByRole("status").getByRole("button", { name: language.dismiss, exact: true }).click();
     await expect.poll(async () => (await listTasks(request))[0].done).toBe(false);
   });
 

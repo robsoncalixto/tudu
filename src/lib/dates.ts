@@ -75,10 +75,12 @@ export function longDate(today: string, locale: Locale, format: DateFormat = "lo
 export function dayChoiceLabel(iso: string, today: string, locale: Locale, t: Dictionary): string {
   const diff = dayDiff(iso, today);
   const date = parse(iso);
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(date);
+  if (Number.isNaN(date.getTime())) return iso;
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(date);
   const name = diff === 0 ? t.today : diff === 1 ? t.tomorrow : weekday.charAt(0).toLocaleUpperCase(locale) + weekday.slice(1);
   const day = new Intl.DateTimeFormat(locale, {
-    day: "numeric", month: "short", ...(date.getFullYear() !== parse(today).getFullYear() ? { year: "numeric" } : {}),
+    timeZone: "UTC", day: "numeric", month: "short",
+    ...(date.getUTCFullYear() !== parse(today).getUTCFullYear() ? { year: "numeric" } : {}),
   }).format(date);
   return `${name} · ${day}`;
 }

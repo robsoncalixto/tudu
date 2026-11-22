@@ -13,19 +13,20 @@ interface Props {
   /** Saved tags that can be reused. */
   saved: string[];
   disabled?: boolean;
+  text: string;
+  onTextChange?: (value: string) => void;
   onAdd: (tag: string) => void;
   onRemove: (tag: string) => void;
 }
 
 /** The tags of the task being written, with a search that reuses saved tags or creates one. */
-export function TagPicker({ t, tags, saved, disabled, onAdd, onRemove }: Props) {
+export function TagPicker({ t, tags, saved, disabled, text, onTextChange, onAdd, onRemove }: Props) {
   const id = useId();
   const popup = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const wasOpen = useRef(false);
   const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
   const [active, setActive] = useState(0);
   const typed = normalizeQuickTag(text);
   const matches = saved.filter((tag) => !tags.includes(tag) && tag.includes(typed)).slice(0, 6);
@@ -43,7 +44,6 @@ export function TagPicker({ t, tags, saved, disabled, onAdd, onRemove }: Props) 
   function toggle(next: boolean) {
     if (next === open) return;
     setOpen(next);
-    setText("");
     setActive(0);
     if (!next && popup.current?.matches(":popover-open")) popup.current.hidePopover();
   }
@@ -51,7 +51,6 @@ export function TagPicker({ t, tags, saved, disabled, onAdd, onRemove }: Props) 
   function add(tag: string | undefined) {
     if (!tag) return;
     onAdd(tag);
-    setText("");
     setActive(0);
   }
 
@@ -73,7 +72,7 @@ export function TagPicker({ t, tags, saved, disabled, onAdd, onRemove }: Props) 
           <input ref={input} className="form-control" value={text} maxLength={40} placeholder={t.composerTag}
             role="combobox" aria-label={t.composerTag} aria-autocomplete="list" aria-expanded={options.length > 0}
             aria-controls={`${id}-list`} aria-activedescendant={options.length ? `${id}-${index}` : undefined}
-            onChange={(event) => { setText(event.target.value); setActive(0); }}
+            onChange={(event) => { onTextChange?.(event.target.value); setActive(0); }}
             onKeyDown={(event) => {
               if (event.nativeEvent.isComposing) return;
               if (event.key === "ArrowDown" || event.key === "ArrowUp") {

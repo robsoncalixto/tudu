@@ -12,6 +12,31 @@ for (const l of [
     due: (title: string, date: string) => `Prazo de “${title}”: ${date}.`, later: "27 de nov", friday: "20 de nov",
     doneHeading: "Concluídas", next: "Próxima tarefa programada para Amanhã.", error: "Algo deu errado. Tente novamente." },
 ] as const) {
+  test(`undoing a reopening preserves its completion timestamp in ${l.locale}`, async ({ page, request }) => {
+    await saveSettings(request, { locale: l.locale });
+    const [task] = await seed(request, [{ title: "Finished report" }]);
+    const endpoint = `/api/tasks/${task.id}`;
+    const response = await request.patch(endpoint, { data: { done: true } });
+    expect(response.ok()).toBe(true);
+    const { task: { completedAt } } = await response.json();
+    expect(completedAt).toEqual(expect.any(String));
+    const read = async () => (await (await request.get("/api/tasks")).json()).tasks[0];
+    await page.goto("/");
+    await doneSection(page).getByText(l.doneHeading).click();
+    await row(doneSection(page), task.title).getByRole("checkbox", { name: l.open }).click();
+    await expect(row(openSection(page), task.title)).toBeVisible();
+    expect(await read()).toMatchObject({ done: true, completedAt });
+    const status = page.getByRole("status");
+    await status.getByRole("button", { name: l.undo, exact: true }).click();
+    await expect(row(openSection(page), task.title)).toHaveCount(0);
+    expect(await read()).toMatchObject({ done: true, completedAt });
+
+    await doneSection(page).getByText(l.doneHeading).click();
+    await row(doneSection(page), task.title).getByRole("checkbox", { name: l.open }).click();
+    await status.getByRole("button", { name: l.dismiss, exact: true }).click();
+    await expect.poll(read).toMatchObject({ done: false, completedAt: null });
+  });
+
   test(`completing and reopening a task can be undone from the notice in ${l.locale}`, async ({ page, request }) => {
     await saveSettings(request, { locale: l.locale });
     await seed(request, [{ title: "Write report" }, { title: "Other task" }]);

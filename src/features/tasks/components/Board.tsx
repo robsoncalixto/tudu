@@ -4,10 +4,9 @@ import type { QuickAddDefaults } from "@/features/quick-add/schema";
 import { Icon } from "@/lib/Icon";
 import { dueLabel, longDate } from "@/lib/dates";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { rankDayTasks } from "../day-order";
+import { orderVisibleDayTasks, rankDayTasks } from "../day-order";
 import { useComposerSubmit } from "../use-composer-submit";
 import { useDayOrder } from "../use-day-order";
-import { isProvisional } from "../optimistic-tasks";
 import { isForToday, type TaskSort } from "../selectors";
 import { useTaskActions } from "../use-task-actions";
 import { useTaskShortcuts } from "../use-task-shortcuts";
@@ -26,9 +25,10 @@ import { useTaskWorkspace } from "./TaskWorkspace";
 
 export function Board() {
   const { settings, locale, t, today, navigation, inspector, taskData, projectData, selectedTask,
-    view, notice, setNotice, fail, select, suggestions, focusRequest } = useTaskWorkspace();
-  const { filter, query, setQuery, sort, setSort, text, setText } = navigation;
-  const { tasks, reorder, aiEnabled, add, capture, patch, changeLater, loadFailed, retryLoad } = taskData;
+    view, notice, setNotice, fail, select, suggestions, focusRequest,
+    failedSubmissions, setFailedSubmissions, retryingSubmissions } = useTaskWorkspace();
+  const { filter, query, setQuery, sort, setSort, draft, setDraft } = navigation;
+  const { tasks, confirmed, reorder, aiEnabled, add, capture, patch, changeLater, loadFailed, retryLoad } = taskData;
   const { projects } = projectData;
   const search = useRef<HTMLInputElement>(null);
   const loaded = tasks !== null;
@@ -43,10 +43,12 @@ export function Board() {
     tasks, patch, changeLater, notify: setNotice, labels, onElsewhere: () => select({ kind: "all" }),
     onLeave: useCallback((id: string) => setSelectedId((current) => current === id ? null : current), [setSelectedId]),
   });
-  const { submit, keep, fresh } = useComposerSubmit({
-    t, today, ready: tasks !== null, projects, defaultPriority: settings.defaultPriority, add, capture, setQuery, setNotice, show: actions.show, fail,
+  const { submit, keep, fresh, retryNotice, discard } = useComposerSubmit({
+    t, today, ready: tasks !== null, defaultPriority: settings.defaultPriority, add, capture, setQuery, setNotice, show: actions.show, fail,
+    failed: failedSubmissions, setFailed: setFailedSubmissions, retrying: retryingSubmissions,
   });
   const dismiss = useCallback(() => setNotice(null), [setNotice]);
+  const visibleNotice = notice?.undo || (notice?.kind === "error" && notice.action) ? notice : retryNotice ?? notice;
   const undo = () => { notice?.undo?.(); return Boolean(notice?.undo); };
   const toList = () => (actions.rows()[0] ?? document.getElementById("main-content"))?.focus();
   const title = filter.kind === "project" ? projects.find((p) => p.id === filter.id)?.name ?? t.projects
@@ -80,7 +82,11 @@ export function Board() {
     },
   });
   // The task field is not on screen while the list loads: what is typed for it meanwhile is kept and lands there.
-  useTypeAhead(awaited && !loaded, (typed) => { if (typed) setText(text + typed); actions.focusComposer(); setAwaited(false); });
+  useTypeAhead(awaited && !loaded, (typed) => {
+    if (typed) setDraft((current) => ({ ...current, text: current.text + typed }));
+    actions.focusComposer();
+    setAwaited(false);
+  });
   // Most used first, so the tags a person reaches for are the ones offered.
   const savedTags = useMemo(() => [...view.tagCounts].sort((a, b) => b[1] - a[1]).map(([tag]) => tag), [view.tagCounts]);
   useEffect(() => {
@@ -90,8 +96,12 @@ export function Board() {
     focusRequest.current = null;
   }, [loaded, focusRequest, actions.focusComposer]);
   const searching = Boolean(query.trim());
-  const dayIds = today ? rankDayTasks((tasks ?? []).filter((task) => !task.done && !isProvisional(task) && isForToday(task, today)), today).map((task) => task.id) : [];
-  const order = useDayOrder(today, dayIds, filter.kind === "today" && sort === "manual", reorder, fail);
+  const savedDayIds = today ? rankDayTasks((confirmed ?? []).filter((task) => !task.done && isForToday(task, today)), today).map((task) => task.id) : [];
+  const savedDaySet = new Set(savedDayIds);
+  const dayIds = today ? rankDayTasks((tasks ?? []).filter((task) => !task.done && isForToday(task, today) && savedDaySet.has(task.id)), today)
+    .map((task) => task.id) : [];
+  const order = useDayOrder(today, dayIds, filter.kind === "today" && sort === "manual",
+    (day, ids) => reorder(day, orderVisibleDayTasks(savedDayIds, ids), savedDayIds), fail);
   const list = { suggestions: suggestions.byTask, order: order && searching ? { ...order, ready: false } : order, today: today ?? "", locale, t, projects, savedTags, dateFormat: settings.dateFormat, rowKey: taskData.rowKey, onPatch: actions.patchFromRow, onDelete: actions.requestDelete,
     onPostpone: postpone, selectedId: inspector.selectedId, onShowPanel: inspector.toggle, onTag: (tag: string) => select({ kind: "tag", tag }) };
 
@@ -105,11 +115,11 @@ export function Board() {
       <div className="content">
         <BoardHeader title={title} t={t} today={today ?? ""} date={today ? longDate(today, locale, settings.dateFormat) : null}
           loading={!tasks && !loadFailed} failed={loadFailed} open={view.scopeOpen} done={view.scopeDone} />
-        {tasks && <Composer t={t} text={text} onTextChange={setText} aiEnabled={aiEnabled} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat} onSubmit={submit} onUnsaved={keep}
+        {tasks && <Composer t={t} draft={draft} onDraftChange={setDraft} aiEnabled={aiEnabled} today={today ?? ""} locale={locale} dateFormat={settings.dateFormat} onSubmit={submit} onUnsaved={keep}
           context={composerContext} projects={projects} suggestions={savedTags}
           onLeave={toList} onUndo={undo} />}
         {!tasks && !loadFailed && <TaskSkeleton t={t} locale={locale} dateFormat={settings.dateFormat} projects={projects} />}
-        <BoardNotice notice={notice} t={t} onDismiss={dismiss} />
+        <BoardNotice notice={visibleNotice} t={t} onDismiss={visibleNotice === retryNotice && retryNotice ? discard : dismiss} />
         {loadFailed && <div className="board-failure"><p role="alert">{t.taskLoadFailed}</p>
           <button type="button" className="btn btn-secondary" onClick={() => { retryLoad(); document.getElementById("main-content")?.focus(); }}>{t.retry}</button></div>}
         {tasks && <>

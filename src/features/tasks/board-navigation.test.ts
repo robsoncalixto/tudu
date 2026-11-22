@@ -31,15 +31,24 @@ const previous: BoardReturn = {
 
 describe("returning to the board", () => {
   it("restores the unfinished task's explicit fields and the tag still being typed", () => {
-    const details = { priority: "high", due: "2026-11-20", tags: ["review"], tagInput: " Team " };
-    const saved = { ...previous, details };
+    const choice = { priority: "high", due: "2026-11-20", tags: ["review"], tagInput: " Team ",
+      projectId: null, plannedFor: null, repeat: "monthly", partOfDay: "evening", estimateHours: 1.5, withoutViewTag: true };
+    const saved = { ...previous, choice };
     expect(restoreBoardReturn(JSON.stringify(saved), "all")).toEqual(saved);
-    expect(restoreBoardReturn(JSON.stringify(saved), "today")).toMatchObject({ text: previous.text, details });
+    expect(restoreBoardReturn(JSON.stringify(saved), "today")).toMatchObject({ text: previous.text, choice });
+  });
+
+  it("moves the older composer fields and pending tag into the new chips", () => {
+    const details = { priority: "high", due: "2026-11-20", tags: ["review"], tagInput: " Team " };
+    expect(restoreBoardReturn(JSON.stringify({ ...previous, details }), "all")).toEqual({
+      ...previous, choice: { priority: "high", due: "2026-11-20", tags: ["review", "team"], tagInput: " Team " },
+    });
   });
 
   it("keeps a text-only draft when older settings lack details or saved details are unreadable", () => {
     expect(restoreBoardReturn(JSON.stringify(previous), "all")).toEqual(previous);
     expect(restoreBoardReturn(JSON.stringify({ ...previous, details: { priority: "unknown" } }), "all")).toEqual(previous);
+    expect(restoreBoardReturn(JSON.stringify({ ...previous, choice: { repeat: "unknown" } }), "all")).toEqual(previous);
   });
 
   it.each<TaskFilter>([

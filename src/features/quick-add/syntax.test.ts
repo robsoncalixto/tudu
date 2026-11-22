@@ -32,6 +32,7 @@ describe("inline syntax", () => {
     ["@14h30", { due: TODAY, time: "14:30" }], ["@2pm", { due: TODAY, time: "14:00" }], ["@12am", { due: TODAY, time: "00:00" }],
     ["@25/11", { due: "2026-11-25" }], ["@25/11 14h", { due: "2026-11-25", time: "14:00" }],
     ["@25/11/2026", { due: "2026-11-25" }], ["@5/1/27", { due: "2027-01-05" }], ["@2026-12-01", { due: "2026-12-01" }],
+    ["@5/1/0099", { due: "0099-01-05" }],
     ["@amanha 9:30", { due: "2026-11-18", time: "09:30" }], ["@sex 18h", { due: "2026-11-20", time: "18:00" }],
     ["!alta", { priority: "high" }], ["!media", { priority: "medium" }], ["!média", { priority: "medium" }], ["!baixa", { priority: "low" }],
     ["!1", { priority: "high" }], ["!2", { priority: "medium" }], ["!3", { priority: "low" }],
@@ -47,6 +48,9 @@ describe("inline syntax", () => {
     expect(parse("Task @16/11").due).toBe("2027-11-16");
     expect(parse("Task @01/03").due).toBe("2027-03-01");
     expect(parseQuickAdd("Task @29/02", { today: "2027-03-01" }).due).toBe("2028-02-29");
+  });
+  it.each(["@5/1/0000", "@0000-01-05"])("keeps the invalid explicit year in %s as text", (token) => {
+    expect(parse(`Task ${token}`)).toMatchObject({ title: `Task ${token}`, due: null, warnings: [{ kind: "date", text: token }] });
   });
 
   it.each([

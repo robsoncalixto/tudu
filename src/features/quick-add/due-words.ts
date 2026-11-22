@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { calendarDateSchema } from "@/lib/dates";
 
 const WEEKDAYS: Record<string, number> = {
   sunday: 0, domingo: 0,
@@ -17,7 +17,7 @@ const SHORT_WEEKDAYS: Record<string, number> = {
 const RELATIVE_DAYS: Record<string, number> = { today: 0, hoje: 0, tomorrow: 1, amanha: 1 };
 
 export const wordKey = (token: string) => token.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-const isDate = (value: string) => z.iso.date().safeParse(value).success;
+const isDate = (value: string) => calendarDateSchema.safeParse(value).success;
 
 function shifted(today: string, days: number): string | null {
   const date = new Date(`${today}T12:00:00Z`);
@@ -76,7 +76,7 @@ export function clockTime(word: string): string | null | undefined {
 function dayAndMonth(day: number, month: number, year: number | undefined, today: string): string | null {
   const iso = (value: number) => `${String(value).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   if (year !== undefined) {
-    const full = iso(year < 100 ? 2000 + year : year);
+    const full = iso(year);
     return isDate(full) ? full : null;
   }
   // A day without a year is its next occurrence; eight years reaches the next 29 February.
@@ -99,7 +99,9 @@ export function dueExpression(body: string, today: string): DueExpression | null
   if (/^\d{4}-\d{2}-\d{2}$/.test(word)) return isDate(word) ? { date: word, time: null } : null;
   const calendar = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?$/.exec(word);
   if (calendar) {
-    const date = dayAndMonth(Number(calendar[1]), Number(calendar[2]), calendar[3] === undefined ? undefined : Number(calendar[3]), today);
+    const year = calendar[3];
+    const date = dayAndMonth(Number(calendar[1]), Number(calendar[2]),
+      year === undefined ? undefined : Number(year) + (year.length === 2 ? 2000 : 0), today);
     return date ? { date, time: null } : null;
   }
   const time = clockTime(word);

@@ -21,6 +21,7 @@ for (const locale of ["en", "pt-BR"] as const) {
     const task = row(page, "Second task");
     await task.getByRole("checkbox", { name: t.markDone }).click();
     await expect(row(page, "First task").getByRole("img", { name: t.taskOrderPosition(1) })).toBeVisible();
+    await page.getByRole("status").getByRole("button", { name: t.dismiss }).click();
     await expect.poll(async () => (await listTasks(request)).find((item) => item.title === "Second task")?.done).toBe(true);
     const saved = await listTasks(request);
     const result = await (await request.get(`/api/tasks/order?day=${TODAY}`)).json();
@@ -69,6 +70,28 @@ for (const locale of ["en", "pt-BR"] as const) {
     await expect.poll(() => rowTitles(openSection(page))).toEqual(["Second task", "First task"]);
   });
 }
+
+test("can reorder Today and still undo a pending deletion", async ({ page, request }) => {
+  const t = dictionaries.en;
+  await saveSettings(request, { startView: "today" });
+  await request.post("/api/tasks", { data: ["First", "Second", "Third"].map((title) => ({ title, plannedFor: TODAY })) });
+  const [first, second, third] = await listTasks(request);
+  await page.goto("/");
+  await row(openSection(page), "First").focus();
+  await page.keyboard.press("Delete");
+  const status = page.getByRole("status");
+  const undo = status.getByRole("button", { name: t.undo });
+  await expect(undo).toBeVisible();
+  await expect(row(openSection(page), "First")).toHaveCount(0);
+  await row(page, "Third").getByRole("button", { name: t.moveTaskUp }).click();
+  await expect.poll(() => rowTitles(openSection(page))).toEqual(["Third", "Second"]);
+  const read = async () => (await (await request.get(`/api/tasks/order?day=${TODAY}`)).json()).order.taskIds;
+  expect(await read()).toEqual([first.id, third.id, second.id]);
+  await undo.click();
+  await expect.poll(() => rowTitles(openSection(page))).toEqual(["First", "Third", "Second"]);
+  await page.reload();
+  await expect.poll(() => rowTitles(openSection(page))).toEqual(["First", "Third", "Second"]);
+});
 
 test("refreshes a stale board order before retrying a move", async ({ page, request }) => {
   await saveSettings(request, { startView: "today" });

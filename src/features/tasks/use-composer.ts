@@ -3,32 +3,32 @@
 import { useEffect, useRef, useState } from "react";
 import type { Project } from "@/features/projects/schema";
 import { quickAddApi } from "@/features/quick-add/api";
-import type { QuickAddDefaults, QuickAddProblem, QuickTokenType } from "@/features/quick-add/schema";
+import type { QuickAddDefaults, QuickAddProblem, QuickTask, QuickTokenType } from "@/features/quick-add/schema";
 import { replaceFieldText } from "@/lib/text-field";
+import type { ComposerDraft } from "./board-navigation";
 import { composerDefaults, composerValues, MAX_DRAFT_TAGS, NO_CHOICE, withTag, type ComposerChoice } from "./composer-draft";
-import type { ComposerMode } from "./use-composer-submit";
+import type { SetComposerDraft } from "./use-board-navigation";
+import type { ComposerMode, ComposerSubmission } from "./use-composer-submit";
 
 interface Options {
-  text: string;
-  onTextChange: (value: string) => void;
+  draft: ComposerDraft;
+  onDraftChange: SetComposerDraft;
   today: string;
   /** What the current view adds to a new task. */
   context: QuickAddDefaults;
   projects: Project[];
-  onSubmit: (mode: ComposerMode, text: string, defaults: QuickAddDefaults) => Promise<boolean>;
+  onSubmit: (submission: ComposerSubmission) => Promise<boolean>;
   /** A save failed and its text was not put back, because the field holds something newer. */
-  onUnsaved: (text: string, defaults: QuickAddDefaults, titles: string[]) => void;
+  onUnsaved: (drafts: QuickTask[]) => void;
 }
 
 /** The task being written: its text, the values picked with chips, and what happens when it is sent. */
-export function useComposer({ text, onTextChange, today, context, projects, onSubmit, onUnsaved }: Options) {
+export function useComposer({ draft, onDraftChange, today, context, projects, onSubmit, onUnsaved }: Options) {
   const [capturing, setCapturing] = useState(false);
-  const [choice, setChoice] = useState<ComposerChoice>(NO_CHOICE);
+  const { text, choice = NO_CHOICE } = draft;
   const [problem, setProblem] = useState<QuickAddProblem | null>(null);
   const [tagLimit, setTagLimit] = useState(false);
   const field = useRef<HTMLTextAreaElement>(null);
-  const current = useRef(text);
-  current.current = text;
   // Whether the person changed the text since the field was last emptied for them: then the browser can undo it.
   const typed = useRef(false);
   const defaults = composerDefaults(context, choice);
@@ -42,6 +42,8 @@ export function useComposer({ text, onTextChange, today, context, projects, onSu
   useEffect(() => { setProblem(null); setTagLimit(false); }, [text, choice]);
 
   const refocus = () => requestAnimationFrame(() => field.current?.focus({ preventScroll: true }));
+  const onTextChange = (value: string) => onDraftChange((current) => ({ ...current, text: value }));
+  const setChoice = (value: ComposerChoice) => onDraftChange((current) => ({ ...current, choice: value }));
   function change(value: string) {
     typed.current = true;
     onTextChange(value);
@@ -61,46 +63,43 @@ export function useComposer({ text, onTextChange, today, context, projects, onSu
   function addTag(tag: string) {
     const next = withTag(choice, tag);
     if (new Set([...values.tags, ...next.tags]).size > MAX_DRAFT_TAGS) setTagLimit(true);
-    else setChoice(next);
+    else setChoice({ ...next, tagInput: undefined });
   }
   function clear() {
     rewrite("");
-    setChoice(NO_CHOICE);
+    onDraftChange({ text: "" });
   }
 
   async function submit(mode: ComposerMode) {
     if (disabled) return;
     if (values.tags.length > MAX_DRAFT_TAGS) { setTagLimit(true); return; }
-    const sent = { text, choice };
     if (mode === "ai") {
       setCapturing(true);
       // The button that started this is disabled meanwhile, so the keyboard waits in the field.
       refocus();
-      try { if (await onSubmit("ai", text.trim(), defaults)) { onTextChange(""); setChoice(NO_CHOICE); typed.current = false; } }
+      try {
+        if (await onSubmit({ mode, text: text.trim(), defaults }) && onDraftChange({ text: "" }, draft)) typed.current = false;
+      }
       finally { setCapturing(false); refocus(); }
       return;
     }
     if (!drafts) {
-      setProblem(refusal);
-      // The field explains the refusal itself; only one it cannot name is left to the server's answer.
-      if (!refusal) void onSubmit("add", text.trim(), defaults);
+      setProblem(refusal ?? { kind: "line_invalid", line: 1 });
       return;
     }
     // The field is free for the next task at once; a failed save brings this one back.
-    onTextChange("");
+    const empty = { text: "" };
+    if (!onDraftChange(empty, draft)) return;
     typed.current = false;
-    setChoice(NO_CHOICE);
     refocus();
-    if (await onSubmit("add", sent.text.trim(), defaults)) return;
-    // What was typed meanwhile stays as it is; the task that failed waits in the notice instead.
-    if (current.current.trim()) { onUnsaved(sent.text.trim(), defaults, drafts.map((draft) => draft.title)); return; }
-    onTextChange(sent.text);
-    setChoice(sent.choice);
+    if (await onSubmit({ mode, drafts })) return;
+    if (!onDraftChange(draft, empty)) onUnsaved(drafts);
   }
 
   return {
     field, choice, values, drafts, disabled, capturing, problem: problem ?? standing, blocked: Boolean(standing), tagLimit,
     pristine: !text && choice === NO_CHOICE, hasOwnUndo: () => typed.current,
     change, rewrite, refocus, choose, addTag, clear, submit,
+    setTagInput: (tagInput: string) => setChoice({ ...choice, tagInput }),
   };
 }

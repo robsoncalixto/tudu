@@ -34,8 +34,8 @@ interface Step {
   undo: () => void;
   /** Saves a change that was only shown so far. */
   commit?: () => void;
-  /** A completion still held back, which reopening the task takes back instead of adding to. */
-  held?: boolean;
+  /** A completion or reopening which has only changed the visible list so far. */
+  heldDone?: boolean;
   /** The due date before a run of changes to it, which are taken back as one. */
   from?: string | null;
 }
@@ -144,22 +144,24 @@ export function useTaskActions(options: Options) {
     }
     if (changes.done === undefined) return patch(id, changes);
     const done = changes.done;
-    const held = done ? undefined : history.current.findLast((step) => step.id === id && step.held);
-    if (held) { steps.withdraw(held, labels.reopened(title)); return Promise.resolve(true); }
+    const held = history.current.findLast((step) => step.id === id && step.heldDone === !done);
+    const text = done ? labels.completed(title) : labels.reopened(title);
+    const undone = done ? labels.reopened(title) : labels.completed(title);
+    if (held) { steps.withdraw(held, text); return Promise.resolve(true); }
     let next: string | null = null;
     try { next = done && task?.repeat && task.due && !task.nextOccurrenceId ? nextDueDate(task.due, task.repeat) : null; } catch { next = null; }
-    if (next) {
-      // Completing a repeating task creates its next one. Held back until Undo is out of reach, it leaves nothing behind.
+    if (!done || next || (task && Object.keys(task.dayRanks).length > 0)) {
+      // Undo must preserve completion history, recurring occurrences, and saved positions in Today.
       const later = changeLater(id, changes);
       steps.record({
-        id, held: true, text: `${labels.completed(title)} ${labels.next(next)}`, undone: labels.reopened(title),
+        id, heldDone: done, text: next ? `${text} ${labels.next(next)}` : text, undone,
         undo: () => { later.undo(); }, commit: () => { void later.commit(); },
       });
       return Promise.resolve(true);
     }
     const saved = patch(id, changes);
     steps.record({
-      id, text: done ? labels.completed(title) : labels.reopened(title), undone: done ? labels.reopened(title) : labels.completed(title),
+      id, text, undone,
       undo: () => { void latest.current.patch(id, { done: !done }); },
     });
     return saved;
